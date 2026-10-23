@@ -12,8 +12,20 @@ android {
         applicationId = "com.arabicuieditor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // يزيد رقم الإصدار تلقائيًا مع كل بناء على GitHub Actions.
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = "0.2.0"
+    }
+
+    // مفتاح توقيع ثابت للنسخة التجريبية (debug) كي يُثبَّت كل APK جديد فوق السابق
+    // دون حذف. هذا مفتاح تجريبي عام وليس سرًّا؛ لا تستخدمه للنشر في المتاجر.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
