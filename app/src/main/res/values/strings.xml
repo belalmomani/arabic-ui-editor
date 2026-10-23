@@ -4,13 +4,148 @@
 
     <string name="home_tagline">صمّم واجهات تطبيقات أندرويد بالسحب والإفلات، ثم صدّرها كمشروع قابل للبناء.</string>
     <string name="home_new_project">مشروع جديد</string>
+    <string name="home_my_projects">مشاريعي</string>
     <string name="home_about">حول التطبيق</string>
 
+    <string name="projects_title">مشاريعي</string>
+    <string name="projects_empty">لا توجد مشاريع بعد. أنشئ مشروعك الأول.</string>
+    <string name="project_meta">آخر تعديل: %1$s · الشاشات: %2$d</string>
+    <string name="project_name_label">اسم المشروع</string>
+    <string name="project_copy_name">نسخة من %1$s</string>
+    <string name="default_screen_name">الشاشة الرئيسية</string>
+
+    <string name="dialog_new_project_title">مشروع جديد</string>
+    <string name="dialog_rename_title">إعادة تسمية المشروع</string>
+    <string name="dialog_delete_title">حذف المشروع</string>
+    <string name="dialog_delete_message">سيُحذف المشروع «%1$s» نهائيًا مع كل موارده. لا يمكن التراجع عن ذلك.</string>
+
+    <string name="action_create">إنشاء</string>
+    <string name="action_save">حفظ</string>
+    <string name="action_open">فتح</string>
+    <string name="action_rename">إعادة تسمية</string>
+    <string name="action_duplicate">إنشاء نسخة</string>
+    <string name="action_delete">حذف</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_back">رجوع</string>
+    <string name="action_more">المزيد</string>
+
     <string name="editor_title">المحرر</string>
+    <!-- مستخدم فقط في EditorPlaceholderScreen.kt القديم؛ يمكن حذفهما معًا. -->
     <string name="editor_placeholder">مساحة المحرر ستُبنى في المراحل القادمة.</string>
+    <string name="editor_last_modified">آخر تعديل: %1$s</string>
+    <string name="editor_screens_header">الشاشات (%1$d)</string>
+    <string name="editor_add_screen">إضافة شاشة</string>
+    <string name="editor_new_screen_name">شاشة %1$d</string>
+    <string name="editor_elements_count">العناصر: %1$d</string>
+    <string name="editor_not_found">تعذّر فتح المشروع. قد يكون حُذف أو تلف ملفه.</string>
+    <string name="editor_delete_element">حذف العنصر المحدد</string>
+    <string name="layers_title">الطبقات (%1$d) — الأعلى في القائمة هو الأعلى في الشاشة</string>
+    <string name="layers_empty">لا عناصر بعد. اضغط عنصرًا من القائمة أو اسحبه إلى الشاشة.</string>
+
+    <string name="element_text">نص</string>
+    <string name="element_button">زر</string>
+    <string name="element_image">صورة</string>
+    <string name="element_input">حقل إدخال</string>
+    <string name="element_container">حاوية</string>
+    <string name="element_card">بطاقة</string>
+    <string name="element_divider">فاصل</string>
+    <string name="element_spacer">مساحة فارغة</string>
+    <string name="element_unknown">عنصر</string>
+    <string name="editor_save_failed">تعذّر الحفظ. سنعيد المحاولة مع التعديل التالي.</string>
+
+    <string name="error_action_failed">تعذّر إكمال العملية. حاول مرة أخرى.</string>
 
     <string name="about_title">حول التطبيق</string>
     <string name="about_body">محرر الواجهات العربي\nالإصدار %1$s\nنسخة تأسيسية.</string>
 
-    <string name="action_back">رجوع</string>
+    <!-- المرحلة 4: الخصائص والمكتبة والتراجع -->
+    <string name="tab_elements">العناصر</string>
+    <string name="tab_library">المكتبة</string>
+    <string name="tab_properties">الخصائص</string>
+    <string name="tab_layers">الطبقات</string>
+
+    <string name="action_undo">تراجع</string>
+    <string name="action_redo">إعادة</string>
+    <string name="action_duplicate_element">نسخ</string>
+    <string name="action_forward">للأمام</string>
+    <string name="action_backward">للخلف</string>
+    <string name="action_to_front">أمام الكل</string>
+    <string name="action_to_back">خلف الكل</string>
+    <string name="copy_suffix">نسخة</string>
+    <string name="layer_hidden">مخفي</string>
+    <string name="props_select_hint">حدّد عنصرًا في الشاشة أو من الطبقات لتعديل خصائصه.</string>
+    <string name="margin_note">الهوامش تُحفظ مع العنصر وتُستخدم في التخطيطات المرنة لاحقًا؛ في الترتيب الحر الحالي لا تغيّر الموضع.</string>
+
+    <string name="group_geometry">الأبعاد والموضع</string>
+    <string name="group_general">عام</string>
+    <string name="group_text">النص</string>
+    <string name="group_appearance">المظهر</string>
+    <string name="group_spacing">المسافات</string>
+
+    <string name="geo_x">س (الموضع الأفقي)</string>
+    <string name="geo_y">ص (الموضع الرأسي)</string>
+    <string name="geo_width">العرض</string>
+    <string name="geo_height">الارتفاع</string>
+
+    <string name="prop_name">الاسم الداخلي</string>
+    <string name="prop_visible">ظاهر</string>
+    <string name="prop_opacity">الشفافية (%)</string>
+    <string name="prop_text">النص</string>
+    <string name="prop_hint">النص التوضيحي</string>
+    <string name="prop_items">عناصر القائمة (سطر لكل عنصر)</string>
+    <string name="prop_item_height">ارتفاع العنصر</string>
+    <string name="prop_text_color">لون النص</string>
+    <string name="prop_font_size">حجم الخط</string>
+    <string name="prop_font_weight">وزن الخط</string>
+    <string name="prop_text_align">المحاذاة</string>
+    <string name="prop_bg_color">لون الخلفية</string>
+    <string name="prop_border_width">سماكة الحد</string>
+    <string name="prop_border_color">لون الحد</string>
+    <string name="prop_corner_radius">استدارة الزوايا</string>
+    <string name="prop_padding_start">داخلي: البداية</string>
+    <string name="prop_padding_end">داخلي: النهاية</string>
+    <string name="prop_padding_top">داخلي: أعلى</string>
+    <string name="prop_padding_bottom">داخلي: أسفل</string>
+    <string name="prop_margin_start">هامش: البداية</string>
+    <string name="prop_margin_end">هامش: النهاية</string>
+    <string name="prop_margin_top">هامش: أعلى</string>
+    <string name="prop_margin_bottom">هامش: أسفل</string>
+
+    <string name="weight_normal">عادي</string>
+    <string name="weight_medium">متوسط</string>
+    <string name="weight_bold">عريض</string>
+    <string name="align_start">بداية</string>
+    <string name="align_center">وسط</string>
+    <string name="align_end">نهاية</string>
+
+    <string name="element_list">قائمة</string>
+
+    <string name="cat_buttons">أزرار</string>
+    <string name="cat_cards">بطاقات</string>
+    <string name="cat_inputs">حقول إدخال</string>
+    <string name="cat_texts">نصوص</string>
+    <string name="cat_images">صور</string>
+    <string name="cat_lists">قوائم</string>
+
+    <string name="preset_btn_primary">زر رئيسي</string>
+    <string name="preset_btn_outline">زر بإطار</string>
+    <string name="preset_btn_text">زر نصي</string>
+    <string name="preset_btn_danger">زر تحذيري</string>
+    <string name="preset_card_basic">بطاقة فارغة</string>
+    <string name="preset_card_title_body">بطاقة بعنوان ونص</string>
+    <string name="preset_card_title">عنوان البطاقة</string>
+    <string name="preset_card_body">نص توضيحي قصير يظهر داخل البطاقة.</string>
+    <string name="preset_input_basic">حقل إدخال</string>
+    <string name="preset_input_labeled">حقل بعنوان</string>
+    <string name="preset_input_hint">اكتب هنا</string>
+    <string name="preset_input_label">العنوان</string>
+    <string name="preset_text_heading">عنوان رئيسي</string>
+    <string name="preset_text_body">نص عادي</string>
+    <string name="preset_text_body_sample">هذا نص عادي يمكن تعديله من لوحة الخصائص.</string>
+    <string name="preset_text_caption">نص صغير</string>
+    <string name="preset_image_wide">صورة عريضة</string>
+    <string name="preset_image_avatar">صورة دائرية</string>
+    <string name="preset_list_basic">قائمة بسيطة</string>
+    <string name="preset_list_compact">قائمة مضغوطة</string>
+    <string name="preset_list_items">الأول\nالثاني\nالثالث\nالرابع</string>
 </resources>

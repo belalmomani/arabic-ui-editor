@@ -1,0 +1,430 @@
+package com.arabicuieditor.ui.editor
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.arabicuieditor.R
+import com.arabicuieditor.data.model.ColorUtil
+import com.arabicuieditor.data.model.PropertyDef
+import com.arabicuieditor.data.model.PropertyGroup
+import com.arabicuieditor.data.model.PropertyKind
+import com.arabicuieditor.data.model.PropertyRegistry
+import com.arabicuieditor.data.model.UiElement
+import com.arabicuieditor.data.model.boolProp
+import com.arabicuieditor.data.model.prop
+import com.arabicuieditor.ui.editor.canvas.DesignRect
+
+/** ألوان جاهزة للاختيار السريع (بصيغة #AARRGGBB). غير محصورة: يمكن إدخال أي لون سداسي. */
+private val Swatches = listOf(
+    "#00000000", "#FF000000", "#FFFFFFFF", "#FFF2F4F7", "#FFB0B7BF", "#FF5F6B76",
+    "#FF1B5E8C", "#FF5B9BD5", "#FFB3261E", "#FFE8710A", "#FFF9AB00", "#FF188038",
+    "#FF12B5CB", "#FF7B1FA2", "#FFD81B60"
+)
+
+/**
+ * لوحة الخصائص: تُبنى كلها من [PropertyRegistry] حسب نوع العنصر المحدد، فلا يوجد
+ * حقل مكتوب يدويًا لخاصية معينة. الاستثناء الوحيد قسم الأبعاد (x, y, العرض, الارتفاع)
+ * لأنها من تخطيط العنصر لا من خصائصه.
+ */
+@Composable
+fun PropertiesPanel(
+    element: UiElement?,
+    rect: DesignRect?,
+    onSetProperty: (key: String, value: String) -> Unit,
+    onSetRect: (DesignRect) -> Unit,
+    onDuplicate: () -> Unit,
+    onDelete: () -> Unit,
+    onReorder: (ReorderOp) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (element == null || rect == null) {
+        Box(modifier, contentAlignment = Alignment.Center) {
+            Text(
+                text = stringResource(R.string.props_select_hint),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        return
+    }
+
+    val defs = PropertyRegistry.forType(element.type)
+
+    LazyColumn(modifier = modifier.testTag("props_list"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item(key = "actions") {
+            ActionsRow(onDuplicate, onDelete, onReorder)
+        }
+
+        item(key = "geometry") {
+          Column {
+            SectionHeader(stringResource(R.string.group_geometry))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NumberField(stringResource(R.string.geo_x), rect.x.toInt(), -2000, 4000,
+                        { onSetRect(rect.copy(x = it.toFloat())) }, Modifier.weight(1f), "geo_x")
+                    NumberField(stringResource(R.string.geo_y), rect.y.toInt(), -2000, 4000,
+                        { onSetRect(rect.copy(y = it.toFloat())) }, Modifier.weight(1f), "geo_y")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NumberField(stringResource(R.string.geo_width), rect.w.toInt(), 16, 2000,
+                        { onSetRect(rect.copy(w = it.toFloat())) }, Modifier.weight(1f), "geo_w")
+                    NumberField(stringResource(R.string.geo_height), rect.h.toInt(), 16, 2000,
+                        { onSetRect(rect.copy(h = it.toFloat())) }, Modifier.weight(1f), "geo_h")
+                }
+            }
+          }
+        }
+
+        PropertyGroup.entries.forEach { group ->
+            val groupDefs = defs.filter { it.group == group }
+            if (groupDefs.isNotEmpty()) {
+                item(key = "group_${group.name}") {
+                  Column {
+                    SectionHeader(stringResource(group.labelRes))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (group == PropertyGroup.SPACING) {
+                            // الهوامش والمسافات الداخلية: حقلان في كل صف.
+                            groupDefs.chunked(2).forEach { pair ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    pair.forEach { def ->
+                                        PropertyEditor(def, element, onSetProperty, Modifier.weight(1f))
+                                    }
+                                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                                }
+                            }
+                            Text(
+                                text = stringResource(R.string.margin_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            groupDefs.forEach { def ->
+                                PropertyEditor(def, element, onSetProperty, Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                  }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(bottom = 4.dp)
+    )
+}
+
+@Composable
+private fun ActionsRow(
+    onDuplicate: () -> Unit,
+    onDelete: () -> Unit,
+    onReorder: (ReorderOp) -> Unit
+) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ActionChip(stringResource(R.string.action_duplicate_element), "act_duplicate", onDuplicate)
+        ActionChip(stringResource(R.string.action_delete), "act_delete", onDelete)
+        ActionChip(stringResource(R.string.action_forward), "act_forward") { onReorder(ReorderOp.FORWARD) }
+        ActionChip(stringResource(R.string.action_backward), "act_backward") { onReorder(ReorderOp.BACKWARD) }
+        ActionChip(stringResource(R.string.action_to_front), "act_front") { onReorder(ReorderOp.TO_FRONT) }
+        ActionChip(stringResource(R.string.action_to_back), "act_back") { onReorder(ReorderOp.TO_BACK) }
+    }
+}
+
+@Composable
+private fun ActionChip(label: String, tag: String, onClick: () -> Unit) {
+    AssistChip(
+        onClick = onClick,
+        label = { Text(label) },
+        modifier = Modifier.testTag(tag)
+    )
+}
+
+/** يختار أداة التحرير المناسبة لنوع الخاصية. */
+@Composable
+private fun PropertyEditor(
+    def: PropertyDef,
+    element: UiElement,
+    onSet: (String, String) -> Unit,
+    modifier: Modifier
+) {
+    val label = stringResource(def.labelRes)
+    val current = element.prop(def.key)
+    val tag = "prop_${def.key}"
+    when (val kind = def.kind) {
+        is PropertyKind.Text -> TextPropertyField(label, current, kind.multiline, { onSet(def.key, it) }, modifier, tag)
+        is PropertyKind.Integer -> NumberField(
+            label, current.toIntOrNull() ?: kind.min, kind.min, kind.max,
+            { onSet(def.key, it.toString()) }, modifier, tag
+        )
+        PropertyKind.ColorValue -> ColorField(label, current, { onSet(def.key, it) }, modifier, tag)
+        is PropertyKind.Choice -> ChoiceField(label, current, kind, { onSet(def.key, it) }, modifier, tag)
+        PropertyKind.Toggle -> ToggleField(label, element.boolProp(def.key), { onSet(def.key, it.toString()) }, modifier, tag)
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// أدوات التحرير. كلها تحتفظ بنص محلي أثناء الكتابة وتتزامن مع القيمة الحقيقية عند تغيّرها
+// من الخارج (مثل التراجع)، فلا يقفز المؤشر أثناء الكتابة.
+// ---------------------------------------------------------------------------------------------
+
+@Composable
+private fun TextPropertyField(
+    label: String,
+    value: String,
+    multiline: Boolean,
+    onValue: (String) -> Unit,
+    modifier: Modifier,
+    tag: String
+) {
+    var text by remember { mutableStateOf(value) }
+    LaunchedEffect(value) { if (value != text) text = value }
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onValue(it)
+        },
+        label = { Text(label) },
+        singleLine = !multiline,
+        minLines = if (multiline) 3 else 1,
+        modifier = modifier.testTag(tag)
+    )
+}
+
+@Composable
+private fun NumberField(
+    label: String,
+    value: Int,
+    min: Int,
+    max: Int,
+    onValue: (Int) -> Unit,
+    modifier: Modifier,
+    tag: String
+) {
+    var text by remember { mutableStateOf(value.toString()) }
+    LaunchedEffect(value) { if (text.toIntOrNull() != value) text = value.toString() }
+    val parsed = text.toIntOrNull()
+    val invalid = parsed == null || parsed !in min..max
+    val outline = if (invalid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline
+
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            StepButton("−", "${tag}_dec") { onValue((value - 1).coerceIn(min, max)) }
+            BasicTextField(
+                value = text,
+                onValueChange = { input ->
+                    text = input
+                    val n = input.toIntOrNull()
+                    if (n != null && n in min..max) onValue(n)
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                decorationBox = { inner -> Box(contentAlignment = Alignment.Center) { inner() } },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .border(1.dp, outline, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 6.dp, vertical = 8.dp)
+                    .testTag(tag)
+            )
+            StepButton("+", "${tag}_inc") { onValue((value + 1).coerceIn(min, max)) }
+        }
+    }
+}
+
+@Composable
+private fun StepButton(symbol: String, tag: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .clickable(onClick = onClick)
+            .testTag(tag),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(symbol, color = MaterialTheme.colorScheme.onSecondaryContainer, fontSize = 18.sp)
+    }
+}
+
+@Composable
+private fun ColorField(
+    label: String,
+    value: String,
+    onValue: (String) -> Unit,
+    modifier: Modifier,
+    tag: String
+) {
+    val currentArgb = ColorUtil.parse(value)
+    var hex by remember { mutableStateOf(value) }
+    LaunchedEffect(value) { if (ColorUtil.parse(hex) != currentArgb) hex = value }
+    val hexInvalid = ColorUtil.parse(hex) == null
+
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Swatches.forEach { swatch ->
+                val argb = ColorUtil.parse(swatch)
+                val selected = argb != null && argb == currentArgb
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .background(Color(argb ?: 0))
+                        .border(
+                            width = if (selected) 3.dp else 1.dp,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                            shape = CircleShape
+                        )
+                        .clickable { onValue(swatch) }
+                        .testTag("${tag}_$swatch"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (swatch == "#00000000") {
+                        // الشفاف: علامة «لا لون».
+                        Text("∅", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(Color(currentArgb ?: 0))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+            )
+            BasicTextField(
+                value = hex,
+                onValueChange = { input ->
+                    hex = input
+                    ColorUtil.parse(input)?.let { onValue(ColorUtil.format(it)) }
+                },
+                singleLine = true,
+                textStyle = TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 14.sp
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) { inner() } },
+                modifier = Modifier
+                    .width(130.dp)
+                    .height(36.dp)
+                    .border(
+                        1.dp,
+                        if (hexInvalid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .testTag("${tag}_hex")
+            )
+            Text("#RRGGBB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ChoiceField(
+    label: String,
+    value: String,
+    kind: PropertyKind.Choice,
+    onValue: (String) -> Unit,
+    modifier: Modifier,
+    tag: String
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            kind.options.forEach { (optionValue, labelRes) ->
+                FilterChip(
+                    selected = optionValue == value,
+                    onClick = { onValue(optionValue) },
+                    label = { Text(stringResource(labelRes)) },
+                    modifier = Modifier.testTag("${tag}_$optionValue")
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToggleField(
+    label: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit,
+    modifier: Modifier,
+    tag: String
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Switch(checked = checked, onCheckedChange = onChecked, modifier = Modifier.testTag(tag))
+    }
+}

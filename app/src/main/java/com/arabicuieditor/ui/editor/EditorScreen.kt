@@ -1,30 +1,54 @@
 package com.arabicuieditor.ui.editor
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -33,14 +57,26 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arabicuieditor.R
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.UiScreen
-import com.arabicuieditor.data.model.newId
-import com.arabicuieditor.ui.common.formatDateTime
+import com.arabicuieditor.ui.editor.canvas.CanvasMath
+import com.arabicuieditor.ui.editor.canvas.DesignCanvas
+import com.arabicuieditor.ui.editor.canvas.Viewport
 import com.arabicuieditor.ui.screens.AppTopBar
+import kotlin.math.roundToInt
 
-/**
- * هيكل المحرر في هذه المرحلة: يفتح المشروع المحفوظ ويعرض بياناته،
- * ويسمح بإضافة شاشة لاختبار الحفظ التلقائي. السحب والإفلات في مرحلة لاحقة.
- */
+private const val FIT_MARGIN_DP = 16f
+private const val CASCADE_STEP_DP = 14f
+private const val PANEL_HEIGHT_DP = 200
+
+private enum class BottomTab(val labelRes: Int) {
+    ELEMENTS(R.string.tab_elements),
+    LIBRARY(R.string.tab_library),
+    PROPERTIES(R.string.tab_properties),
+    LAYERS(R.string.tab_layers)
+}
+
+/** عنصر يُسحب الآن من القائمة (للعرض الشبحي ولتحديد مكان الإفلات). */
+private data class PaletteDrag(val type: String, val windowPos: Offset)
+
 @Composable
 fun EditorScreen(
     onBack: () -> Unit,
@@ -48,8 +84,11 @@ fun EditorScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val saveFailed by viewModel.saveFailed.collectAsState()
+    val currentScreenId by viewModel.currentScreenId.collectAsState()
+    val selectedId by viewModel.selectedId.collectAsState()
+    val canUndo by viewModel.canUndo.collectAsState()
+    val canRedo by viewModel.canRedo.collectAsState()
 
-    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -59,14 +98,34 @@ fun EditorScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val title = (state as? EditorState.Ready)?.project?.name ?: stringResource(R.string.editor_title)
+    val ready = state as? EditorState.Ready
+    val title = ready?.project?.name ?: stringResource(R.string.editor_title)
 
     Scaffold(
         topBar = {
-            AppTopBar(title = title, onBack = {
-                viewModel.flush()
-                onBack()
-            })
+            AppTopBar(
+                title = title,
+                onBack = {
+                    viewModel.flush()
+                    onBack()
+                },
+                actions = {
+                    TextButton(onClick = viewModel::undo, enabled = canUndo, modifier = Modifier.testTag("btn_undo")) {
+                        Text(stringResource(R.string.action_undo))
+                    }
+                    TextButton(onClick = viewModel::redo, enabled = canRedo, modifier = Modifier.testTag("btn_redo")) {
+                        Text(stringResource(R.string.action_redo))
+                    }
+                    if (selectedId != null) {
+                        IconButton(onClick = { viewModel.deleteSelected() }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.editor_delete_element)
+                            )
+                        }
+                    }
+                }
+            )
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -77,16 +136,13 @@ fun EditorScreen(
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                     textAlign = TextAlign.Center
                 )
-                is EditorState.Ready -> ProjectContent(
+
+                is EditorState.Ready -> EditorContent(
                     project = s.project,
+                    currentScreenId = currentScreenId,
+                    selectedId = selectedId,
                     saveFailed = saveFailed,
-                    onAddScreen = {
-                        viewModel.edit { p ->
-                            val number = p.screens.size + 1
-                            val name = context.getString(R.string.editor_new_screen_name, number)
-                            p.copy(screens = p.screens + UiScreen(id = newId(), name = name))
-                        }
-                    }
+                    viewModel = viewModel
                 )
             }
         }
@@ -94,48 +150,235 @@ fun EditorScreen(
 }
 
 @Composable
-private fun ProjectContent(
+private fun EditorContent(
     project: Project,
+    currentScreenId: String?,
+    selectedId: String?,
     saveFailed: Boolean,
-    onAddScreen: () -> Unit
+    viewModel: EditorViewModel
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = stringResource(R.string.editor_last_modified, formatDateTime(project.updatedAt)),
-            style = MaterialTheme.typography.bodyMedium
-        )
-        if (saveFailed) {
-            Text(
-                text = stringResource(R.string.editor_save_failed),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
+    val screen: UiScreen = project.screens.firstOrNull { it.id == currentScreenId }
+        ?: project.screens.firstOrNull()
+        ?: return
+    val density = LocalDensity.current.density
+
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var canvasBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    var rootWindowPos by remember { mutableStateOf(Offset.Zero) }
+    // العرض (تكبير/إزاحة) لكل شاشة على حدة؛ null يعني «لم يُضبط بعد، ضعه بالملاءمة».
+    var viewport by remember(screen.id) { mutableStateOf<Viewport?>(null) }
+    var drag by remember { mutableStateOf<PaletteDrag?>(null) }
+    var openTab by rememberSaveable { mutableStateOf<BottomTab?>(BottomTab.ELEMENTS) }
+
+    val selectedElement = screen.elements.firstOrNull { it.id == selectedId }
+    val selectedRect = selectedElement?.let { CanvasMath.resolveRect(it, screen.width, screen.height) }
+
+    /** مركز المساحة المرئية بإحداثيات التصميم، مع إزاحة متدرجة كي لا تتراكم العناصر في نقطة واحدة. */
+    fun newElementCenter(): Pair<Float, Float>? {
+        val vpNow = viewport ?: return null
+        val cascade = (screen.elements.size % 6) * CASCADE_STEP_DP
+        return (CanvasMath.toDesignX(vpNow, density, canvasSize.width / 2f) + cascade) to
+            (CanvasMath.toDesignY(vpNow, density, canvasSize.height / 2f) + cascade)
+    }
+
+    LaunchedEffect(screen.id, canvasSize) {
+        if (viewport == null && canvasSize.width > 0 && canvasSize.height > 0) {
+            viewport = CanvasMath.fit(
+                viewW = canvasSize.width.toFloat(),
+                viewH = canvasSize.height.toFloat(),
+                frameW = screen.width,
+                frameH = screen.height,
+                density = density,
+                marginPx = FIT_MARGIN_DP * density
             )
         }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.editor_screens_header, project.screens.size),
-            style = MaterialTheme.typography.titleMedium
-        )
-        Spacer(Modifier.height(8.dp))
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(project.screens, key = { it.id }) { screen ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(screen.name, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            text = stringResource(R.string.editor_elements_count, screen.elements.size),
-                            style = MaterialTheme.typography.bodySmall
-                        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { rootWindowPos = it.positionInWindow() }
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ScreenTabs(
+                project = project,
+                currentId = screen.id,
+                onSelect = viewModel::selectScreen,
+                onAdd = viewModel::addScreen
+            )
+            if (saveFailed) {
+                Text(
+                    text = stringResource(R.string.editor_save_failed),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .onGloballyPositioned { canvasBounds = it.boundsInWindow() }
+            ) {
+                val vp = viewport
+                if (vp != null) {
+                    DesignCanvas(
+                        screen = screen,
+                        selectedId = selectedId,
+                        viewport = vp,
+                        onViewportChange = { viewport = it },
+                        onSelect = viewModel::selectElement,
+                        onElementRectChange = viewModel::setElementRect,
+                        onSizeChange = { canvasSize = it },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // نقيس الحجم أولًا ثم نرسم المساحة بعد حساب الملاءمة.
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .onGloballyPositioned { canvasSize = it.size }
+                    )
+                }
+            }
+
+            HorizontalDivider()
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    // تبويبات اللوحة. الضغط على التبويب المفتوح يطويها لتكبير مساحة التصميم.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        BottomTab.entries.forEach { t ->
+                            FilterChip(
+                                selected = openTab == t,
+                                onClick = { openTab = if (openTab == t) null else t },
+                                label = {
+                                    Text(
+                                        stringResource(t.labelRes),
+                                        maxLines = 1,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Center
+                                    )
+                                },
+                                modifier = Modifier.weight(1f).testTag("tab_${t.name}")
+                            )
+                        }
+                    }
+                    if (openTab != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Box(modifier = Modifier.fillMaxWidth().height(PANEL_HEIGHT_DP.dp)) {
+                            when (openTab) {
+                                BottomTab.ELEMENTS -> ElementPalette(
+                                    onTapAdd = { type ->
+                                        val (cx, cy) = newElementCenter() ?: return@ElementPalette
+                                        viewModel.addElement(type, cx, cy)
+                                    },
+                                    onDragStart = { type, pos -> drag = PaletteDrag(type, pos) },
+                                    onDragMove = { pos -> drag = drag?.copy(windowPos = pos) },
+                                    onDragEnd = {
+                                        val d = drag
+                                        val vpNow = viewport
+                                        if (d != null && vpNow != null && canvasBounds.contains(d.windowPos)) {
+                                            val local = d.windowPos - canvasBounds.topLeft
+                                            viewModel.addElement(
+                                                d.type,
+                                                CanvasMath.toDesignX(vpNow, density, local.x),
+                                                CanvasMath.toDesignY(vpNow, density, local.y)
+                                            )
+                                        }
+                                        drag = null
+                                    },
+                                    onDragCancel = { drag = null }
+                                )
+
+                                BottomTab.LIBRARY -> LibraryPanel(
+                                    onAdd = { preset ->
+                                        val (cx, cy) = newElementCenter() ?: return@LibraryPanel
+                                        viewModel.addPreset(preset, cx, cy)
+                                    }
+                                )
+
+                                BottomTab.PROPERTIES -> PropertiesPanel(
+                                    element = selectedElement,
+                                    rect = selectedRect,
+                                    onSetProperty = { key, value ->
+                                        selectedElement?.let { viewModel.setProperty(it.id, key, value) }
+                                    },
+                                    onSetRect = { r -> selectedElement?.let { viewModel.setElementRect(it.id, r) } },
+                                    onDuplicate = viewModel::duplicateSelected,
+                                    onDelete = viewModel::deleteSelected,
+                                    onReorder = viewModel::reorderSelected,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                BottomTab.LAYERS -> LayersPanel(
+                                    elements = screen.elements,
+                                    selectedId = selectedId,
+                                    onSelect = { viewModel.selectElement(it) },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                null -> Unit
+                            }
+                        }
                     }
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onAddScreen, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.editor_add_screen))
+
+        // عنصر شبحي يتبع الإصبع أثناء السحب من القائمة.
+        drag?.let { d ->
+            val local = d.windowPos - rootWindowPos
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .offset { IntOffset(local.x.roundToInt() - 40.dp.roundToPx(), local.y.roundToInt() - 56.dp.roundToPx()) }
+            ) {
+                Text(
+                    text = stringResource(elementLabelRes(d.type)),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun ScreenTabs(
+    project: Project,
+    currentId: String,
+    onSelect: (String) -> Unit,
+    onAdd: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        project.screens.forEach { s ->
+            FilterChip(
+                selected = s.id == currentId,
+                onClick = { onSelect(s.id) },
+                label = { Text(s.name, maxLines = 1) }
+            )
+        }
+        AssistChip(
+            onClick = onAdd,
+            label = { Text(stringResource(R.string.editor_add_screen)) }
+        )
     }
 }

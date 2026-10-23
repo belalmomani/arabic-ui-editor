@@ -1,9 +1,13 @@
 package com.arabicuieditor.data.storage
 
 import com.arabicuieditor.data.model.CURRENT_SCHEMA_VERSION
+import com.arabicuieditor.data.model.ChildLayout
+import com.arabicuieditor.data.model.ElementLayout
 import com.arabicuieditor.data.model.EventBinding
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.ResourceRef
+import com.arabicuieditor.data.model.SizeMode
+import com.arabicuieditor.data.model.SizeSpec
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.UiScreen
 import org.json.JSONArray
@@ -45,7 +49,11 @@ object ProjectJsonCodec {
         )
     }
 
-    /** نقطة ترقية المخططات القديمة. لا توجد ترقيات بعد لأن الإصدار 1 هو الأول. */
+    /**
+     * نقطة ترقية المخططات القديمة.
+     * 1 → 2: لا تغيير مطلوب؛ الحقول الجديدة (التخطيط وأبعاد الشاشة) اختيارية ولها قيم افتراضية
+     * عند فك الترميز، فتُفتح مشاريع المرحلة 2 كما هي.
+     */
     @Suppress("UNUSED_PARAMETER")
     private fun migrate(root: JSONObject, fromVersion: Int): JSONObject = root
 
@@ -54,15 +62,31 @@ object ProjectJsonCodec {
     private fun screenToJson(s: UiScreen) = JSONObject().apply {
         put("id", s.id)
         put("name", s.name)
+        put("width", s.width.toDouble())
+        put("height", s.height.toDouble())
         put("elements", JSONArray().also { arr -> s.elements.forEach { arr.put(elementToJson(it)) } })
     }
 
     private fun elementToJson(e: UiElement): JSONObject = JSONObject().apply {
         put("id", e.id)
         put("type", e.type)
+        put("layout", layoutToJson(e.layout))
+        put("childLayout", e.childLayout.name.lowercase())
         put("properties", mapToJson(e.properties))
         put("events", JSONArray().also { arr -> e.events.forEach { arr.put(eventToJson(it)) } })
         put("children", JSONArray().also { arr -> e.children.forEach { arr.put(elementToJson(it)) } })
+    }
+
+    private fun layoutToJson(l: ElementLayout) = JSONObject().apply {
+        put("x", l.x.toDouble())
+        put("y", l.y.toDouble())
+        put("width", sizeToJson(l.width))
+        put("height", sizeToJson(l.height))
+    }
+
+    private fun sizeToJson(s: SizeSpec) = JSONObject().apply {
+        put("mode", s.mode.name.lowercase())
+        put("value", s.value.toDouble())
     }
 
     private fun eventToJson(ev: EventBinding) = JSONObject().apply {
@@ -86,16 +110,38 @@ object ProjectJsonCodec {
     private fun screenFromJson(o: JSONObject) = UiScreen(
         id = o.getString("id"),
         name = o.optString("name"),
+        width = o.optDouble("width", 360.0).toFloat(),
+        height = o.optDouble("height", 640.0).toFloat(),
         elements = o.optJSONArray("elements").mapObjects { elementFromJson(it) }
     )
 
     private fun elementFromJson(o: JSONObject): UiElement = UiElement(
         id = o.getString("id"),
         type = o.optString("type"),
+        layout = layoutFromJson(o.optJSONObject("layout")),
+        childLayout = enumOrDefault(o.optString("childLayout"), ChildLayout.ABSOLUTE),
         properties = o.optJSONObject("properties").toStringMap(),
         events = o.optJSONArray("events").mapObjects { eventFromJson(it) },
         children = o.optJSONArray("children").mapObjects { elementFromJson(it) }
     )
+
+    private fun layoutFromJson(o: JSONObject?): ElementLayout {
+        if (o == null) return ElementLayout()
+        return ElementLayout(
+            x = o.optDouble("x", 0.0).toFloat(),
+            y = o.optDouble("y", 0.0).toFloat(),
+            width = sizeFromJson(o.optJSONObject("width"), 100f),
+            height = sizeFromJson(o.optJSONObject("height"), 40f)
+        )
+    }
+
+    private fun sizeFromJson(o: JSONObject?, fallback: Float): SizeSpec {
+        if (o == null) return SizeSpec.fixed(fallback)
+        return SizeSpec(
+            mode = enumOrDefault(o.optString("mode"), SizeMode.FIXED),
+            value = o.optDouble("value", fallback.toDouble()).toFloat()
+        )
+    }
 
     private fun eventFromJson(o: JSONObject) = EventBinding(
         id = o.getString("id"),
@@ -110,6 +156,9 @@ object ProjectJsonCodec {
         type = o.optString("type"),
         path = o.optString("path")
     )
+
+    private inline fun <reified E : Enum<E>> enumOrDefault(raw: String, default: E): E =
+        enumValues<E>().firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: default
 
     private fun JSONObject?.toStringMap(): Map<String, String> {
         if (this == null) return emptyMap()

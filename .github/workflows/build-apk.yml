@@ -25,6 +25,7 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
+      # الـ APK يُبنى ويُرفع أولًا، فيبقى قابلًا للتنزيل حتى لو فشل أي اختبار لاحقًا.
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
 
@@ -35,3 +36,21 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      # اختبارات المنطق (الهندسة، الخصائص، التراجع، JSON، الحفظ). فشلها يجعل التشغيل أحمر.
+      - name: Run logic tests
+        run: gradle :app:testDebugUnitTest --tests "*CanvasMathTest" --tests "*ProjectStorageTest" --tests "*EditHistoryTest" --tests "*PropertyRegistryTest" --tests "*ElementOpsTest" --tests "*ComponentLibraryTest" --tests "*PropertyPersistenceTest" --stacktrace
+
+      # اختبارات واجهة حقيقية عبر Robolectric: إيماءات مساحة التصميم، ولوحة الخصائص،
+      # وانعكاس الخصائص على الرسم (قراءة بكسلات). تُشغَّل حتى لو فشلت اختبارات المنطق.
+      - name: Run UI tests (Robolectric)
+        if: always()
+        run: gradle :app:testDebugUnitTest --tests "*DesignCanvasGestureTest" --tests "*PropertiesPanelTest" --tests "*ElementViewRenderTest" --stacktrace
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore

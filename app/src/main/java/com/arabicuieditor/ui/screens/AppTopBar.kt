@@ -1,5 +1,6 @@
 package com.arabicuieditor.ui.screens
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -14,9 +15,14 @@ import com.arabicuieditor.R
 /** شريط علوي مشترك مع زر رجوع. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppTopBar(title: String, onBack: () -> Unit) {
+fun AppTopBar(
+    title: String,
+    onBack: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
     TopAppBar(
-        title = { Text(title) },
+        title = { Text(title, maxLines = 1) },
+        actions = actions,
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(

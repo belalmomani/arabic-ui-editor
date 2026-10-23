@@ -11,6 +11,7 @@ captures/
 # الأسرار: لا تُرفع أبدًا إلى المستودع
 *.jks
 *.keystore
+!app/debug.keystore
 keystore.properties
 google-services.json
 .env
