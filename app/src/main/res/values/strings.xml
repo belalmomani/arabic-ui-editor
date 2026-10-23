@@ -30,6 +30,8 @@
     <string name="action_more">المزيد</string>
 
     <string name="editor_title">المحرر</string>
+    <!-- مستخدم فقط في EditorPlaceholderScreen.kt القديم؛ يمكن حذفهما معًا. -->
+    <string name="editor_placeholder">مساحة المحرر ستُبنى في المراحل القادمة.</string>
     <string name="editor_last_modified">آخر تعديل: %1$s</string>
     <string name="editor_screens_header">الشاشات (%1$d)</string>
     <string name="editor_add_screen">إضافة شاشة</string>
