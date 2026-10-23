@@ -4,13 +4,42 @@
 
     <string name="home_tagline">صمّم واجهات تطبيقات أندرويد بالسحب والإفلات، ثم صدّرها كمشروع قابل للبناء.</string>
     <string name="home_new_project">مشروع جديد</string>
+    <string name="home_my_projects">مشاريعي</string>
     <string name="home_about">حول التطبيق</string>
 
+    <string name="projects_title">مشاريعي</string>
+    <string name="projects_empty">لا توجد مشاريع بعد. أنشئ مشروعك الأول.</string>
+    <string name="project_meta">آخر تعديل: %1$s · الشاشات: %2$d</string>
+    <string name="project_name_label">اسم المشروع</string>
+    <string name="project_copy_name">نسخة من %1$s</string>
+    <string name="default_screen_name">الشاشة الرئيسية</string>
+
+    <string name="dialog_new_project_title">مشروع جديد</string>
+    <string name="dialog_rename_title">إعادة تسمية المشروع</string>
+    <string name="dialog_delete_title">حذف المشروع</string>
+    <string name="dialog_delete_message">سيُحذف المشروع «%1$s» نهائيًا مع كل موارده. لا يمكن التراجع عن ذلك.</string>
+
+    <string name="action_create">إنشاء</string>
+    <string name="action_save">حفظ</string>
+    <string name="action_open">فتح</string>
+    <string name="action_rename">إعادة تسمية</string>
+    <string name="action_duplicate">إنشاء نسخة</string>
+    <string name="action_delete">حذف</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_back">رجوع</string>
+    <string name="action_more">المزيد</string>
+
     <string name="editor_title">المحرر</string>
-    <string name="editor_placeholder">مساحة المحرر ستُبنى في المراحل القادمة.</string>
+    <string name="editor_last_modified">آخر تعديل: %1$s</string>
+    <string name="editor_screens_header">الشاشات (%1$d)</string>
+    <string name="editor_add_screen">إضافة شاشة</string>
+    <string name="editor_new_screen_name">شاشة %1$d</string>
+    <string name="editor_elements_count">العناصر: %1$d</string>
+    <string name="editor_not_found">تعذّر فتح المشروع. قد يكون حُذف أو تلف ملفه.</string>
+    <string name="editor_save_failed">تعذّر الحفظ. سنعيد المحاولة مع التعديل التالي.</string>
+
+    <string name="error_action_failed">تعذّر إكمال العملية. حاول مرة أخرى.</string>
 
     <string name="about_title">حول التطبيق</string>
     <string name="about_body">محرر الواجهات العربي\nالإصدار %1$s\nنسخة تأسيسية.</string>
-
-    <string name="action_back">رجوع</string>
 </resources>
