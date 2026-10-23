@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">محرر الواجهات العربي</string>
+
+    <string name="home_tagline">صمّم واجهات تطبيقات أندرويد بالسحب والإفلات، ثم صدّرها كمشروع قابل للبناء.</string>
+    <string name="home_new_project">مشروع جديد</string>
+    <string name="home_about">حول التطبيق</string>
+
+    <string name="editor_title">المحرر</string>
+    <string name="editor_placeholder">مساحة المحرر ستُبنى في المراحل القادمة.</string>
+
+    <string name="about_title">حول التطبيق</string>
+    <string name="about_body">محرر الواجهات العربي\nالإصدار %1$s\nنسخة تأسيسية.</string>
+
+    <string name="action_back">رجوع</string>
+</resources>

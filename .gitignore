@@ -1,0 +1,16 @@
+*.iml
+.gradle/
+build/
+local.properties
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# الأسرار: لا تُرفع أبدًا إلى المستودع
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+.env
