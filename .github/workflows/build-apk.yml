@@ -42,10 +42,10 @@ jobs:
         run: gradle :app:testDebugUnitTest --tests "*CanvasMathTest" --tests "*ProjectStorageTest" --tests "*EditHistoryTest" --tests "*PropertyRegistryTest" --tests "*ElementOpsTest" --tests "*ComponentLibraryTest" --tests "*PropertyPersistenceTest" --stacktrace
 
       # اختبارات واجهة حقيقية عبر Robolectric: إيماءات مساحة التصميم، ولوحة الخصائص،
-      # وانعكاس الخصائص على الرسم (قراءة بكسلات). تُشغَّل حتى لو فشلت اختبارات المنطق.
+      # تُشغَّل حتى لو فشلت اختبارات المنطق.
       - name: Run UI tests (Robolectric)
         if: always()
-        run: gradle :app:testDebugUnitTest --tests "*DesignCanvasGestureTest" --tests "*PropertiesPanelTest" --tests "*ElementViewRenderTest" --stacktrace
+        run: gradle :app:testDebugUnitTest --tests "*DesignCanvasGestureTest" --tests "*PropertiesPanelTest" --stacktrace
 
       - name: Upload test report
         if: always()

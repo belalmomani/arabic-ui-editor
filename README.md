@@ -122,4 +122,4 @@ AGP 8.7.3 · Kotlin 2.0.21 · Compose BOM 2024.12.01 · Gradle 8.10.2 (يُثب�
 
 ### الاختبارات الجديدة
 - **تُشغَّل بعد بناء APK ورفعه** (فيبقى الـAPK متاحًا حتى لو فشل اختبار): `EditHistoryTest` و`PropertyRegistryTest` و`ElementOpsTest` و`ComponentLibraryTest` و`PropertyPersistenceTest` (حفظ الخصائص وإعادة الفتح)، إضافة إلى اختبارات المرحلتين السابقتين.
-- **واجهة حقيقية (Robolectric):** `PropertiesPanelTest` (كل أداة تُبلّغ بالمفتاح والقيمة الصحيحين) و`ElementViewRenderTest` (يقرأ بكسلات الرسم ليتأكد أن اللون والحد والزوايا والشفافية والإخفاء تنعكس فعلًا).
+- **واجهة حقيقية (Robolectric):** `PropertiesPanelTest` (كل أداة تُبلّغ بالمفتاح والقيمة الصحيحين). انعكاس الخصائص على الرسم (اللون والحد والزوايا والشفافية والإخفاء) لا يُختبر آليًا لأن التقاط صور Compose لم يعمل على Robolectric؛ يُتحقق منه يدويًا على الهاتف.
