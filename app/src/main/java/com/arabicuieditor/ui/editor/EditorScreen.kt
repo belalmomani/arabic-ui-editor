@@ -55,10 +55,14 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.arabicuieditor.R
+import com.arabicuieditor.data.model.ChildLayout
+import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.ui.editor.canvas.CanvasMath
 import com.arabicuieditor.ui.editor.canvas.DesignCanvas
+import com.arabicuieditor.ui.editor.canvas.DesignRect
+import com.arabicuieditor.ui.editor.canvas.LayoutEngine
 import com.arabicuieditor.ui.editor.canvas.Viewport
 import com.arabicuieditor.ui.screens.AppTopBar
 import kotlin.math.roundToInt
@@ -71,7 +75,8 @@ private enum class BottomTab(val labelRes: Int) {
     ELEMENTS(R.string.tab_elements),
     LIBRARY(R.string.tab_library),
     PROPERTIES(R.string.tab_properties),
-    LAYERS(R.string.tab_layers)
+    LAYERS(R.string.tab_layers),
+    SCREEN(R.string.tab_screen)
 }
 
 /** عنصر يُسحب الآن من القائمة (للعرض الشبحي ولتحديد مكان الإفلات). */
@@ -161,33 +166,44 @@ private fun EditorContent(
         ?: project.screens.firstOrNull()
         ?: return
     val density = LocalDensity.current.density
+    val (previewW, previewH) = project.previewSizeFor(screen)
+    // التخطيط يُحسب عند حجم المعاينة؛ السحب والتحجيم متاحان فقط عند حجم التصميم نفسه.
+    val layout = remember(screen, previewW, previewH) { LayoutEngine.layout(screen, previewW, previewH) }
+    val editable = previewW == screen.width && previewH == screen.height
 
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var canvasBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     var rootWindowPos by remember { mutableStateOf(Offset.Zero) }
     // العرض (تكبير/إزاحة) لكل شاشة على حدة؛ null يعني «لم يُضبط بعد، ضعه بالملاءمة».
-    var viewport by remember(screen.id) { mutableStateOf<Viewport?>(null) }
+    var viewport by remember(screen.id, previewW, previewH) { mutableStateOf<Viewport?>(null) }
     var drag by remember { mutableStateOf<PaletteDrag?>(null) }
     var openTab by rememberSaveable { mutableStateOf<BottomTab?>(BottomTab.ELEMENTS) }
 
-    val selectedElement = screen.elements.firstOrNull { it.id == selectedId }
-    val selectedRect = selectedElement?.let { CanvasMath.resolveRect(it, screen.width, screen.height) }
+    val selectedElement = selectedId?.let { ElementTree.find(screen.elements, it) }
+    // إطار العنصر المحدد نسبةً إلى أبيه (للوحة الخصائص) وأصل منطقة محتوى أبيه.
+    val parentContent = selectedElement?.let { layout.parentContentOf(it.id) }
+    val selectedRect = selectedElement?.let { el ->
+        layout.frames[el.id]?.let { f ->
+            val c = layout.parentContentOf(el.id)
+            DesignRect(f.x - c.x, f.y - c.y, f.w, f.h)
+        }
+    }
 
     /** مركز المساحة المرئية بإحداثيات التصميم، مع إزاحة متدرجة كي لا تتراكم العناصر في نقطة واحدة. */
     fun newElementCenter(): Pair<Float, Float>? {
         val vpNow = viewport ?: return null
-        val cascade = (screen.elements.size % 6) * CASCADE_STEP_DP
+        val cascade = (ElementTree.count(screen.elements) % 6) * CASCADE_STEP_DP
         return (CanvasMath.toDesignX(vpNow, density, canvasSize.width / 2f) + cascade) to
             (CanvasMath.toDesignY(vpNow, density, canvasSize.height / 2f) + cascade)
     }
 
-    LaunchedEffect(screen.id, canvasSize) {
+    LaunchedEffect(screen.id, previewW, previewH, canvasSize) {
         if (viewport == null && canvasSize.width > 0 && canvasSize.height > 0) {
             viewport = CanvasMath.fit(
                 viewW = canvasSize.width.toFloat(),
                 viewH = canvasSize.height.toFloat(),
-                frameW = screen.width,
-                frameH = screen.height,
+                frameW = previewW,
+                frameH = previewH,
                 density = density,
                 marginPx = FIT_MARGIN_DP * density
             )
@@ -231,7 +247,28 @@ private fun EditorContent(
                         onSelect = viewModel::selectElement,
                         onElementRectChange = viewModel::setElementRect,
                         onSizeChange = { canvasSize = it },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        layout = layout,
+                        editable = editable,
+                        onElementDrop = viewModel::dropElement
+                    )
+                    // شريحة حجم المعاينة: نقرة تنتقل إلى الحجم التالي (حجم التصميم ثم الأحجام الجاهزة).
+                    AssistChip(
+                        onClick = {
+                            val (nw, nh) = PreviewSizes.next(screen.width, screen.height, previewW, previewH)
+                            val toBase = nw == screen.width && nh == screen.height
+                            viewModel.setPreviewSize(if (toBase) 0f else nw, if (toBase) 0f else nh)
+                        },
+                        label = {
+                            Text(
+                                "${previewW.toInt()}×${previewH.toInt()}" +
+                                    if (editable) "" else " · " + stringResource(R.string.preview_label)
+                            )
+                        },
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .testTag("preview_pill")
                     )
                 } else {
                     // نقيس الحجم أولًا ثم نرسم المساحة بعد حساب الملاءمة.
@@ -253,22 +290,15 @@ private fun EditorContent(
                 ) {
                     // تبويبات اللوحة. الضغط على التبويب المفتوح يطويها لتكبير مساحة التصميم.
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         BottomTab.entries.forEach { t ->
                             FilterChip(
                                 selected = openTab == t,
                                 onClick = { openTab = if (openTab == t) null else t },
-                                label = {
-                                    Text(
-                                        stringResource(t.labelRes),
-                                        maxLines = 1,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        textAlign = TextAlign.Center
-                                    )
-                                },
-                                modifier = Modifier.weight(1f).testTag("tab_${t.name}")
+                                label = { Text(stringResource(t.labelRes), maxLines = 1) },
+                                modifier = Modifier.testTag("tab_${t.name}")
                             )
                         }
                     }
@@ -291,7 +321,8 @@ private fun EditorContent(
                                             viewModel.addElement(
                                                 d.type,
                                                 CanvasMath.toDesignX(vpNow, density, local.x),
-                                                CanvasMath.toDesignY(vpNow, density, local.y)
+                                                CanvasMath.toDesignY(vpNow, density, local.y),
+                                                atPoint = true
                                             )
                                         }
                                         drag = null
@@ -312,17 +343,55 @@ private fun EditorContent(
                                     onSetProperty = { key, value ->
                                         selectedElement?.let { viewModel.setProperty(it.id, key, value) }
                                     },
-                                    onSetRect = { r -> selectedElement?.let { viewModel.setElementRect(it.id, r) } },
+                                    onSetRect = { r ->
+                                        val c = parentContent
+                                        if (selectedElement != null && c != null) {
+                                            viewModel.setElementRect(
+                                                selectedElement.id,
+                                                DesignRect(r.x + c.x, r.y + c.y, r.w, r.h)
+                                            )
+                                        }
+                                    },
                                     onDuplicate = viewModel::duplicateSelected,
                                     onDelete = viewModel::deleteSelected,
                                     onReorder = viewModel::reorderSelected,
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize(),
+                                    parentLayout = selectedElement?.let { layout.parentLayoutOf(it.id) }
+                                        ?: ChildLayout.ABSOLUTE,
+                                    onSetSizeMode = { axis, mode ->
+                                        selectedElement?.let { viewModel.setSizeMode(it.id, axis, mode) }
+                                    },
+                                    onSetPercent = { axis, percent ->
+                                        selectedElement?.let { viewModel.setPercent(it.id, axis, percent) }
+                                    },
+                                    onSetChildLayout = { l ->
+                                        selectedElement?.let { viewModel.setChildLayout(it.id, l) }
+                                    },
+                                    onWrap = viewModel::wrapSelected,
+                                    onUnwrap = viewModel::unwrapSelected
                                 )
 
                                 BottomTab.LAYERS -> LayersPanel(
                                     elements = screen.elements,
                                     selectedId = selectedId,
                                     onSelect = { viewModel.selectElement(it) },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                BottomTab.SCREEN -> ScreenPanel(
+                                    project = project,
+                                    screen = screen,
+                                    previewWidth = previewW,
+                                    previewHeight = previewH,
+                                    onSelectScreen = viewModel::selectScreen,
+                                    onRename = { viewModel.renameScreen(screen.id, it) },
+                                    onDuplicate = { viewModel.duplicateScreen(screen.id) },
+                                    onDelete = { viewModel.deleteScreen(screen.id) },
+                                    onSetStart = { viewModel.setStartScreen(screen.id) },
+                                    onSetPreview = viewModel::setPreviewSize,
+                                    onSetScreenSize = { w, h -> viewModel.setScreenSize(screen.id, w, h) },
+                                    onSetLayout = viewModel::setScreenLayout,
+                                    onSetScreenProperty = viewModel::setScreenProperty,
                                     modifier = Modifier.fillMaxSize()
                                 )
 
@@ -373,7 +442,10 @@ private fun ScreenTabs(
             FilterChip(
                 selected = s.id == currentId,
                 onClick = { onSelect(s.id) },
-                label = { Text(s.name, maxLines = 1) }
+                label = {
+                    Text((if (s.id == project.effectiveStartScreenId) "★ " else "") + s.name, maxLines = 1)
+                },
+                modifier = Modifier.testTag("screen_tab_${s.id}")
             )
         }
         AssistChip(

@@ -20,7 +20,9 @@ fun NameDialog(
     initialName: String,
     confirmLabel: String,
     onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    /** نص عنوان الحقل؛ الافتراضي «اسم المشروع». */
+    label: String? = null
 ) {
     var text by remember { mutableStateOf(initialName) }
     AlertDialog(
@@ -30,7 +32,7 @@ fun NameDialog(
             OutlinedTextField(
                 value = text,
                 onValueChange = { if (it.length <= ProjectRepository.MAX_NAME_LENGTH) text = it },
-                label = { Text(stringResource(R.string.project_name_label)) },
+                label = { Text(label ?: stringResource(R.string.project_name_label)) },
                 singleLine = true
             )
         },

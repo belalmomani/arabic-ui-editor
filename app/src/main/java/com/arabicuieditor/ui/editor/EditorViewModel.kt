@@ -6,11 +6,17 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.arabicuieditor.ArabicUiEditorApp
 import com.arabicuieditor.R
+import com.arabicuieditor.data.model.Axis
+import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ComponentPreset
 import com.arabicuieditor.data.model.ElementOps
-import com.arabicuieditor.data.model.PropertyKeys
-import com.arabicuieditor.data.model.PropertyRegistry
+import com.arabicuieditor.data.model.ElementTree
+import com.arabicuieditor.data.model.LayoutEditing
 import com.arabicuieditor.data.model.Project
+import com.arabicuieditor.data.model.PropertyRegistry
+import com.arabicuieditor.data.model.SCREEN_TYPE
+import com.arabicuieditor.data.model.ScreenOps
+import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.SizeSpec
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.UiScreen
@@ -18,6 +24,9 @@ import com.arabicuieditor.data.model.newElement
 import com.arabicuieditor.data.model.newId
 import com.arabicuieditor.data.model.withProp
 import com.arabicuieditor.ui.editor.canvas.DesignRect
+import com.arabicuieditor.ui.editor.canvas.LayoutEngine
+import com.arabicuieditor.ui.editor.canvas.LayoutResult
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -37,15 +46,23 @@ sealed interface EditorState {
 
 enum class ReorderOp { FORWARD, BACKWARD, TO_FRONT, TO_BACK }
 
+/** ما يُسجَّل في سجل التراجع: الشاشات وشاشة البداية (حجم المعاينة إعداد عرض ولا يُسجَّل). */
+private data class DesignSnapshot(val screens: List<UiScreen>, val startScreenId: String?)
+
+private fun Project.snapshot() = DesignSnapshot(screens, startScreenId)
+
 /**
  * يحمّل مشروعًا ويطبّق عليه التعديلات مع حفظ تلقائي وتراجع/إعادة:
  * - حفظ مؤجل بعد 400ms من آخر تعديل (يجمع التعديلات المتتالية، مثل السحب).
  * - حفظ فوري عند إيقاف الشاشة أو الخروج منها.
  * - كل تعديل يمر عبر [edit] الذي يسجّل لقطة في [EditHistory] (تتضمن تعديل الخصائص والتحريك
- *   والحذف والترتيب والإضافة). التراجع يستعيد قائمة الشاشات ثم يُحفظ كأي تعديل.
+ *   والحذف والترتيب والإضافة وعمليات الشاشات وشاشة البداية). التراجع يستعيد اللقطة ثم يُحفظ كأي تعديل.
  *
  * حالة الواجهة المؤقتة (الشاشة الحالية، العنصر المحدد) هنا أيضًا ولا تُحفظ في الملف.
  * سجل التراجع يبقى في الذاكرة فقط: يُفقد عند إغلاق المحرر، لكن التصميم نفسه محفوظ.
+ *
+ * العناصر شجرة (حاويات داخل حاويات). مواضع الإفلات والإطارات كلها بإحداثيات الشاشة عند حجم
+ * المعاينة الحالي، وتحوَّل هنا إلى إحداثيات محلية داخل الأب عند التخزين.
  */
 class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewModel(app) {
 
@@ -64,7 +81,7 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     private val _selectedId = MutableStateFlow<String?>(null)
     val selectedId: StateFlow<String?> = _selectedId.asStateFlow()
 
-    private val history = EditHistory<List<UiScreen>>()
+    private val history = EditHistory<DesignSnapshot>()
     private val _canUndo = MutableStateFlow(false)
     val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
     private val _canRedo = MutableStateFlow(false)
@@ -83,7 +100,7 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
             if (project == null) {
                 _state.value = EditorState.NotFound
             } else {
-                _currentScreenId.value = project.screens.firstOrNull()?.id
+                _currentScreenId.value = project.effectiveStartScreenId
                 _state.value = EditorState.Ready(project)
             }
         }
@@ -91,9 +108,12 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
 
     private fun str(id: Int): String = getApplication<Application>().getString(id)
 
+    private fun readyProject(): Project? = (_state.value as? EditorState.Ready)?.project
+
     // ---- التحديد والتنقل ----
 
     fun selectScreen(id: String) {
+        if (readyProject()?.screens?.none { it.id == id } != false) return
         _currentScreenId.value = id
         _selectedId.value = null
     }
@@ -102,51 +122,201 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         _selectedId.value = id
     }
 
+    // ---- إدارة الشاشات ----
+
     fun addScreen() {
-        val project = (_state.value as? EditorState.Ready)?.project ?: return
-        val name = getApplication<Application>()
-            .getString(R.string.editor_new_screen_name, project.screens.size + 1)
-        val screen = UiScreen(id = newId(), name = name)
+        val project = readyProject() ?: return
+        val base = getApplication<Application>().getString(R.string.editor_new_screen_name, project.screens.size + 1)
+        val screen = UiScreen(id = newId(), name = ScreenOps.uniqueName(project.screens, base))
         edit { it.copy(screens = it.screens + screen) }
         _currentScreenId.value = screen.id
         _selectedId.value = null
     }
 
+    fun renameScreen(id: String, name: String) {
+        if (name.isBlank()) return
+        edit { it.copy(screens = ScreenOps.rename(it.screens, id, name)) }
+    }
+
+    fun duplicateScreen(id: String) {
+        val project = readyProject() ?: return
+        val (list, copyId) = ScreenOps.duplicate(project.screens, id, str(R.string.copy_suffix)) ?: return
+        edit { it.copy(screens = list) }
+        _currentScreenId.value = copyId
+        _selectedId.value = null
+    }
+
+    /** يحذف شاشة (لا تُحذف الشاشة الوحيدة). يعيد true إن حُذفت. */
+    fun deleteScreen(id: String): Boolean {
+        val project = readyProject() ?: return false
+        val result = ScreenOps.delete(project.screens, id, project.startScreenId) ?: return false
+        edit { it.copy(screens = result.screens, startScreenId = result.startScreenId) }
+        if (_currentScreenId.value == id || result.screens.none { it.id == _currentScreenId.value }) {
+            _currentScreenId.value = result.showScreenId
+            _selectedId.value = null
+        }
+        return true
+    }
+
+    fun setStartScreen(id: String) {
+        edit { p -> if (p.screens.any { it.id == id }) p.copy(startScreenId = id) else p }
+    }
+
+    /** يضبط حجم المعاينة؛ 0 يعني العودة إلى حجم تصميم الشاشة. لا يدخل في سجل التراجع. */
+    fun setPreviewSize(width: Float, height: Float) {
+        val valid = width > 0f && height > 0f
+        val w = if (valid) width.coerceIn(MIN_SCREEN_DP, MAX_SCREEN_DP) else 0f
+        val h = if (valid) height.coerceIn(MIN_SCREEN_DP, MAX_SCREEN_DP) else 0f
+        edit { it.copy(previewWidth = w, previewHeight = h) }
+    }
+
+    /** حجم التصميم الأساسي للشاشة (المرجع الذي يُقاس عليه سلوك التثبيت عند تغيّر المعاينة). */
+    fun setScreenSize(screenId: String, width: Float, height: Float) {
+        val w = width.coerceIn(MIN_SCREEN_DP, MAX_SCREEN_DP)
+        val h = height.coerceIn(MIN_SCREEN_DP, MAX_SCREEN_DP)
+        editScreen(screenId) { it.copy(width = w, height = h) }
+    }
+
+    fun setScreenLayout(layout: ChildLayout) {
+        val screen = currentScreen() ?: return
+        if (layout == ChildLayout.CONSTRAINT) return
+        editScreen(screen.id) { it.copy(childLayout = layout) }
+    }
+
+    /** يضبط خاصية في تخطيط جذر الشاشة (محاذاة، مسافة، توزيع، مسافات داخلية). */
+    fun setScreenProperty(key: String, value: String) {
+        val screen = currentScreen() ?: return
+        val def = PropertyRegistry.def(key) ?: return
+        if (SCREEN_TYPE !in def.appliesTo) return
+        val normalized = PropertyRegistry.normalize(key, value) ?: return
+        editScreen(screen.id, key = "screenprop:${screen.id}:$key") { it.withProp(key, normalized) }
+    }
+
     // ---- تعديل التصميم ----
 
-    /** يضيف عنصرًا مركزه (centerX, centerY) بإحداثيات التصميم ويحدده. */
-    fun addElement(type: String, centerX: Float, centerY: Float) {
+    /**
+     * يضيف عنصرًا ويحدده. ([centerX], [centerY]) بإحداثيات الشاشة عند المعاينة الحالية.
+     * [atPoint] true عند الإفلات بالسحب: يدخل أعمق حاوية تحت النقطة وبترتيب الإفلات في الصف/العمود.
+     * false عند النقر: يدخل الحاوية المحددة (أو حاوية العنصر المحدد)، وإلا الجذر.
+     */
+    fun addElement(type: String, centerX: Float, centerY: Float, atPoint: Boolean = false) {
         val label = str(elementLabelRes(type))
-        insertElements(listOf(newElement(type, 0f, 0f, label)), centerX, centerY)
+        insertElements(listOf(newElement(type, 0f, 0f, label)), centerX, centerY, atPoint)
     }
 
     /** يضيف مكوّنًا جاهزًا من المكتبة (عنصر أو عدة عناصر) ويحدد أول عنصر فيه. */
-    fun addPreset(preset: ComponentPreset, centerX: Float, centerY: Float) {
+    fun addPreset(preset: ComponentPreset, centerX: Float, centerY: Float, atPoint: Boolean = false) {
         val built = preset.build { str(it) }
-        insertElements(built, centerX, centerY)
+        insertElements(built, centerX, centerY, atPoint)
     }
 
-    private fun insertElements(raw: List<UiElement>, centerX: Float, centerY: Float) {
+    private fun insertElements(raw: List<UiElement>, centerX: Float, centerY: Float, atPoint: Boolean) {
+        val project = readyProject() ?: return
         val screen = currentScreen() ?: return
-        val placed = ElementOps.placeCentered(raw, centerX, centerY, screen.width, screen.height)
-        val named = ElementOps.withUniqueNames(screen.elements, placed) { e -> str(elementLabelRes(e.type)) }
-        editScreen(screen.id) { it.copy(elements = it.elements + named) }
+        val layout = layoutOf(project, screen)
+
+        val parentId: String? = if (atPoint) {
+            LayoutEngine.containerAt(layout, centerX, centerY)
+        } else {
+            addTargetForTap(screen)
+        }
+        val parentLayout = layoutKindOf(screen, parentId)
+        val parentFrame = parentId?.let { layout.frames[it] } ?: DesignRect(0f, 0f, layout.width, layout.height)
+
+        // النقر على «إضافة» داخل حاوية: يوضع العنصر في مركزها. أما الإفلات فعند النقطة نفسها.
+        val cx = if (!atPoint && parentId != null) parentFrame.w / 2f else centerX - parentFrame.x
+        val cy = if (!atPoint && parentId != null) parentFrame.h / 2f else centerY - parentFrame.y
+        val placed = ElementOps.placeCentered(raw, cx, cy, parentFrame.w, parentFrame.h)
+        val named = ElementOps.withUniqueNames(ElementTree.flatten(screen.elements), placed) { e -> str(elementLabelRes(e.type)) }
+
+        val index: Int? = if (atPoint && (parentLayout == ChildLayout.COLUMN || parentLayout == ChildLayout.ROW)) {
+            val siblings = childrenOf(screen, parentId).map { it.id }
+            LayoutEngine.dropIndex(layout, siblings, parentLayout == ChildLayout.COLUMN, centerX, centerY)
+        } else null
+
+        editScreen(screen.id) { s ->
+            var roots = s.elements
+            named.forEachIndexed { i, e ->
+                roots = ElementTree.insert(roots, parentId, index?.plus(i), e)
+            }
+            s.copy(elements = roots)
+        }
         _selectedId.value = named.firstOrNull()?.id
     }
 
-    /** يضبط موضع وحجم عنصر (يحوّل الأبعاد إلى FIXED لأن المحرر يحدد حجمًا ثابتًا). */
+    /** وجهة الإضافة بالنقر: الحاوية المحددة، أو أب العنصر المحدد، وإلا الجذر. */
+    private fun addTargetForTap(screen: UiScreen): String? {
+        val selected = _selectedId.value?.let { ElementTree.find(screen.elements, it) } ?: return null
+        return if (ElementTree.canContain(selected.type)) selected.id
+        else ElementTree.locate(screen.elements, selected.id)?.parentId
+    }
+
+    private fun layoutKindOf(screen: UiScreen, parentId: String?): ChildLayout =
+        if (parentId == null) screen.childLayout
+        else ElementTree.find(screen.elements, parentId)?.childLayout ?: ChildLayout.ABSOLUTE
+
+    private fun childrenOf(screen: UiScreen, parentId: String?): List<UiElement> =
+        if (parentId == null) screen.elements
+        else ElementTree.find(screen.elements, parentId)?.children.orEmpty()
+
+    /**
+     * يضبط إطار عنصر. [rect] بإحداثيات الشاشة عند المعاينة الحالية.
+     * - الموضع يُخزَّن محليًا ويتغيّر فقط للعنصر الحر (أبوه بتخطيط حر).
+     * - البُعد الذي تغيّر فقط يصبح ثابتًا؛ فتحريك عنصر «ملء الأب» لا يفقد نمطه.
+     */
     fun setElementRect(elementId: String, rect: DesignRect) {
+        val project = readyProject() ?: return
         val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val frame = layout.frames[elementId] ?: return
+        val content = layout.parentContentOf(elementId)
+        val isFree = elementId in layout.freeIds
         editScreen(screen.id, key = "rect:$elementId") { s ->
-            s.copy(elements = s.elements.map { e ->
-                if (e.id != elementId) e else e.copy(
-                    layout = e.layout.copy(
-                        x = rect.x,
-                        y = rect.y,
-                        width = SizeSpec.fixed(rect.w),
-                        height = SizeSpec.fixed(rect.h)
+            s.copy(elements = ElementTree.update(s.elements, elementId) { e ->
+                var l = e.layout
+                if (isFree) {
+                    l = l.copy(
+                        x = (rect.x - content.x).roundToInt().toFloat(),
+                        y = (rect.y - content.y).roundToInt().toFloat()
                     )
-                )
+                }
+                if (rect.w != frame.w) l = l.copy(width = SizeSpec.fixed(rect.w.roundToInt().toFloat()))
+                if (rect.h != frame.h) l = l.copy(height = SizeSpec.fixed(rect.h.roundToInt().toFloat()))
+                e.copy(layout = l)
+            })
+        }
+    }
+
+    /** يغيّر نمط بُعد العنصر المحدد (ثابت، ملء الأب، حسب المحتوى، نسبة) مع حفظ حجمه الحالي. */
+    fun setSizeMode(elementId: String, axis: Axis, mode: SizeMode) {
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val frame = layout.frames[elementId] ?: return
+        val content = layout.parentContentOf(elementId)
+        val frameSize = if (axis == Axis.HORIZONTAL) frame.w else frame.h
+        val available = if (axis == Axis.HORIZONTAL) content.w else content.h
+        editScreen(screen.id) { s ->
+            s.copy(elements = ElementTree.update(s.elements, elementId) {
+                LayoutEditing.withSizeMode(it, axis, mode, frameSize, available)
+            })
+        }
+    }
+
+    fun setPercent(elementId: String, axis: Axis, percent: Int) {
+        val screen = currentScreen() ?: return
+        editScreen(screen.id, key = "percent:$elementId:$axis") { s ->
+            s.copy(elements = ElementTree.update(s.elements, elementId) { LayoutEditing.withPercent(it, axis, percent) })
+        }
+    }
+
+    /** يغيّر طريقة ترتيب أبناء حاوية. */
+    fun setChildLayout(elementId: String, layout: ChildLayout) {
+        val screen = currentScreen() ?: return
+        if (layout == ChildLayout.CONSTRAINT) return
+        editScreen(screen.id) { s ->
+            s.copy(elements = ElementTree.update(s.elements, elementId) { e ->
+                if (ElementTree.canContain(e.type)) e.copy(childLayout = layout) else e
             })
         }
     }
@@ -159,46 +329,125 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val screen = currentScreen() ?: return
         val normalized = PropertyRegistry.normalize(key, value) ?: return
         editScreen(screen.id, key = "prop:$elementId:$key") { s ->
-            s.copy(elements = s.elements.map { e ->
-                if (e.id != elementId) e else e.withProp(key, normalized)
-            })
+            s.copy(elements = ElementTree.update(s.elements, elementId) { it.withProp(key, normalized) })
         }
     }
 
     fun deleteSelected() {
         val id = _selectedId.value ?: return
         val screen = currentScreen() ?: return
-        editScreen(screen.id) { s -> s.copy(elements = s.elements.filterNot { it.id == id }) }
+        editScreen(screen.id) { s -> s.copy(elements = ElementTree.remove(s.elements, id)) }
         _selectedId.value = null
     }
 
     fun duplicateSelected() {
         val id = _selectedId.value ?: return
         val screen = currentScreen() ?: return
-        val (list, copyId) = ElementOps.duplicate(screen.elements, id, DUPLICATE_OFFSET, str(R.string.copy_suffix)) ?: return
-        editScreen(screen.id) { it.copy(elements = list) }
-        _selectedId.value = copyId
+        var copyId: String? = null
+        val suffix = str(R.string.copy_suffix)
+        editScreen(screen.id) { s ->
+            s.copy(elements = ElementTree.transformSiblings(s.elements, id) { siblings ->
+                val result = ElementOps.duplicate(siblings, id, DUPLICATE_OFFSET, suffix, s.elements)
+                if (result == null) siblings else {
+                    copyId = result.second
+                    result.first
+                }
+            })
+        }
+        copyId?.let { _selectedId.value = it }
     }
 
     fun reorderSelected(op: ReorderOp) {
         val id = _selectedId.value ?: return
         val screen = currentScreen() ?: return
         editScreen(screen.id) { s ->
-            s.copy(
-                elements = when (op) {
-                    ReorderOp.FORWARD -> ElementOps.moveForward(s.elements, id)
-                    ReorderOp.BACKWARD -> ElementOps.moveBackward(s.elements, id)
-                    ReorderOp.TO_FRONT -> ElementOps.bringToFront(s.elements, id)
-                    ReorderOp.TO_BACK -> ElementOps.sendToBack(s.elements, id)
+            s.copy(elements = ElementTree.transformSiblings(s.elements, id) { siblings ->
+                when (op) {
+                    ReorderOp.FORWARD -> ElementOps.moveForward(siblings, id)
+                    ReorderOp.BACKWARD -> ElementOps.moveBackward(siblings, id)
+                    ReorderOp.TO_FRONT -> ElementOps.bringToFront(siblings, id)
+                    ReorderOp.TO_BACK -> ElementOps.sendToBack(siblings, id)
                 }
-            )
+            })
         }
     }
 
+    /** يغلّف العنصر المحدد بحاوية جديدة بالتخطيط المطلوب (صف/عمود/صندوق/حر) ويحدد الحاوية. */
+    fun wrapSelected(layout: ChildLayout) {
+        val id = _selectedId.value ?: return
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val frame = layoutOf(project, screen).frames[id] ?: return
+        val containerId = newId()
+        val name = ElementOps.uniqueName(ElementTree.flatten(screen.elements), str(R.string.element_container))
+        val wrapped = LayoutEditing.wrap(screen.elements, id, layout, containerId, name, frame.w, frame.h) ?: return
+        editScreen(screen.id) { it.copy(elements = wrapped) }
+        _selectedId.value = containerId
+    }
+
+    /** يفك الحاوية المحددة: أبناؤها يحلّون محلها في أبيها. */
+    fun unwrapSelected() {
+        val id = _selectedId.value ?: return
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val container = ElementTree.find(screen.elements, id) ?: return
+        val unwrapped = LayoutEditing.unwrap(screen.elements, id, parentIsAbsolute = id in layout.freeIds) ?: return
+        editScreen(screen.id) { it.copy(elements = unwrapped) }
+        _selectedId.value = container.children.firstOrNull()?.id
+    }
+
+    /**
+     * إفلات عنصر مسحوب عند النقطة ([x], [y]) بإحداثيات الشاشة:
+     * - فوق حاوية أخرى (أو خارج حاويته إلى الجذر): ينتقل إليها.
+     * - داخل حاويته نفسها في صف/عمود: يُعاد ترتيبه حسب النقطة.
+     * - داخل حاويته الحرة: لا شيء (حُدِّث موضعه أثناء السحب).
+     */
+    fun dropElement(elementId: String, x: Float, y: Float) {
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val location = ElementTree.locate(screen.elements, elementId) ?: return
+        val element = ElementTree.find(screen.elements, elementId) ?: return
+        val exclude = ElementTree.descendantIds(element) + elementId
+        val target = LayoutEngine.containerAt(layout, x, y, exclude)
+        val targetLayout = layoutKindOf(screen, target)
+        val isFlow = targetLayout == ChildLayout.COLUMN || targetLayout == ChildLayout.ROW
+
+        if (target == location.parentId) {
+            if (!isFlow) return
+            val siblings = childrenOf(screen, target).filter { it.id != elementId }.map { it.id }
+            val newIndex = LayoutEngine.dropIndex(layout, siblings, targetLayout == ChildLayout.COLUMN, x, y)
+            if (newIndex == location.index) return
+            val moved = LayoutEditing.moveTo(screen.elements, elementId, target, newIndex) ?: return
+            editScreen(screen.id) { it.copy(elements = moved) }
+            return
+        }
+
+        val frame = layout.frames[elementId] ?: return
+        val parentContent = layout.contents[target ?: LayoutEngine.ROOT]
+            ?: DesignRect(0f, 0f, layout.width, layout.height)
+        val index = if (isFlow) {
+            val siblings = childrenOf(screen, target).map { it.id }
+            LayoutEngine.dropIndex(layout, siblings, targetLayout == ChildLayout.COLUMN, x, y)
+        } else null
+        val moved = LayoutEditing.moveTo(
+            screen.elements, elementId, target, index,
+            localX = (frame.x - parentContent.x).roundToInt().toFloat(),
+            localY = (frame.y - parentContent.y).roundToInt().toFloat()
+        ) ?: return
+        editScreen(screen.id) { it.copy(elements = moved) }
+    }
+
     private fun currentScreen(): UiScreen? {
-        val project = (_state.value as? EditorState.Ready)?.project ?: return null
+        val project = readyProject() ?: return null
         return project.screens.firstOrNull { it.id == _currentScreenId.value }
             ?: project.screens.firstOrNull()
+    }
+
+    private fun layoutOf(project: Project, screen: UiScreen): LayoutResult {
+        val (w, h) = project.previewSizeFor(screen)
+        return LayoutEngine.layout(screen, w, h)
     }
 
     private fun editScreen(screenId: String, key: String? = null, transform: (UiScreen) -> UiScreen) {
@@ -208,25 +457,26 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     // ---- التراجع والإعادة ----
 
     fun undo() {
-        val current = (_state.value as? EditorState.Ready)?.project ?: return
-        val previous = history.undo(current.screens) ?: return
-        applyScreens(current, previous)
+        val current = readyProject() ?: return
+        val previous = history.undo(current.snapshot()) ?: return
+        applySnapshot(current, previous)
     }
 
     fun redo() {
-        val current = (_state.value as? EditorState.Ready)?.project ?: return
-        val next = history.redo(current.screens) ?: return
-        applyScreens(current, next)
+        val current = readyProject() ?: return
+        val next = history.redo(current.snapshot()) ?: return
+        applySnapshot(current, next)
     }
 
-    private fun applyScreens(current: Project, screens: List<UiScreen>) {
-        commit(current.copy(screens = screens))
+    private fun applySnapshot(current: Project, snapshot: DesignSnapshot) {
+        commit(current.copy(screens = snapshot.screens, startScreenId = snapshot.startScreenId))
         // لا نترك تحديدًا أو شاشة حالية تشير إلى شيء اختفى بعد التراجع.
-        if (screens.none { it.id == _currentScreenId.value }) {
-            _currentScreenId.value = screens.firstOrNull()?.id
+        if (snapshot.screens.none { it.id == _currentScreenId.value }) {
+            _currentScreenId.value = snapshot.screens.firstOrNull()?.id
         }
-        val visible = screens.firstOrNull { it.id == _currentScreenId.value }
-        if (visible == null || visible.elements.none { it.id == _selectedId.value }) {
+        val visible = snapshot.screens.firstOrNull { it.id == _currentScreenId.value }
+        val selected = _selectedId.value
+        if (visible == null || selected == null || !ElementTree.contains(visible.elements, selected)) {
             _selectedId.value = null
         }
         refreshHistoryFlags()
@@ -247,8 +497,8 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val current = _state.value as? EditorState.Ready ?: return
         val next = transform(current.project)
         if (next == current.project) return
-        if (next.screens != current.project.screens) {
-            history.record(current.project.screens, key)
+        if (next.snapshot() != current.project.snapshot()) {
+            history.record(current.project.snapshot(), key)
             refreshHistoryFlags()
         }
         commit(next)
@@ -309,5 +559,7 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     private companion object {
         const val AUTOSAVE_DELAY_MS = 400L
         const val DUPLICATE_OFFSET = 12f
+        const val MIN_SCREEN_DP = 200f
+        const val MAX_SCREEN_DP = 1600f
     }
 }

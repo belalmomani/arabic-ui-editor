@@ -36,22 +36,29 @@ object ElementOps {
     /**
      * ينسخ عنصرًا (مع أبنائه وأحداثه بمعرّفات جديدة) ويضعه فوق الأصل مباشرة،
      * مزاحًا بـ [offset] dp ليظهر أنه نسخة. يعيد القائمة الجديدة ومعرّف النسخة.
+     * [namePool] كل عناصر الشاشة (للتحقق من تفرّد الأسماء)؛ الافتراضي هو [list] نفسها.
+     * الأسماء الداخلية للأبناء تُجعل فريدة أيضًا.
      */
     fun duplicate(
         list: List<UiElement>,
         id: String,
         offset: Float,
-        copySuffix: String
+        copySuffix: String,
+        namePool: List<UiElement> = list
     ): Pair<List<UiElement>, String>? {
         val index = list.indexOfFirst { it.id == id }
         if (index < 0) return null
         val source = list[index]
-        val name = uniqueName(list, source.properties[PropertyKeys.NAME]?.takeIf { it.isNotBlank() }?.let { "$it $copySuffix" }
-            ?: copySuffix)
-        val copy = reId(source).let {
+        val pool = ElementTree.flatten(namePool).toMutableList()
+        val rootName = uniqueName(
+            pool,
+            source.properties[PropertyKeys.NAME]?.takeIf { it.isNotBlank() }?.let { "$it $copySuffix" } ?: copySuffix
+        )
+        val copy = ElementTree.reId(source).let {
             it.copy(
                 layout = it.layout.copy(x = it.layout.x + offset, y = it.layout.y + offset),
-                properties = it.properties + (PropertyKeys.NAME to name)
+                properties = it.properties + (PropertyKeys.NAME to rootName),
+                children = it.children.map { c -> renameDescendants(c, pool + it.withProp(PropertyKeys.NAME, rootName)) }
             )
         }
         val out = list.toMutableList()
@@ -59,11 +66,17 @@ object ElementOps {
         return out to copy.id
     }
 
-    private fun reId(e: UiElement): UiElement = e.copy(
-        id = newId(),
-        events = e.events.map { it.copy(id = newId()) },
-        children = e.children.map { reId(it) }
-    )
+    /** يجعل الأسماء الداخلية للنسخة (وأحفادها) فريدة مقابل [taken] وما سبقها. */
+    private fun renameDescendants(e: UiElement, taken: List<UiElement>): UiElement {
+        val acc = taken.toMutableList()
+        fun walk(x: UiElement): UiElement {
+            val name = x.properties[PropertyKeys.NAME]?.takeIf { it.isNotBlank() }
+            val renamed = if (name == null) x else x.withProp(PropertyKeys.NAME, uniqueName(acc, name))
+            acc += renamed
+            return renamed.copy(children = renamed.children.map { walk(it) })
+        }
+        return walk(e)
+    }
 
     /** اسم داخلي غير مستخدم: [base] إن كان حرًّا، وإلا "[base] 2" و"[base] 3"... */
     fun uniqueName(existing: List<UiElement>, base: String): String {

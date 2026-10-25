@@ -6,11 +6,18 @@ import java.util.UUID
  * إصدار مخطط بيانات المشروع الحالي. يُرفع عند أي تغيير في صيغة JSON.
  * 1: المرحلة 2 (مشروع وشاشات بلا تخطيط).
  * 2: المرحلة 3 (تخطيط العناصر وأبعاد الشاشة).
+ * 3: المرحلة 5 (شاشة البداية، حجم المعاينة، تخطيط الشاشة الجذري، تخطيطات Row/Column/Box، أبعاد نسبية).
  */
-const val CURRENT_SCHEMA_VERSION = 2
+const val CURRENT_SCHEMA_VERSION = 3
 
-/** طريقة تحديد بُعد العنصر. المحرر الحالي ينتج FIXED فقط، والباقي محجوز للتخطيطات المرنة. */
-enum class SizeMode { FIXED, MATCH_PARENT, WRAP_CONTENT }
+/**
+ * طريقة تحديد بُعد العنصر:
+ * - FIXED: قيمة ثابتة بوحدة dp.
+ * - MATCH_PARENT: يملأ المتاح داخل الأب.
+ * - WRAP_CONTENT: بحجم محتواه (للعنصر الورقي يُستعمل value كحجم احتياطي).
+ * - FRACTION: نسبة مئوية (value من 1 إلى 100) من المتاح داخل الأب.
+ */
+enum class SizeMode { FIXED, MATCH_PARENT, WRAP_CONTENT, FRACTION }
 
 data class SizeSpec(val mode: SizeMode = SizeMode.FIXED, val value: Float = 0f) {
     companion object {
@@ -30,8 +37,13 @@ data class ElementLayout(
     val height: SizeSpec = SizeSpec.fixed(40f)
 )
 
-/** كيف يرتّب العنصر أبناءه. ABSOLUTE هو الوحيد المنفّذ الآن. */
-enum class ChildLayout { ABSOLUTE, COLUMN, ROW, CONSTRAINT }
+/**
+ * كيف يرتّب العنصر (أو الشاشة) أبناءه:
+ * - ABSOLUTE: تخطيط حر؛ موضع كل ابن (x, y) نسبةً إلى الأب.
+ * - COLUMN: أبناء مرتبون عموديًا. ROW: أفقيًا. BOX: أبناء متراكبون بمحاذاة.
+ * - CONSTRAINT: محجوز لمراحل لاحقة (غير منفّذ).
+ */
+enum class ChildLayout { ABSOLUTE, COLUMN, ROW, BOX, CONSTRAINT }
 
 /** ربط حدث (مثل النقر) بإجراء. */
 data class EventBinding(
@@ -58,7 +70,10 @@ data class UiScreen(
     val name: String,
     val width: Float = 360f,
     val height: Float = 640f,
-    val elements: List<UiElement> = emptyList()
+    val elements: List<UiElement> = emptyList(),
+    /** تخطيط جذر الشاشة؛ خصائصه (محاذاة، مسافات...) في [properties] بمفاتيح [PropertyKeys] نفسها. */
+    val childLayout: ChildLayout = ChildLayout.ABSOLUTE,
+    val properties: Map<String, String> = emptyMap()
 )
 
 /**
@@ -79,8 +94,17 @@ data class Project(
     val createdAt: Long,
     val updatedAt: Long,
     val screens: List<UiScreen> = emptyList(),
-    val resources: List<ResourceRef> = emptyList()
-)
+    val resources: List<ResourceRef> = emptyList(),
+    /** شاشة البداية؛ null أو معرّف غير موجود يعني أول شاشة. */
+    val startScreenId: String? = null,
+    /** حجم المعاينة الحالي بوحدة dp؛ 0 يعني «حجم تصميم الشاشة نفسه». */
+    val previewWidth: Float = 0f,
+    val previewHeight: Float = 0f
+) {
+    /** معرّف شاشة البداية الفعلي (يتراجع إلى أول شاشة إن كان المخزَّن غير صالح). */
+    val effectiveStartScreenId: String?
+        get() = screens.firstOrNull { it.id == startScreenId }?.id ?: screens.firstOrNull()?.id
+}
 
 /** أنواع العناصر المدعومة وأحجامها الافتراضية (dp). */
 object ElementTypes {

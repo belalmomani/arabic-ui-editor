@@ -6,6 +6,7 @@ import com.arabicuieditor.R
 /** مجموعات الخصائص في لوحة الخصائص. الترتيب هنا هو ترتيب العرض. */
 enum class PropertyGroup(@StringRes val labelRes: Int) {
     GENERAL(R.string.group_general),
+    LAYOUT(R.string.group_layout),
     TEXT(R.string.group_text),
     APPEARANCE(R.string.group_appearance),
     SPACING(R.string.group_spacing)
@@ -53,7 +54,57 @@ object PropertyKeys {
     const val MARGIN_TOP = "marginTop"
     const val MARGIN_END = "marginEnd"
     const val MARGIN_BOTTOM = "marginBottom"
+
+    // التخطيط: خصائص الحاوية (أو الشاشة) لترتيب أبنائها
+    const val ARRANGEMENT = "arrangement"
+    const val CHILD_ALIGN_H = "childAlignH"
+    const val CHILD_ALIGN_V = "childAlignV"
+    const val SPACING = "spacing"
+
+    // التخطيط: خصائص العنصر نفسه داخل أبيه
+    const val WEIGHT = "weight"
+    const val SELF_ALIGN_H = "selfAlignH"
+    const val SELF_ALIGN_V = "selfAlignV"
+    const val PIN_H = "pinH"
+    const val PIN_V = "pinV"
 }
+
+/** توزيع الأبناء على المحور الرئيسي للصف أو العمود. */
+object Arrangements {
+    const val START = "start"
+    const val CENTER = "center"
+    const val END = "end"
+    const val BETWEEN = "between"
+    const val AROUND = "around"
+    const val EVENLY = "evenly"
+}
+
+/** محاذاة على محور واحد. للمحور الرأسي: START = أعلى وEND = أسفل. INHERIT لمحاذاة العنصر نفسه فقط. */
+object Aligns {
+    const val INHERIT = "inherit"
+    const val START = "start"
+    const val CENTER = "center"
+    const val END = "end"
+}
+
+/** سلوك عنصر في تخطيط حر عند تغيّر حجم أبيه (حجم المعاينة) عن حجم التصميم. */
+object Pins {
+    const val START = "start"
+    const val END = "end"
+    const val CENTER = "center"
+    const val STRETCH = "stretch"
+    const val SCALE = "scale"
+}
+
+/** نوع «العنصر» الذي تُخزَّن عليه خصائص جذر الشاشة (يستعمل السجل نفسه). */
+const val SCREEN_TYPE = "screen"
+
+/** سياق ظهور الخاصية: تخطيط العنصر نفسه وتخطيط أبيه (للشاشة: الأب ABSOLUTE). */
+data class PropertyContext(
+    val ownLayout: ChildLayout = ChildLayout.ABSOLUTE,
+    val parentLayout: ChildLayout = ChildLayout.ABSOLUTE,
+    val isScreen: Boolean = false
+)
 
 object FontWeights {
     const val NORMAL = "normal"
@@ -75,7 +126,9 @@ class PropertyDef(
     val kind: PropertyKind,
     val appliesTo: Set<String>,
     private val defaults: Map<String, String> = emptyMap(),
-    private val fallback: String = ""
+    private val fallback: String = "",
+    /** تُعرض الخاصية في اللوحة فقط حين يتحقق هذا الشرط (مثل: الوزن داخل صف أو عمود). */
+    val visibleWhen: (PropertyContext) -> Boolean = { true }
 ) {
     fun defaultFor(type: String): String = defaults[type] ?: fallback
 }
@@ -108,11 +161,44 @@ object PropertyRegistry {
         ElementTypes.TEXT, ElementTypes.BUTTON, ElementTypes.INPUT,
         ElementTypes.CONTAINER, ElementTypes.CARD, ElementTypes.LIST
     )
+    /** المسافات الداخلية تنطبق أيضًا على جذر الشاشة. */
+    private val PADDED_OR_SCREEN = PADDED + SCREEN_TYPE
 
     private val DP_SMALL = PropertyKind.Integer(0, 200)
 
-    private fun spacing(key: String, label: Int, types: Set<String>, defaults: Map<String, String> = emptyMap()) =
-        PropertyDef(key, label, PropertyGroup.SPACING, DP_SMALL, types, defaults, "0")
+    private val CONTAINERS = setOf(ElementTypes.CONTAINER, ElementTypes.CARD, SCREEN_TYPE)
+    private val FLOW = setOf(ChildLayout.COLUMN, ChildLayout.ROW)
+    private val STACKED = setOf(ChildLayout.COLUMN, ChildLayout.ROW, ChildLayout.BOX)
+
+    private val ARRANGEMENT_OPTIONS = listOf(
+        Arrangements.START to R.string.arr_start,
+        Arrangements.CENTER to R.string.arr_center,
+        Arrangements.END to R.string.arr_end,
+        Arrangements.BETWEEN to R.string.arr_between,
+        Arrangements.AROUND to R.string.arr_around,
+        Arrangements.EVENLY to R.string.arr_evenly
+    )
+    private val H_ALIGN_OPTIONS = listOf(
+        Aligns.START to R.string.align_start,
+        Aligns.CENTER to R.string.align_center,
+        Aligns.END to R.string.align_end
+    )
+    private val V_ALIGN_OPTIONS = listOf(
+        Aligns.START to R.string.valign_top,
+        Aligns.CENTER to R.string.align_center,
+        Aligns.END to R.string.valign_bottom
+    )
+
+    private fun spacing(
+        key: String,
+        label: Int,
+        types: Set<String>,
+        defaults: Map<String, String> = emptyMap(),
+        visibleWhen: (PropertyContext) -> Boolean = { true }
+    ) = PropertyDef(key, label, PropertyGroup.SPACING, DP_SMALL, types, defaults, "0", visibleWhen)
+
+    /** المسافات الداخلية لجذر الشاشة لا معنى لها في التخطيط الحر؛ أما العناصر فتُعرض دائمًا. */
+    private val paddingVisible: (PropertyContext) -> Boolean = { !it.isScreen || it.ownLayout in STACKED }
 
     /** الترتيب هنا هو ترتيب الظهور داخل كل مجموعة. */
     val all: List<PropertyDef> = listOf(
@@ -120,6 +206,75 @@ object PropertyRegistry {
         PropertyDef(PropertyKeys.NAME, R.string.prop_name, PropertyGroup.GENERAL, PropertyKind.Text(), ALL),
         PropertyDef(PropertyKeys.VISIBLE, R.string.prop_visible, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "true"),
         PropertyDef(PropertyKeys.OPACITY, R.string.prop_opacity, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "100"),
+
+        // تخطيط: ترتيب الأبناء (للحاوية أو الشاشة)
+        PropertyDef(
+            PropertyKeys.ARRANGEMENT, R.string.prop_arrangement, PropertyGroup.LAYOUT,
+            PropertyKind.Choice(ARRANGEMENT_OPTIONS), CONTAINERS, fallback = Arrangements.START,
+            visibleWhen = { it.ownLayout in FLOW }
+        ),
+        PropertyDef(
+            PropertyKeys.CHILD_ALIGN_H, R.string.prop_child_align_h, PropertyGroup.LAYOUT,
+            PropertyKind.Choice(H_ALIGN_OPTIONS), CONTAINERS, fallback = Aligns.START,
+            visibleWhen = { it.ownLayout == ChildLayout.COLUMN || it.ownLayout == ChildLayout.BOX }
+        ),
+        PropertyDef(
+            PropertyKeys.CHILD_ALIGN_V, R.string.prop_child_align_v, PropertyGroup.LAYOUT,
+            PropertyKind.Choice(V_ALIGN_OPTIONS), CONTAINERS, fallback = Aligns.START,
+            visibleWhen = { it.ownLayout == ChildLayout.ROW || it.ownLayout == ChildLayout.BOX }
+        ),
+        PropertyDef(
+            PropertyKeys.SPACING, R.string.prop_spacing, PropertyGroup.LAYOUT,
+            PropertyKind.Integer(0, 200), CONTAINERS, fallback = "0",
+            visibleWhen = { it.ownLayout in FLOW }
+        ),
+
+        // تخطيط: سلوك العنصر داخل أبيه
+        PropertyDef(
+            PropertyKeys.WEIGHT, R.string.prop_weight, PropertyGroup.LAYOUT,
+            PropertyKind.Integer(0, 10), ALL, fallback = "0",
+            visibleWhen = { it.parentLayout in FLOW }
+        ),
+        PropertyDef(
+            PropertyKeys.SELF_ALIGN_H, R.string.prop_self_align_h, PropertyGroup.LAYOUT,
+            PropertyKind.Choice(listOf(Aligns.INHERIT to R.string.self_inherit) + H_ALIGN_OPTIONS), ALL,
+            fallback = Aligns.INHERIT,
+            visibleWhen = { it.parentLayout == ChildLayout.COLUMN || it.parentLayout == ChildLayout.BOX }
+        ),
+        PropertyDef(
+            PropertyKeys.SELF_ALIGN_V, R.string.prop_self_align_v, PropertyGroup.LAYOUT,
+            PropertyKind.Choice(listOf(Aligns.INHERIT to R.string.self_inherit) + V_ALIGN_OPTIONS), ALL,
+            fallback = Aligns.INHERIT,
+            visibleWhen = { it.parentLayout == ChildLayout.ROW || it.parentLayout == ChildLayout.BOX }
+        ),
+        PropertyDef(
+            PropertyKeys.PIN_H, R.string.prop_pin_h, PropertyGroup.LAYOUT,
+            PropertyKind.Choice(
+                listOf(
+                    Pins.START to R.string.pin_start,
+                    Pins.END to R.string.pin_end,
+                    Pins.CENTER to R.string.pin_center,
+                    Pins.STRETCH to R.string.pin_stretch,
+                    Pins.SCALE to R.string.pin_scale
+                )
+            ),
+            ALL, fallback = Pins.START,
+            visibleWhen = { it.parentLayout == ChildLayout.ABSOLUTE }
+        ),
+        PropertyDef(
+            PropertyKeys.PIN_V, R.string.prop_pin_v, PropertyGroup.LAYOUT,
+            PropertyKind.Choice(
+                listOf(
+                    Pins.START to R.string.pin_top,
+                    Pins.END to R.string.pin_bottom,
+                    Pins.CENTER to R.string.pin_center,
+                    Pins.STRETCH to R.string.pin_stretch,
+                    Pins.SCALE to R.string.pin_scale
+                )
+            ),
+            ALL, fallback = Pins.START,
+            visibleWhen = { it.parentLayout == ChildLayout.ABSOLUTE }
+        ),
 
         // نص
         PropertyDef(PropertyKeys.TEXT, R.string.prop_text, PropertyGroup.TEXT, PropertyKind.Text(), setOf(ElementTypes.TEXT, ElementTypes.BUTTON)),
@@ -189,10 +344,10 @@ object PropertyRegistry {
         ),
 
         // مسافات: الداخلية تؤثر على موضع المحتوى، والهوامش تُحفظ وتُستخدم في التخطيطات المرنة لاحقًا.
-        spacing(PropertyKeys.PADDING_START, R.string.prop_padding_start, PADDED, mapOf(ElementTypes.BUTTON to "8", ElementTypes.INPUT to "12", ElementTypes.LIST to "12")),
-        spacing(PropertyKeys.PADDING_END, R.string.prop_padding_end, PADDED, mapOf(ElementTypes.BUTTON to "8", ElementTypes.INPUT to "12", ElementTypes.LIST to "12")),
-        spacing(PropertyKeys.PADDING_TOP, R.string.prop_padding_top, PADDED),
-        spacing(PropertyKeys.PADDING_BOTTOM, R.string.prop_padding_bottom, PADDED),
+        spacing(PropertyKeys.PADDING_START, R.string.prop_padding_start, PADDED_OR_SCREEN, mapOf(ElementTypes.BUTTON to "8", ElementTypes.INPUT to "12", ElementTypes.LIST to "12"), paddingVisible),
+        spacing(PropertyKeys.PADDING_END, R.string.prop_padding_end, PADDED_OR_SCREEN, mapOf(ElementTypes.BUTTON to "8", ElementTypes.INPUT to "12", ElementTypes.LIST to "12"), paddingVisible),
+        spacing(PropertyKeys.PADDING_TOP, R.string.prop_padding_top, PADDED_OR_SCREEN, visibleWhen = paddingVisible),
+        spacing(PropertyKeys.PADDING_BOTTOM, R.string.prop_padding_bottom, PADDED_OR_SCREEN, visibleWhen = paddingVisible),
         spacing(PropertyKeys.MARGIN_START, R.string.prop_margin_start, ALL),
         spacing(PropertyKeys.MARGIN_END, R.string.prop_margin_end, ALL),
         spacing(PropertyKeys.MARGIN_TOP, R.string.prop_margin_top, ALL),
@@ -205,6 +360,10 @@ object PropertyRegistry {
 
     /** تعريفات الخصائص التي تنطبق على نوع العنصر، بترتيب العرض. */
     fun forType(type: String): List<PropertyDef> = all.filter { type in it.appliesTo }
+
+    /** كـ [forType] لكن بعد تطبيق شروط الظهور (مثل: الوزن لا يظهر إلا داخل صف أو عمود). */
+    fun forContext(type: String, context: PropertyContext): List<PropertyDef> =
+        all.filter { type in it.appliesTo && it.visibleWhen(context) }
 
     fun defaultOf(type: String, key: String): String = byKey[key]?.defaultFor(type).orEmpty()
 
@@ -253,3 +412,12 @@ fun UiElement.colorProp(key: String): Int =
     ColorUtil.parse(prop(key)) ?: ColorUtil.parse(PropertyRegistry.defaultOf(type, key)) ?: 0
 
 fun UiElement.withProp(key: String, value: String): UiElement = copy(properties = properties + (key to value))
+
+// ---- خصائص جذر الشاشة (تستعمل السجل نفسه بنوع SCREEN_TYPE) ----
+
+fun UiScreen.prop(key: String): String = properties[key] ?: PropertyRegistry.defaultOf(SCREEN_TYPE, key)
+
+fun UiScreen.intProp(key: String): Int =
+    prop(key).toIntOrNull() ?: PropertyRegistry.defaultOf(SCREEN_TYPE, key).toIntOrNull() ?: 0
+
+fun UiScreen.withProp(key: String, value: String): UiScreen = copy(properties = properties + (key to value))

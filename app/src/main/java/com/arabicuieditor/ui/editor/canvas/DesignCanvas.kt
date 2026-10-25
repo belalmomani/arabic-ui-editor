@@ -16,7 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
+import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.UiScreen
 import kotlin.math.hypot
 
@@ -50,7 +54,8 @@ private val SelectionColor = Color(0xFF1B8CFF)
 /** ماذا يفعل اللمس الحالي. يُحدَّد لحظة وضع الإصبع. */
 private sealed interface GestureTarget {
     data object Pan : GestureTarget
-    data class Move(val id: String, val start: DesignRect) : GestureTarget
+    /** [free] صحيح إن كان العنصر حر الموضع (أبوه بتخطيط حر) فيتحرك مباشرة أثناء السحب. */
+    data class Move(val id: String, val start: DesignRect, val free: Boolean) : GestureTarget
     data class Resize(val id: String, val start: DesignRect, val handle: HandleType) : GestureTarget
 }
 
@@ -61,8 +66,12 @@ private sealed interface GestureTarget {
  * - إصبع على فراغ: تحريك مساحة العمل (والنقر يلغي التحديد).
  * - إصبعان: تكبير/تصغير وتحريك.
  *
- * كل الإحداثيات تُقرأ من [screen] ولا تُخزَّن هنا؛ التعديلات تُرسل للأعلى
- * عبر [onElementRectChange] فتنتقل إلى نموذج المشروع والحفظ التلقائي.
+ * كل الإحداثيات تُقرأ من [layout] (إطارات محسوبة لكل العناصر بما فيها المتداخلة) ولا تُخزَّن هنا؛
+ * التعديلات تُرسل للأعلى عبر [onElementRectChange] فتنتقل إلى نموذج المشروع والحفظ التلقائي.
+ *
+ * - العنصر الحر (أبوه بتخطيط حر) يتحرك مباشرة مع الإصبع. عنصر الصف/العمود/الصندوق يظهر له ظل
+ *   أثناء السحب، وعند الرفع يُستدعى [onElementDrop] ليُنقل إلى الحاوية أو الترتيب تحت الإصبع.
+ * - [editable] false عندما تكون المعاينة بحجم غير حجم التصميم: التحديد والتحريك والتكبير فقط، بلا تعديل بالسحب.
  */
 @Composable
 fun DesignCanvas(
@@ -73,9 +82,16 @@ fun DesignCanvas(
     onSelect: (String?) -> Unit,
     onElementRectChange: (String, DesignRect) -> Unit,
     onSizeChange: (IntSize) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    layout: LayoutResult = remember(screen) { LayoutEngine.layout(screen) },
+    editable: Boolean = true,
+    onElementDrop: ((String, Float, Float) -> Unit)? = null
 ) {
-    val latestScreen by rememberUpdatedState(screen)
+    val latestLayout by rememberUpdatedState(layout)
+    val latestEditable by rememberUpdatedState(editable)
+    val latestOnDrop by rememberUpdatedState(onElementDrop)
+    var ghost by remember { mutableStateOf<DesignRect?>(null) }
+    val elementsById = remember(screen) { ElementTree.flatten(screen.elements).associateBy { it.id } }
     val latestSelected by rememberUpdatedState(selectedId)
     val latestViewport by rememberUpdatedState(viewport)
     val latestOnViewport by rememberUpdatedState(onViewportChange)
@@ -95,14 +111,15 @@ fun DesignCanvas(
                         val dens = density
                         val touchSlop = viewConfiguration.touchSlop
                         var vp = latestViewport
-                        val scr = latestScreen
-                        val frameW = scr.width
-                        val frameH = scr.height
+                        val lay = latestLayout
+                        val frameW = lay.width
+                        val frameH = lay.height
                         val selectedBefore = latestSelected
 
-                        val rects = scr.elements.map { it.id to CanvasMath.resolveRect(it, frameW, frameH) }
+                        val rects = lay.paintOrder.mapNotNull { id -> lay.frames[id]?.let { id to it } }
                         val target = decideTarget(
                             rects = rects,
+                            freeIds = lay.freeIds,
                             selectedId = selectedBefore,
                             vp = vp,
                             density = dens,
@@ -119,6 +136,10 @@ fun DesignCanvas(
                         var appliedPanY = 0f
                         var moved = false
                         var multiTouch = false
+                        var lastX = down.position.x
+                        var lastY = down.position.y
+                        // بلا تعديل (معاينة بحجم مختلف): كل سحب يحرّك مساحة العمل، والنقر يحدد فقط.
+                        val dragTarget = if (latestEditable) target else GestureTarget.Pan
 
                         do {
                             val event = awaitPointerEvent()
@@ -135,29 +156,31 @@ fun DesignCanvas(
                                 event.changes.forEach { if (it.positionChanged()) it.consume() }
                             } else if (!multiTouch && pressed.size == 1) {
                                 val change = pressed[0]
+                                lastX = change.position.x
+                                lastY = change.position.y
                                 val delta = change.positionChange()
                                 totalX += delta.x
                                 totalY += delta.y
                                 if (!moved && hypot(totalX, totalY) > touchSlop) moved = true
                                 if (moved) {
                                     val pxPerDp = dens * vp.scale
-                                    when (target) {
+                                    when (dragTarget) {
                                         is GestureTarget.Resize -> latestOnRect(
-                                            target.id,
+                                            dragTarget.id,
                                             CanvasMath.resize(
-                                                target.start, target.handle,
+                                                dragTarget.start, dragTarget.handle,
                                                 totalX / pxPerDp, totalY / pxPerDp
                                             )
                                         )
 
-                                        is GestureTarget.Move -> latestOnRect(
-                                            target.id,
-                                            CanvasMath.move(
-                                                target.start,
+                                        is GestureTarget.Move -> {
+                                            val next = CanvasMath.move(
+                                                dragTarget.start,
                                                 totalX / pxPerDp, totalY / pxPerDp,
                                                 frameW, frameH
                                             )
-                                        )
+                                            if (dragTarget.free) latestOnRect(dragTarget.id, next) else ghost = next
+                                        }
 
                                         GestureTarget.Pan -> {
                                             vp = vp.copy(
@@ -174,9 +197,18 @@ fun DesignCanvas(
                             }
                         } while (event.changes.any { it.pressed })
 
+                        ghost = null
                         // نقرة على فراغ بلا سحب ولا إصبعين: إلغاء التحديد.
                         if (!moved && !multiTouch && target is GestureTarget.Pan) {
                             latestOnSelect(null)
+                        }
+                        // رفع عنصر بعد سحبه: المحرر يقرر نقله إلى حاوية أو إعادة ترتيبه.
+                        if (moved && !multiTouch && dragTarget is GestureTarget.Move) {
+                            latestOnDrop?.invoke(
+                                dragTarget.id,
+                                CanvasMath.toDesignX(vp, dens, lastX),
+                                CanvasMath.toDesignY(vp, dens, lastY)
+                            )
                         }
                     }
                 }
@@ -185,7 +217,7 @@ fun DesignCanvas(
             Box(
                 modifier = Modifier
                     .wrapContentSize(Alignment.TopStart, unbounded = true)
-                    .size(screen.width.dp, screen.height.dp)
+                    .size(layout.width.dp, layout.height.dp)
                     .graphicsLayer {
                         transformOrigin = TransformOrigin(0f, 0f)
                         scaleX = viewport.scale
@@ -196,21 +228,31 @@ fun DesignCanvas(
                     }
                     .background(Color.White)
             ) {
-                screen.elements.forEach { element ->
-                    key(element.id) {
-                        val rect = CanvasMath.resolveRect(element, screen.width, screen.height)
-                        ElementView(
-                            element = element,
-                            modifier = Modifier
-                                .absoluteOffset(rect.x.dp, rect.y.dp)
-                                .size(rect.w.dp, rect.h.dp)
-                                .clipToBounds()
-                        )
+                // كل العناصر (بما فيها المتداخلة) تُرسم مسطّحة بإطاراتها المحسوبة، الأب قبل أبنائه.
+                layout.paintOrder.forEach { id ->
+                    val element = elementsById[id]
+                    val rect = layout.frames[id]
+                    if (element != null && rect != null) {
+                        key(id) {
+                            ElementView(
+                                element = element,
+                                modifier = Modifier
+                                    .absoluteOffset(rect.x.dp, rect.y.dp)
+                                    .size(rect.w.dp, rect.h.dp)
+                                    .clipToBounds()
+                            )
+                        }
                     }
                 }
             }
 
-            SelectionOverlay(screen = screen, selectedId = selectedId, viewport = viewport)
+            SelectionOverlay(
+                frameW = layout.width,
+                frameH = layout.height,
+                selected = selectedId?.let { layout.frames[it] },
+                ghost = ghost,
+                viewport = viewport
+            )
         }
     }
 }
@@ -218,6 +260,7 @@ fun DesignCanvas(
 /** يحدد هدف اللمس: مقبض العنصر المحدد، أو أعلى عنصر تحت الإصبع، أو تحريك المساحة. */
 private fun decideTarget(
     rects: List<Pair<String, DesignRect>>,
+    freeIds: Set<String>,
     selectedId: String?,
     vp: Viewport,
     density: Float,
@@ -240,20 +283,23 @@ private fun decideTarget(
     val slopDesign = ELEMENT_HIT_SLOP_DP / vp.scale
     val hit = CanvasMath.hitTest(rects, designX, designY, slopDesign)
     if (hit != null) {
-        return GestureTarget.Move(hit, rects.first { it.first == hit }.second)
+        return GestureTarget.Move(hit, rects.first { it.first == hit }.second, hit in freeIds)
     }
     return GestureTarget.Pan
 }
 
-/** حدود الإطار وإطار التحديد والمقابض، تُرسم بحجم ثابت على الشاشة مهما كان التكبير. */
+/** حدود الإطار وإطار التحديد والمقابض وظل السحب، تُرسم بحجم ثابت على الشاشة مهما كان التكبير. */
 @Composable
-private fun SelectionOverlay(screen: UiScreen, selectedId: String?, viewport: Viewport) {
+private fun SelectionOverlay(
+    frameW: Float,
+    frameH: Float,
+    selected: DesignRect?,
+    ghost: DesignRect?,
+    viewport: Viewport
+) {
     val density = LocalDensity.current.density
     Canvas(Modifier.fillMaxSize()) {
-        val frame = CanvasMath.toScreenRect(
-            viewport, density,
-            DesignRect(0f, 0f, screen.width, screen.height)
-        )
+        val frame = CanvasMath.toScreenRect(viewport, density, DesignRect(0f, 0f, frameW, frameH))
         drawRect(
             color = Color(0x33000000),
             topLeft = Offset(frame.left, frame.top),
@@ -261,11 +307,22 @@ private fun SelectionOverlay(screen: UiScreen, selectedId: String?, viewport: Vi
             style = Stroke(1.dp.toPx())
         )
 
-        val selected = screen.elements.firstOrNull { it.id == selectedId } ?: return@Canvas
-        val rect = CanvasMath.toScreenRect(
-            viewport, density,
-            CanvasMath.resolveRect(selected, screen.width, screen.height)
-        )
+        if (ghost != null) {
+            val g = CanvasMath.toScreenRect(viewport, density, ghost)
+            drawRect(
+                color = SelectionColor.copy(alpha = 0.18f),
+                topLeft = Offset(g.left, g.top),
+                size = Size(g.width, g.height)
+            )
+            drawRect(
+                color = SelectionColor,
+                topLeft = Offset(g.left, g.top),
+                size = Size(g.width, g.height),
+                style = Stroke(2.dp.toPx())
+            )
+        }
+
+        val rect = selected?.let { CanvasMath.toScreenRect(viewport, density, it) } ?: return@Canvas
         drawRect(
             color = SelectionColor,
             topLeft = Offset(rect.left, rect.top),

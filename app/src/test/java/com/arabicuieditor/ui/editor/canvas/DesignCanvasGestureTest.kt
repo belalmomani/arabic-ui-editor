@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pinch
 import androidx.compose.ui.unit.dp
+import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ElementLayout
 import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.SizeSpec
@@ -55,6 +56,7 @@ class DesignCanvasGestureTest {
     private var screen by mutableStateOf(UiScreen("s", "شاشة", 300f, 400f, listOf(button())))
     private var selected by mutableStateOf<String?>(null)
     private var viewport by mutableStateOf(Viewport(1f, 0f, 0f))
+    private val drops = mutableListOf<Triple<String, Float, Float>>()
 
     private fun rectOfButton(): DesignRect =
         CanvasMath.resolveRect(screen.elements.first { it.id == buttonId }, screen.width, screen.height)
@@ -79,7 +81,8 @@ class DesignCanvasGestureTest {
                         })
                     },
                     onSizeChange = {},
-                    modifier = Modifier.size(320.dp, 470.dp)
+                    modifier = Modifier.size(320.dp, 470.dp),
+                    onElementDrop = { id, x, y -> drops += Triple(id, x, y) }
                 )
             }
         }
@@ -163,5 +166,47 @@ class DesignCanvasGestureTest {
         }
         rule.waitForIdle()
         assertTrue("scale was ${viewport.scale}", viewport.scale > 1.5f)
+    }
+
+    private fun container(layout: ChildLayout, child: UiElement) = UiElement(
+        id = "box",
+        type = ElementTypes.CONTAINER,
+        layout = ElementLayout(50f, 50f, SizeSpec.fixed(200f), SizeSpec.fixed(200f)),
+        childLayout = layout,
+        children = listOf(child)
+    )
+
+    @Test
+    fun tapOnNestedChildSelectsTheChildNotTheContainer() {
+        val child = button().copy(id = "inner", layout = ElementLayout(10f, 10f, SizeSpec.fixed(100f), SizeSpec.fixed(44f)))
+        screen = screen.copy(elements = listOf(container(ChildLayout.ABSOLUTE, child)))
+        setContent()
+        // الابن عند (60,60) بحجم 100x44
+        rule.onNodeWithTag("host").performTouchInput { click(Offset(100f, 80f)) }
+        rule.waitForIdle()
+        assertEquals("inner", selected)
+        // وفراغ الحاوية خارج الابن يحدد الحاوية نفسها
+        rule.onNodeWithTag("host").performTouchInput { click(Offset(200f, 200f)) }
+        rule.waitForIdle()
+        assertEquals("box", selected)
+    }
+
+    @Test
+    fun draggingAColumnChildReportsDropInsteadOfMovingIt() {
+        val child = button().copy(id = "inner")
+        screen = screen.copy(elements = listOf(container(ChildLayout.COLUMN, child)))
+        setContent()
+        rule.onNodeWithTag("host").performTouchInput {
+            down(Offset(100f, 70f))
+            moveBy(Offset(0f, 100f))
+            up()
+        }
+        rule.waitForIdle()
+        // لم يتغير موضعه المخزَّن (الحاوية هي التي تحدده)، وأُبلغ المحرر بنقطة الإفلات
+        assertEquals(child.layout, screen.elements.single().children.single().layout)
+        assertEquals(1, drops.size)
+        assertEquals("inner", drops.single().first)
+        assertEquals(100f, drops.single().second, 1f)
+        assertEquals(170f, drops.single().third, 1f)
     }
 }

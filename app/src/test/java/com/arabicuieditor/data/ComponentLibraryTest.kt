@@ -1,8 +1,12 @@
 package com.arabicuieditor.data
 
+import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ComponentLibrary
+import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.PresetCategory
 import com.arabicuieditor.data.model.PropertyRegistry
+import com.arabicuieditor.data.model.UiScreen
+import com.arabicuieditor.ui.editor.canvas.LayoutEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -29,8 +33,9 @@ class ComponentLibraryTest {
         for (preset in ComponentLibrary.presets) {
             val built = preset.build { "نص" }
             assertTrue("${preset.id} builds nothing", built.isNotEmpty())
-            assertEquals("ids not unique in ${preset.id}", built.size, built.map { it.id }.toSet().size)
-            for (e in built) {
+            val all = ElementTree.flatten(built)
+            assertEquals("ids not unique in ${preset.id}", all.size, all.map { it.id }.toSet().size)
+            for (e in all) {
                 val allowed = PropertyRegistry.forType(e.type).map { it.key }.toSet()
                 for ((key, value) in e.properties) {
                     assertTrue("${preset.id}: '$key' does not apply to ${e.type}", key in allowed)
@@ -39,6 +44,22 @@ class ComponentLibraryTest {
                 assertTrue(e.layout.width.value > 0f && e.layout.height.value > 0f)
             }
         }
+    }
+
+    @Test
+    fun layoutPresetsBuildNestedFlexibleContainers() {
+        val presets = ComponentLibrary.byCategory(PresetCategory.LAYOUTS)
+        assertTrue(presets.size >= 3)
+        for (preset in presets) {
+            val root = preset.build { "نص" }.single()
+            assertTrue("${preset.id} has no children", root.children.isNotEmpty())
+            assertTrue("${preset.id} is not flexible", root.childLayout != ChildLayout.ABSOLUTE)
+            // وتُحسب إطاراتها كاملة بلا مشاكل
+            val frames = LayoutEngine.layout(UiScreen("s", "ش", elements = listOf(root))).frames
+            assertEquals(ElementTree.count(listOf(root)), frames.size)
+        }
+        val kinds = presets.map { it.build { "x" }.single().childLayout }.toSet()
+        assertTrue(kinds.containsAll(listOf(ChildLayout.ROW, ChildLayout.COLUMN, ChildLayout.BOX)))
     }
 
     @Test

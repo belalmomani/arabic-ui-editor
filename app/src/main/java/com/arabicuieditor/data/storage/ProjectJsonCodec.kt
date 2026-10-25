@@ -29,6 +29,9 @@ object ProjectJsonCodec {
         put("name", project.name)
         put("createdAt", project.createdAt)
         put("updatedAt", project.updatedAt)
+        project.startScreenId?.let { put("startScreenId", it) }
+        put("previewWidth", project.previewWidth.toDouble())
+        put("previewHeight", project.previewHeight.toDouble())
         put("screens", JSONArray().also { arr -> project.screens.forEach { arr.put(screenToJson(it)) } })
         put("resources", JSONArray().also { arr -> project.resources.forEach { arr.put(resourceToJson(it)) } })
     }.toString(2)
@@ -45,7 +48,10 @@ object ProjectJsonCodec {
             createdAt = migrated.optLong("createdAt"),
             updatedAt = migrated.optLong("updatedAt"),
             screens = migrated.optJSONArray("screens").mapObjects { screenFromJson(it) },
-            resources = migrated.optJSONArray("resources").mapObjects { resourceFromJson(it) }
+            resources = migrated.optJSONArray("resources").mapObjects { resourceFromJson(it) },
+            startScreenId = migrated.optString("startScreenId").takeIf { it.isNotEmpty() },
+            previewWidth = migrated.optDouble("previewWidth", 0.0).toFloat(),
+            previewHeight = migrated.optDouble("previewHeight", 0.0).toFloat()
         )
     }
 
@@ -53,6 +59,8 @@ object ProjectJsonCodec {
      * نقطة ترقية المخططات القديمة.
      * 1 → 2: لا تغيير مطلوب؛ الحقول الجديدة (التخطيط وأبعاد الشاشة) اختيارية ولها قيم افتراضية
      * عند فك الترميز، فتُفتح مشاريع المرحلة 2 كما هي.
+     * 2 → 3: لا تغيير مطلوب؛ الحقول الجديدة (شاشة البداية، حجم المعاينة، تخطيط الشاشة وخصائصها،
+     * وضع BOX ونمط FRACTION) كلها اختيارية. التصاميم القديمة كلها بتخطيط حر فتظهر كما كانت.
      */
     @Suppress("UNUSED_PARAMETER")
     private fun migrate(root: JSONObject, fromVersion: Int): JSONObject = root
@@ -64,6 +72,8 @@ object ProjectJsonCodec {
         put("name", s.name)
         put("width", s.width.toDouble())
         put("height", s.height.toDouble())
+        put("childLayout", s.childLayout.name.lowercase())
+        put("properties", mapToJson(s.properties))
         put("elements", JSONArray().also { arr -> s.elements.forEach { arr.put(elementToJson(it)) } })
     }
 
@@ -112,7 +122,9 @@ object ProjectJsonCodec {
         name = o.optString("name"),
         width = o.optDouble("width", 360.0).toFloat(),
         height = o.optDouble("height", 640.0).toFloat(),
-        elements = o.optJSONArray("elements").mapObjects { elementFromJson(it) }
+        elements = o.optJSONArray("elements").mapObjects { elementFromJson(it) },
+        childLayout = enumOrDefault(o.optString("childLayout"), ChildLayout.ABSOLUTE),
+        properties = o.optJSONObject("properties").toStringMap()
     )
 
     private fun elementFromJson(o: JSONObject): UiElement = UiElement(

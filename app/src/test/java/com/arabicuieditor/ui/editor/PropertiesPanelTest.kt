@@ -10,10 +10,14 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
+import com.arabicuieditor.data.model.Axis
+import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ElementTypes
+import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.newElement
 import com.arabicuieditor.ui.editor.canvas.DesignRect
@@ -43,10 +47,14 @@ class PropertiesPanelTest {
     private val reorders = mutableListOf<ReorderOp>()
     private var duplicated = 0
     private var deleted = 0
+    private val modes = mutableListOf<Pair<Axis, SizeMode>>()
+    private val childLayouts = mutableListOf<ChildLayout>()
+    private val wraps = mutableListOf<ChildLayout>()
+    private var unwrapped = 0
 
     private fun button() = newElement(ElementTypes.BUTTON, 20f, 30f, "زر")
 
-    private fun show(element: UiElement?) {
+    private fun show(element: UiElement?, parentLayout: ChildLayout = ChildLayout.ABSOLUTE) {
         rule.setContent {
             MaterialTheme {
                 Box(Modifier.size(360.dp, 560.dp)) {
@@ -58,7 +66,12 @@ class PropertiesPanelTest {
                         onDuplicate = { duplicated++ },
                         onDelete = { deleted++ },
                         onReorder = { reorders += it },
-                        modifier = Modifier.size(360.dp, 560.dp)
+                        modifier = Modifier.size(360.dp, 560.dp),
+                        parentLayout = parentLayout,
+                        onSetSizeMode = { axis, mode -> modes += axis to mode },
+                        onSetChildLayout = { childLayouts += it },
+                        onWrap = { wraps += it },
+                        onUnwrap = { unwrapped++ }
                     )
                 }
             }
@@ -153,5 +166,54 @@ class PropertiesPanelTest {
         rule.onAllNodesWithTag("prop_fontSize").assertCountEquals(0)
         scrollTo("prop_cornerRadius")
         rule.onAllNodesWithTag("prop_cornerRadius").assertCountEquals(1)
+    }
+
+    @Test
+    fun sizeModeChipsReportAxisAndMode() {
+        show(button())
+        rule.onNodeWithTag("size_w_MATCH_PARENT").performScrollTo().performClick()
+        rule.onNodeWithTag("size_h_WRAP_CONTENT").performScrollTo().performClick()
+        assertEquals(listOf(Axis.HORIZONTAL to SizeMode.MATCH_PARENT, Axis.VERTICAL to SizeMode.WRAP_CONTENT), modes)
+    }
+
+    @Test
+    fun wrapActionsReportTheRequestedLayout() {
+        show(button())
+        rule.onNodeWithTag("act_wrap_row").performScrollTo().performClick()
+        rule.onNodeWithTag("act_wrap_column").performScrollTo().performClick()
+        rule.onNodeWithTag("act_wrap_box").performScrollTo().performClick()
+        assertEquals(listOf(ChildLayout.ROW, ChildLayout.COLUMN, ChildLayout.BOX), wraps)
+        // زر بلا أبناء: لا يظهر «فك الحاوية»
+        rule.onAllNodesWithTag("act_unwrap").assertCountEquals(0)
+    }
+
+    @Test
+    fun containerShowsLayoutChooserAndUnwrap() {
+        val container = newElement(ElementTypes.CONTAINER, 0f, 0f, "x").copy(children = listOf(button()))
+        show(container)
+        rule.onNodeWithTag("act_unwrap").performScrollTo().performClick()
+        assertEquals(1, unwrapped)
+        scrollTo("layout_ROW")
+        rule.onNodeWithTag("layout_ROW").performClick()
+        assertEquals(listOf(ChildLayout.ROW), childLayouts)
+    }
+
+    @Test
+    fun layoutPropertiesDependOnParentAndOwnLayout() {
+        // داخل عمود: الوزن ظاهر والتثبيت غائب، وحقلا x وy غائبان
+        show(button(), parentLayout = ChildLayout.COLUMN)
+        scrollTo("prop_weight_inc")
+        rule.onAllNodesWithTag("prop_weight_inc").assertCountEquals(1)
+        rule.onAllNodesWithTag("prop_pinH_start").assertCountEquals(0)
+        rule.onAllNodesWithTag("geo_x").assertCountEquals(0)
+    }
+
+    @Test
+    fun freeChildShowsPinChoicesAndPositionFields() {
+        show(button(), parentLayout = ChildLayout.ABSOLUTE)
+        scrollTo("prop_pinH_end")
+        rule.onNodeWithTag("prop_pinH_end").performClick()
+        assertEquals("pinH" to "end", sets.last())
+        rule.onAllNodesWithTag("prop_weight").assertCountEquals(0)
     }
 }

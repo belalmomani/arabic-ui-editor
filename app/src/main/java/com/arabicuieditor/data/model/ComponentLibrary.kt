@@ -9,7 +9,8 @@ enum class PresetCategory(@StringRes val labelRes: Int) {
     INPUTS(R.string.cat_inputs),
     TEXTS(R.string.cat_texts),
     IMAGES(R.string.cat_images),
-    LISTS(R.string.cat_lists)
+    LISTS(R.string.cat_lists),
+    LAYOUTS(R.string.cat_layouts)
 }
 
 /**
@@ -43,6 +44,34 @@ object ComponentLibrary {
         layout = ElementLayout(x, y, SizeSpec.fixed(w), SizeSpec.fixed(h)),
         properties = mapOf(*props)
     )
+
+    /** عنصر داخل حاوية مرنة: موضعه تحدده الحاوية لا (x, y). */
+    private fun child(type: String, w: SizeSpec, h: SizeSpec, props: Map<String, String> = emptyMap()) =
+        UiElement(id = newId(), type = type, layout = ElementLayout(0f, 0f, w, h), properties = props)
+
+    /** حاوية بتخطيط مرن وأبناء جاهزين. */
+    private fun group(
+        type: String,
+        layout: ChildLayout,
+        w: SizeSpec,
+        h: SizeSpec,
+        children: List<UiElement>,
+        props: Map<String, String> = emptyMap()
+    ) = UiElement(
+        id = newId(),
+        type = type,
+        layout = ElementLayout(0f, 0f, w, h),
+        childLayout = layout,
+        properties = props,
+        children = children
+    )
+
+    private fun padAll(v: Int) = mapOf(
+        PropertyKeys.PADDING_START to "$v", PropertyKeys.PADDING_END to "$v",
+        PropertyKeys.PADDING_TOP to "$v", PropertyKeys.PADDING_BOTTOM to "$v"
+    )
+
+    private fun fill() = SizeSpec(SizeMode.MATCH_PARENT, 200f)
 
     private const val DANGER = "#FFB3261E"
     private const val MUTED = "#FF5F6B76"
@@ -168,6 +197,116 @@ object ComponentLibrary {
         ComponentPreset("list_basic", R.string.preset_list_basic, PresetCategory.LISTS) {
             listOf(el(ElementTypes.LIST, 220f, 136f))
         },
+        // تخطيطات مرنة: حاويات بأبناء مرتبين (صف، عمود، صندوق)
+        ComponentPreset("layout_row", R.string.preset_layout_row, PresetCategory.LAYOUTS) { t ->
+            listOf(
+                group(
+                    ElementTypes.CONTAINER, ChildLayout.ROW, SizeSpec.fixed(300f), SizeSpec.fixed(64f),
+                    listOf(
+                        child(
+                            ElementTypes.BUTTON, SizeSpec.fixed(100f), SizeSpec.fixed(44f),
+                            mapOf(PropertyKeys.TEXT to t(R.string.preset_layout_btn_a), PropertyKeys.WEIGHT to "1")
+                        ),
+                        child(
+                            ElementTypes.BUTTON, SizeSpec.fixed(100f), SizeSpec.fixed(44f),
+                            mapOf(
+                                PropertyKeys.TEXT to t(R.string.preset_layout_btn_b),
+                                PropertyKeys.WEIGHT to "1",
+                                PropertyKeys.BG_COLOR to MUTED
+                            )
+                        )
+                    ),
+                    padAll(8) + mapOf(PropertyKeys.SPACING to "8", PropertyKeys.CHILD_ALIGN_V to Aligns.CENTER)
+                )
+            )
+        },
+        ComponentPreset("layout_column", R.string.preset_layout_column, PresetCategory.LAYOUTS) { t ->
+            listOf(
+                group(
+                    ElementTypes.CONTAINER, ChildLayout.COLUMN, SizeSpec.fixed(260f), SizeSpec.fixed(190f),
+                    listOf(
+                        child(
+                            ElementTypes.TEXT, fill(), SizeSpec.fixed(28f),
+                            mapOf(PropertyKeys.TEXT to t(R.string.preset_layout_field), PropertyKeys.FONT_WEIGHT to FontWeights.BOLD)
+                        ),
+                        child(ElementTypes.INPUT, fill(), SizeSpec.fixed(48f), mapOf(PropertyKeys.HINT to t(R.string.preset_input_hint))),
+                        child(ElementTypes.BUTTON, fill(), SizeSpec.fixed(44f), mapOf(PropertyKeys.TEXT to t(R.string.preset_layout_btn_a)))
+                    ),
+                    padAll(12) + mapOf(PropertyKeys.SPACING to "8")
+                )
+            )
+        },
+        ComponentPreset("layout_box", R.string.preset_layout_box, PresetCategory.LAYOUTS) { t ->
+            listOf(
+                group(
+                    ElementTypes.CONTAINER, ChildLayout.BOX, SizeSpec.fixed(260f), SizeSpec.fixed(140f),
+                    listOf(
+                        child(
+                            ElementTypes.TEXT, SizeSpec.fixed(160f), SizeSpec.fixed(28f),
+                            mapOf(PropertyKeys.TEXT to t(R.string.preset_layout_title), PropertyKeys.TEXT_ALIGN to TextAligns.CENTER)
+                        )
+                    ),
+                    mapOf(PropertyKeys.CHILD_ALIGN_H to Aligns.CENTER, PropertyKeys.CHILD_ALIGN_V to Aligns.CENTER)
+                )
+            )
+        },
+        ComponentPreset("layout_card", R.string.preset_layout_card, PresetCategory.LAYOUTS) { t ->
+            listOf(
+                group(
+                    ElementTypes.CARD, ChildLayout.COLUMN, SizeSpec.fixed(280f), SizeSpec.fixed(170f),
+                    listOf(
+                        child(
+                            ElementTypes.TEXT, fill(), SizeSpec.fixed(26f),
+                            mapOf(
+                                PropertyKeys.TEXT to t(R.string.preset_card_title),
+                                PropertyKeys.FONT_SIZE to "18",
+                                PropertyKeys.FONT_WEIGHT to FontWeights.BOLD
+                            )
+                        ),
+                        child(
+                            ElementTypes.TEXT, fill(), SizeSpec.fixed(44f),
+                            mapOf(PropertyKeys.TEXT to t(R.string.preset_card_body), PropertyKeys.TEXT_COLOR to MUTED)
+                        ),
+                        child(
+                            ElementTypes.BUTTON, SizeSpec.fixed(120f), SizeSpec.fixed(40f),
+                            mapOf(PropertyKeys.TEXT to t(R.string.preset_layout_btn_a), PropertyKeys.SELF_ALIGN_H to Aligns.END)
+                        )
+                    ),
+                    padAll(16) + mapOf(PropertyKeys.SPACING to "8")
+                )
+            )
+        },
+        ComponentPreset("layout_toolbar", R.string.preset_layout_toolbar, PresetCategory.LAYOUTS) { t ->
+            listOf(
+                group(
+                    ElementTypes.CONTAINER, ChildLayout.ROW, fill(), SizeSpec.fixed(56f),
+                    listOf(
+                        child(
+                            ElementTypes.TEXT, SizeSpec.fixed(140f), SizeSpec.fixed(28f),
+                            mapOf(
+                                PropertyKeys.TEXT to t(R.string.preset_layout_title),
+                                PropertyKeys.TEXT_COLOR to PropertyRegistry.WHITE,
+                                PropertyKeys.FONT_SIZE to "18",
+                                PropertyKeys.FONT_WEIGHT to FontWeights.BOLD
+                            )
+                        ),
+                        child(
+                            ElementTypes.BUTTON, SizeSpec.fixed(80f), SizeSpec.fixed(36f),
+                            mapOf(
+                                PropertyKeys.TEXT to t(R.string.preset_layout_btn_a),
+                                PropertyKeys.BG_COLOR to PropertyRegistry.TRANSPARENT
+                            )
+                        )
+                    ),
+                    padAll(10) + mapOf(
+                        PropertyKeys.BG_COLOR to PropertyRegistry.ACCENT,
+                        PropertyKeys.ARRANGEMENT to Arrangements.BETWEEN,
+                        PropertyKeys.CHILD_ALIGN_V to Aligns.CENTER
+                    )
+                )
+            )
+        },
+
         ComponentPreset("list_compact", R.string.preset_list_compact, PresetCategory.LISTS) { t ->
             listOf(
                 el(

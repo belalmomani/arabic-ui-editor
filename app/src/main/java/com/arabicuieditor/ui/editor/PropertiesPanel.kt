@@ -45,13 +45,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arabicuieditor.R
+import com.arabicuieditor.data.model.Axis
+import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ColorUtil
+import com.arabicuieditor.data.model.ElementTree
+import com.arabicuieditor.data.model.PropertyContext
 import com.arabicuieditor.data.model.PropertyDef
 import com.arabicuieditor.data.model.PropertyGroup
 import com.arabicuieditor.data.model.PropertyKind
 import com.arabicuieditor.data.model.PropertyRegistry
+import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.UiElement
-import com.arabicuieditor.data.model.boolProp
+import com.arabicuieditor.data.model.spec
 import com.arabicuieditor.data.model.prop
 import com.arabicuieditor.ui.editor.canvas.DesignRect
 
@@ -63,9 +68,11 @@ private val Swatches = listOf(
 )
 
 /**
- * لوحة الخصائص: تُبنى كلها من [PropertyRegistry] حسب نوع العنصر المحدد، فلا يوجد
- * حقل مكتوب يدويًا لخاصية معينة. الاستثناء الوحيد قسم الأبعاد (x, y, العرض, الارتفاع)
- * لأنها من تخطيط العنصر لا من خصائصه.
+ * لوحة الخصائص: تُبنى كلها من [PropertyRegistry] حسب نوع العنصر المحدد وسياقه (تخطيطه وتخطيط أبيه)،
+ * فلا يوجد حقل مكتوب يدويًا لخاصية معينة. الاستثناء: أقسام الأبعاد (نمط الأبعاد، x, y, العرض, الارتفاع)
+ * وطريقة ترتيب الأبناء وعمليات التغليف، لأنها من تخطيط العنصر لا من خصائصه.
+ *
+ * [rect] إطار العنصر نسبةً إلى أبيه (x, y محليان). حقلا x وy يظهران فقط للعنصر الحر.
  */
 @Composable
 fun PropertiesPanel(
@@ -76,7 +83,13 @@ fun PropertiesPanel(
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
     onReorder: (ReorderOp) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    parentLayout: ChildLayout = ChildLayout.ABSOLUTE,
+    onSetSizeMode: (Axis, SizeMode) -> Unit = { _, _ -> },
+    onSetPercent: (Axis, Int) -> Unit = { _, _ -> },
+    onSetChildLayout: (ChildLayout) -> Unit = {},
+    onWrap: (ChildLayout) -> Unit = {},
+    onUnwrap: () -> Unit = {}
 ) {
     if (element == null || rect == null) {
         Box(modifier, contentAlignment = Alignment.Center) {
@@ -88,22 +101,44 @@ fun PropertiesPanel(
         return
     }
 
-    val defs = PropertyRegistry.forType(element.type)
+    val defs = PropertyRegistry.forContext(element.type, PropertyContext(element.childLayout, parentLayout))
+    val isContainer = ElementTree.canContain(element.type)
+    val isFree = parentLayout == ChildLayout.ABSOLUTE
 
     LazyColumn(modifier = modifier.testTag("props_list"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item(key = "actions") {
-            ActionsRow(onDuplicate, onDelete, onReorder)
+            ActionsRow(onDuplicate, onDelete, onReorder, onWrap, onUnwrap, canUnwrap = element.children.isNotEmpty())
+        }
+
+        item(key = "sizes") {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SectionHeader(stringResource(R.string.group_size_mode))
+                SizeModeRow(stringResource(R.string.geo_width), "w", element.layout.spec(Axis.HORIZONTAL).mode,
+                    element.layout.spec(Axis.HORIZONTAL).value.toInt(),
+                    { onSetSizeMode(Axis.HORIZONTAL, it) }, { onSetPercent(Axis.HORIZONTAL, it) })
+                SizeModeRow(stringResource(R.string.geo_height), "h", element.layout.spec(Axis.VERTICAL).mode,
+                    element.layout.spec(Axis.VERTICAL).value.toInt(),
+                    { onSetSizeMode(Axis.VERTICAL, it) }, { onSetPercent(Axis.VERTICAL, it) })
+            }
         }
 
         item(key = "geometry") {
           Column {
             SectionHeader(stringResource(R.string.group_geometry))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    NumberField(stringResource(R.string.geo_x), rect.x.toInt(), -2000, 4000,
-                        { onSetRect(rect.copy(x = it.toFloat())) }, Modifier.weight(1f), "geo_x")
-                    NumberField(stringResource(R.string.geo_y), rect.y.toInt(), -2000, 4000,
-                        { onSetRect(rect.copy(y = it.toFloat())) }, Modifier.weight(1f), "geo_y")
+                if (isFree) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        NumberField(stringResource(R.string.geo_x), rect.x.toInt(), -2000, 4000,
+                            { onSetRect(rect.copy(x = it.toFloat())) }, Modifier.weight(1f), "geo_x")
+                        NumberField(stringResource(R.string.geo_y), rect.y.toInt(), -2000, 4000,
+                            { onSetRect(rect.copy(y = it.toFloat())) }, Modifier.weight(1f), "geo_y")
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.geo_flow_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NumberField(stringResource(R.string.geo_width), rect.w.toInt(), 16, 2000,
@@ -117,11 +152,15 @@ fun PropertiesPanel(
 
         PropertyGroup.entries.forEach { group ->
             val groupDefs = defs.filter { it.group == group }
-            if (groupDefs.isNotEmpty()) {
+            val hasKindChooser = group == PropertyGroup.LAYOUT && isContainer
+            if (groupDefs.isNotEmpty() || hasKindChooser) {
                 item(key = "group_${group.name}") {
                   Column {
                     SectionHeader(stringResource(group.labelRes))
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (hasKindChooser) {
+                            ChildLayoutChooser(element.childLayout, onSetChildLayout)
+                        }
                         if (group == PropertyGroup.SPACING) {
                             // الهوامش والمسافات الداخلية: حقلان في كل صف.
                             groupDefs.chunked(2).forEach { pair ->
@@ -151,7 +190,7 @@ fun PropertiesPanel(
 }
 
 @Composable
-private fun SectionHeader(text: String) {
+internal fun SectionHeader(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
@@ -164,7 +203,10 @@ private fun SectionHeader(text: String) {
 private fun ActionsRow(
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
-    onReorder: (ReorderOp) -> Unit
+    onReorder: (ReorderOp) -> Unit,
+    onWrap: (ChildLayout) -> Unit,
+    onUnwrap: () -> Unit,
+    canUnwrap: Boolean
 ) {
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -176,8 +218,86 @@ private fun ActionsRow(
         ActionChip(stringResource(R.string.action_backward), "act_backward") { onReorder(ReorderOp.BACKWARD) }
         ActionChip(stringResource(R.string.action_to_front), "act_front") { onReorder(ReorderOp.TO_FRONT) }
         ActionChip(stringResource(R.string.action_to_back), "act_back") { onReorder(ReorderOp.TO_BACK) }
+        ActionChip(stringResource(R.string.action_wrap_row), "act_wrap_row") { onWrap(ChildLayout.ROW) }
+        ActionChip(stringResource(R.string.action_wrap_column), "act_wrap_column") { onWrap(ChildLayout.COLUMN) }
+        ActionChip(stringResource(R.string.action_wrap_box), "act_wrap_box") { onWrap(ChildLayout.BOX) }
+        if (canUnwrap) ActionChip(stringResource(R.string.action_unwrap), "act_unwrap", onUnwrap)
     }
 }
+
+/** اختيار نمط بُعد واحد (ثابت، ملء الأب، حسب المحتوى، نسبة) وقيمة النسبة عند اختيارها. */
+@Composable
+private fun SizeModeRow(
+    label: String,
+    tagSuffix: String,
+    mode: SizeMode,
+    value: Int,
+    onMode: (SizeMode) -> Unit,
+    onPercent: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SizeModes.forEach { (m, labelRes) ->
+                FilterChip(
+                    selected = m == mode,
+                    onClick = { onMode(m) },
+                    label = { Text(stringResource(labelRes)) },
+                    modifier = Modifier.testTag("size_${tagSuffix}_${m.name}")
+                )
+            }
+        }
+        if (mode == SizeMode.FRACTION) {
+            NumberField(
+                stringResource(R.string.size_percent), value.coerceIn(1, 100), 1, 100,
+                onPercent, Modifier.fillMaxWidth(), "size_${tagSuffix}_percent"
+            )
+        }
+    }
+}
+
+/** اختيار طريقة ترتيب أبناء الحاوية: حر، عمود، صف، صندوق. */
+@Composable
+private fun ChildLayoutChooser(current: ChildLayout, onChange: (ChildLayout) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            stringResource(R.string.prop_child_layout),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ChildLayoutOptions.forEach { (layout, labelRes) ->
+                FilterChip(
+                    selected = layout == current,
+                    onClick = { onChange(layout) },
+                    label = { Text(stringResource(labelRes)) },
+                    modifier = Modifier.testTag("layout_${layout.name}")
+                )
+            }
+        }
+    }
+}
+
+private val SizeModes = listOf(
+    SizeMode.FIXED to R.string.size_fixed,
+    SizeMode.MATCH_PARENT to R.string.size_match,
+    SizeMode.WRAP_CONTENT to R.string.size_wrap,
+    SizeMode.FRACTION to R.string.size_fraction
+)
+
+/** خيارات تخطيط الحاوية (تُستعمل أيضًا في لوحة الشاشة). */
+internal val ChildLayoutOptions = listOf(
+    ChildLayout.ABSOLUTE to R.string.layout_free,
+    ChildLayout.COLUMN to R.string.layout_column,
+    ChildLayout.ROW to R.string.layout_row,
+    ChildLayout.BOX to R.string.layout_box
+)
 
 @Composable
 private fun ActionChip(label: String, tag: String, onClick: () -> Unit) {
@@ -188,16 +308,27 @@ private fun ActionChip(label: String, tag: String, onClick: () -> Unit) {
     )
 }
 
-/** يختار أداة التحرير المناسبة لنوع الخاصية. */
+/** يختار أداة التحرير المناسبة لنوع الخاصية لعنصر. */
 @Composable
 private fun PropertyEditor(
     def: PropertyDef,
     element: UiElement,
     onSet: (String, String) -> Unit,
     modifier: Modifier
+) = PropertyEditorRow(def, element.prop(def.key), onSet, modifier)
+
+/**
+ * أداة تحرير خاصية بقيمتها الحالية [current] نصًّا (تُستعمل للعناصر ولجذر الشاشة معًا).
+ * وسوم الاختبار: prop_<key> وملحقاتها.
+ */
+@Composable
+internal fun PropertyEditorRow(
+    def: PropertyDef,
+    current: String,
+    onSet: (String, String) -> Unit,
+    modifier: Modifier
 ) {
     val label = stringResource(def.labelRes)
-    val current = element.prop(def.key)
     val tag = "prop_${def.key}"
     when (val kind = def.kind) {
         is PropertyKind.Text -> TextPropertyField(label, current, kind.multiline, { onSet(def.key, it) }, modifier, tag)
@@ -207,7 +338,7 @@ private fun PropertyEditor(
         )
         PropertyKind.ColorValue -> ColorField(label, current, { onSet(def.key, it) }, modifier, tag)
         is PropertyKind.Choice -> ChoiceField(label, current, kind, { onSet(def.key, it) }, modifier, tag)
-        PropertyKind.Toggle -> ToggleField(label, element.boolProp(def.key), { onSet(def.key, it.toString()) }, modifier, tag)
+        PropertyKind.Toggle -> ToggleField(label, current != "false", { onSet(def.key, it.toString()) }, modifier, tag)
     }
 }
 
@@ -241,7 +372,7 @@ private fun TextPropertyField(
 }
 
 @Composable
-private fun NumberField(
+internal fun NumberField(
     label: String,
     value: Int,
     min: Int,
