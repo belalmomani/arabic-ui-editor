@@ -117,6 +117,7 @@ object CanvasMath {
     fun resolveSize(spec: SizeSpec, available: Float): Float = when (spec.mode) {
         SizeMode.FIXED -> spec.value
         SizeMode.MATCH_PARENT -> available
+        SizeMode.FRACTION -> available * spec.value.coerceIn(1f, 100f) / 100f
         SizeMode.WRAP_CONTENT -> if (spec.value > 0f) spec.value else MIN_ELEMENT_SIZE * 4
     }
 
