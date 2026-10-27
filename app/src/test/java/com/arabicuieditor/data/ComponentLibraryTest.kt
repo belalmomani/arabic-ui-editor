@@ -3,6 +3,7 @@ package com.arabicuieditor.data
 import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ComponentLibrary
 import com.arabicuieditor.data.model.ElementTree
+import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.PresetCategory
 import com.arabicuieditor.data.model.PropertyRegistry
 import com.arabicuieditor.data.model.UiScreen
@@ -68,5 +69,36 @@ class ComponentLibraryTest {
         val a = preset.build { "x" }.map { it.id }
         val b = preset.build { "x" }.map { it.id }
         assertTrue(a.intersect(b.toSet()).isEmpty())
+    }
+
+    @Test
+    fun professionalComponentsAreNestedAndCoverTheRequestedKinds() {
+        val pro = ComponentLibrary.presets.filter { it.id.startsWith("pro_") }
+        val categories = pro.map { it.category }.toSet()
+        for (c in listOf(
+            PresetCategory.LOGIN, PresetCategory.PRODUCTS, PresetCategory.NAVIGATION, PresetCategory.MENUS,
+            PresetCategory.DIALOGS, PresetCategory.NEWS, PresetCategory.CHAT
+        )) assertTrue("$c missing", c in categories)
+        for (preset in pro) {
+            val built = preset.build { "x" }
+            assertEquals("${preset.id} must be one root", 1, built.size)
+            val all = ElementTree.flatten(built)
+            // مكوّن مركّب: أكثر من عنصر، أو قائمة جاهزة.
+            assertTrue("${preset.id} too small", all.size > 1 || built.single().type == ElementTypes.LIST)
+        }
+        // كل مكوّن يُحسب تخطيطه كاملًا وبأحجام موجبة ضمن عرض الشاشة.
+        for (preset in pro) {
+            val root = preset.build { "نص" }.single()
+            val result = LayoutEngine.layout(UiScreen("s", "ش", elements = listOf(root)))
+            assertEquals(preset.id, ElementTree.count(listOf(root)), result.frames.size)
+            for ((id, f) in result.frames) {
+                assertTrue("${preset.id}/$id has no size", f.w > 0f && f.h > 0f)
+            }
+            val rootFrame = result.frames.getValue(root.id)
+            assertTrue("${preset.id} wider than the screen", rootFrame.w <= 360f)
+        }
+        // مكوّن مركّب يحمل أحفادًا متداخلين فعلًا (عمق 2 على الأقل).
+        val card = ComponentLibrary.presets.first { it.id == "pro_product_pair" }.build { "x" }.single()
+        assertTrue(card.children.all { it.children.isNotEmpty() })
     }
 }

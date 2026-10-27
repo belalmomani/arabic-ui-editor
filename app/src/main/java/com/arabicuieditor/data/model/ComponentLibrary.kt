@@ -10,7 +10,14 @@ enum class PresetCategory(@StringRes val labelRes: Int) {
     TEXTS(R.string.cat_texts),
     IMAGES(R.string.cat_images),
     LISTS(R.string.cat_lists),
-    LAYOUTS(R.string.cat_layouts)
+    LAYOUTS(R.string.cat_layouts),
+    LOGIN(R.string.cat_login),
+    PRODUCTS(R.string.cat_products),
+    NAVIGATION(R.string.cat_navigation),
+    MENUS(R.string.cat_menus),
+    DIALOGS(R.string.cat_dialogs),
+    NEWS(R.string.cat_news),
+    CHAT(R.string.cat_chat)
 }
 
 /**
@@ -319,7 +326,7 @@ object ComponentLibrary {
                 )
             )
         }
-    )
+    ) + ProComponents.presets
 
     fun byCategory(category: PresetCategory): List<ComponentPreset> = presets.filter { it.category == category }
 }
