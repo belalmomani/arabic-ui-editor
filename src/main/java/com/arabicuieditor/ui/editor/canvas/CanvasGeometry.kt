@@ -145,6 +145,55 @@ object CanvasMath {
         return null
     }
 
+    // ---- الدوران والتكرار ----
+
+    /** يدور بالنقطة (x,y) حول (cx,cy) بزاوية [degrees] باتجاه عقارب الساعة (محور y نحو الأسفل). */
+    fun rotatePoint(x: Float, y: Float, cx: Float, cy: Float, degrees: Float): Pair<Float, Float> {
+        val rad = Math.toRadians(degrees.toDouble())
+        val c = kotlin.math.cos(rad).toFloat()
+        val s = kotlin.math.sin(rad).toFloat()
+        val dx = x - cx
+        val dy = y - cy
+        return (cx + dx * c - dy * s) to (cy + dx * s + dy * c)
+    }
+
+    /** زاوية الاتجاه من (cx,cy) إلى (px,py) بالدرجات؛ صفر نحو اليمين وتزيد مع عقارب الساعة. */
+    fun angleDegrees(cx: Float, cy: Float, px: Float, py: Float): Float =
+        Math.toDegrees(kotlin.math.atan2((py - cy).toDouble(), (px - cx).toDouble())).toFloat()
+
+    /** يحوّل أي زاوية إلى 0..359. */
+    fun normalizeDegrees(degrees: Float): Int {
+        val r = Math.round(degrees) % 360
+        return if (r < 0) r + 360 else r
+    }
+
+    /** يلتقط الزاوية لأقرب مضاعف لـ [step] إن كانت ضمن [tolerance] منه (لتسهيل الاستقامة وزوايا 45/90). */
+    fun snapAngle(degrees: Int, step: Int = 15, tolerance: Int = 4): Int {
+        val nearest = Math.round(degrees.toFloat() / step) * step
+        return if (kotlin.math.abs(nearest - degrees) <= tolerance) ((nearest % 360) + 360) % 360 else degrees
+    }
+
+    /**
+     * مثل [hitTest] لكن يراعي دوران كل عنصر: تُدار النقطة عكسيًا حول مركز إطار العنصر
+     * قبل اختبار احتوائها. [rotationOf] يعيد دوران العنصر بالدرجات.
+     */
+    fun hitTestRotated(
+        rects: List<Pair<String, DesignRect>>,
+        rotationOf: (String) -> Int,
+        x: Float,
+        y: Float,
+        slop: Float
+    ): String? {
+        for (i in rects.indices.reversed()) {
+            val (id, r) = rects[i]
+            val rot = rotationOf(id)
+            val (lx, ly) = if (rot == 0) x to y
+            else rotatePoint(x, y, r.x + r.w / 2f, r.y + r.h / 2f, -rot.toFloat())
+            if (r.contains(lx, ly, slop)) return id
+        }
+        return null
+    }
+
     // ---- المقابض ----
 
     /**
