@@ -178,4 +178,11 @@ class PropertyRegistryTest {
         assertEquals("10", PropertyRegistry.normalize(PropertyKeys.WEIGHT, "99"))
         assertNull(PropertyRegistry.normalize(PropertyKeys.PIN_H, "top"))
     }
+
+    @Test
+    fun rotationIsClampedAndDefaultsToZero() {
+        assertEquals("359", PropertyRegistry.normalize(PropertyKeys.ROTATION, "900"))
+        assertEquals("0", PropertyRegistry.normalize(PropertyKeys.ROTATION, "-5"))
+        assertEquals("45", PropertyRegistry.normalize(PropertyKeys.ROTATION, "45"))
+    }
 }

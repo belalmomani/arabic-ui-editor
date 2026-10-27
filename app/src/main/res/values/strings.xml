@@ -90,6 +90,7 @@
     <string name="prop_name">الاسم الداخلي</string>
     <string name="prop_visible">ظاهر</string>
     <string name="prop_opacity">الشفافية (%)</string>
+    <string name="prop_rotation">الدوران (°)</string>
     <string name="prop_text">النص</string>
     <string name="prop_hint">النص التوضيحي</string>
     <string name="prop_items">عناصر القائمة (سطر لكل عنصر)</string>

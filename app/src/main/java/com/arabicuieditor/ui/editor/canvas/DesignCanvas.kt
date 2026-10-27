@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -39,6 +40,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import com.arabicuieditor.data.model.ElementTree
+import com.arabicuieditor.data.model.PropertyKeys
+import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.UiScreen
 import kotlin.math.hypot
 
@@ -47,6 +50,9 @@ private const val HANDLE_INNER_TOUCH_DP = 12f
 private const val HANDLE_VISUAL_DP = 7f
 private const val EDGE_HANDLE_MIN_SIDE_DP = 96f
 private const val ELEMENT_HIT_SLOP_DP = 6f
+private const val TOOL_OFFSET_DP = 34f
+private const val TOOL_RADIUS_DP = 13f
+private const val TOOL_TOUCH_DP = 24f
 
 private val CanvasBackground = Color(0xFF9AA3AD)
 private val SelectionColor = Color(0xFF1B8CFF)
@@ -56,7 +62,11 @@ private sealed interface GestureTarget {
     data object Pan : GestureTarget
     /** [free] صحيح إن كان العنصر حر الموضع (أبوه بتخطيط حر) فيتحرك مباشرة أثناء السحب. */
     data class Move(val id: String, val start: DesignRect, val free: Boolean) : GestureTarget
-    data class Resize(val id: String, val start: DesignRect, val handle: HandleType) : GestureTarget
+    data class Resize(val id: String, val start: DesignRect, val handle: HandleType, val rotation: Int) : GestureTarget
+    /** تدوير حر: [cx],[cy] مركز العنصر على الشاشة، و[startAngle] زاوية اللمس الأولى. */
+    data class Rotate(val id: String, val cx: Float, val cy: Float, val startRotation: Int, val startAngle: Float) : GestureTarget
+    /** زر «+» لتكرار العنصر المحدد. */
+    data class Repeat(val id: String) : GestureTarget
 }
 
 /**
@@ -85,7 +95,9 @@ fun DesignCanvas(
     modifier: Modifier = Modifier,
     layout: LayoutResult = remember(screen) { LayoutEngine.layout(screen) },
     editable: Boolean = true,
-    onElementDrop: ((String, Float, Float) -> Unit)? = null
+    onElementDrop: ((String, Float, Float) -> Unit)? = null,
+    onElementRotate: ((String, Int) -> Unit)? = null,
+    onElementRepeat: ((String) -> Unit)? = null
 ) {
     val latestLayout by rememberUpdatedState(layout)
     val latestEditable by rememberUpdatedState(editable)
@@ -97,6 +109,9 @@ fun DesignCanvas(
     val latestOnViewport by rememberUpdatedState(onViewportChange)
     val latestOnSelect by rememberUpdatedState(onSelect)
     val latestOnRect by rememberUpdatedState(onElementRectChange)
+    val latestOnRotate by rememberUpdatedState(onElementRotate)
+    val latestOnRepeat by rememberUpdatedState(onElementRepeat)
+    val latestElements by rememberUpdatedState(elementsById)
 
     // مساحة التصميم يسار-يمين دائمًا (إحداثيات مطلقة)، بغض النظر عن اتجاه التطبيق RTL.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -121,6 +136,8 @@ fun DesignCanvas(
                             rects = rects,
                             freeIds = lay.freeIds,
                             selectedId = selectedBefore,
+                            rotationOf = { id -> latestElements[id]?.intProp(PropertyKeys.ROTATION) ?: 0 },
+                            showTools = latestEditable && (latestOnRotate != null || latestOnRepeat != null),
                             vp = vp,
                             density = dens,
                             px = down.position.x,
@@ -165,13 +182,24 @@ fun DesignCanvas(
                                 if (moved) {
                                     val pxPerDp = dens * vp.scale
                                     when (dragTarget) {
-                                        is GestureTarget.Resize -> latestOnRect(
-                                            dragTarget.id,
-                                            CanvasMath.resize(
-                                                dragTarget.start, dragTarget.handle,
-                                                totalX / pxPerDp, totalY / pxPerDp
+                                        is GestureTarget.Resize -> {
+                                            // السحب يُحوَّل إلى إحداثيات العنصر غير المدار.
+                                            val (ldx, ldy) = CanvasMath.rotatePoint(
+                                                totalX, totalY, 0f, 0f, -dragTarget.rotation.toFloat()
                                             )
-                                        )
+                                            latestOnRect(
+                                                dragTarget.id,
+                                                CanvasMath.resize(dragTarget.start, dragTarget.handle, ldx / pxPerDp, ldy / pxPerDp)
+                                            )
+                                        }
+
+                                        is GestureTarget.Rotate -> {
+                                            val angle = CanvasMath.angleDegrees(dragTarget.cx, dragTarget.cy, lastX, lastY)
+                                            val raw = dragTarget.startRotation + (angle - dragTarget.startAngle)
+                                            latestOnRotate?.invoke(dragTarget.id, CanvasMath.snapAngle(CanvasMath.normalizeDegrees(raw)))
+                                        }
+
+                                        is GestureTarget.Repeat -> Unit
 
                                         is GestureTarget.Move -> {
                                             val next = CanvasMath.move(
@@ -198,6 +226,10 @@ fun DesignCanvas(
                         } while (event.changes.any { it.pressed })
 
                         ghost = null
+                        // نقرة على «+» دون سحب: تكرار العنصر المحدد.
+                        if (!moved && !multiTouch && target is GestureTarget.Repeat && latestEditable) {
+                            latestOnRepeat?.invoke(target.id)
+                        }
                         // نقرة على فراغ بلا سحب ولا إصبعين: إلغاء التحديد.
                         if (!moved && !multiTouch && target is GestureTarget.Pan) {
                             latestOnSelect(null)
@@ -239,6 +271,7 @@ fun DesignCanvas(
                                 modifier = Modifier
                                     .absoluteOffset(rect.x.dp, rect.y.dp)
                                     .size(rect.w.dp, rect.h.dp)
+                                    .graphicsLayer { rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat() }
                                     .clipToBounds()
                             )
                         }
@@ -250,6 +283,8 @@ fun DesignCanvas(
                 frameW = layout.width,
                 frameH = layout.height,
                 selected = selectedId?.let { layout.frames[it] },
+                rotation = selectedId?.let { elementsById[it]?.intProp(PropertyKeys.ROTATION) } ?: 0,
+                showTools = editable && (onElementRotate != null || onElementRepeat != null),
                 ghost = ghost,
                 viewport = viewport
             )
@@ -262,6 +297,8 @@ private fun decideTarget(
     rects: List<Pair<String, DesignRect>>,
     freeIds: Set<String>,
     selectedId: String?,
+    rotationOf: (String) -> Int,
+    showTools: Boolean,
     vp: Viewport,
     density: Float,
     px: Float,
@@ -270,18 +307,33 @@ private fun decideTarget(
     val selected = rects.firstOrNull { it.first == selectedId }
     if (selected != null) {
         val sr = CanvasMath.toScreenRect(vp, density, selected.second)
+        val rot = rotationOf(selected.first)
+        val cx = (sr.left + sr.right) / 2f
+        val cy = (sr.top + sr.bottom) / 2f
+        // نقطة اللمس بإحداثيات العنصر غير المدار.
+        val (lx, ly) = if (rot == 0) px to py else CanvasMath.rotatePoint(px, py, cx, cy, -rot.toFloat())
+        if (showTools) {
+            val touch = TOOL_TOUCH_DP * density
+            val off = TOOL_OFFSET_DP * density
+            if (hypot(lx - cx, ly - (sr.top - off)) <= touch) {
+                return GestureTarget.Rotate(
+                    selected.first, cx, cy, rot, CanvasMath.angleDegrees(cx, cy, px, py)
+                )
+            }
+            if (hypot(lx - cx, ly - (sr.bottom + off)) <= touch) return GestureTarget.Repeat(selected.first)
+        }
         val handles = CanvasMath.handlePositions(sr, EDGE_HANDLE_MIN_SIDE_DP * density)
         val handle = CanvasMath.hitHandle(
-            handles, sr, px, py,
+            handles, sr, lx, ly,
             outerRadius = HANDLE_OUTER_TOUCH_DP * density,
             innerRadius = HANDLE_INNER_TOUCH_DP * density
         )
-        if (handle != null) return GestureTarget.Resize(selected.first, selected.second, handle)
+        if (handle != null) return GestureTarget.Resize(selected.first, selected.second, handle, rot)
     }
     val designX = CanvasMath.toDesignX(vp, density, px)
     val designY = CanvasMath.toDesignY(vp, density, py)
     val slopDesign = ELEMENT_HIT_SLOP_DP / vp.scale
-    val hit = CanvasMath.hitTest(rects, designX, designY, slopDesign)
+    val hit = CanvasMath.hitTestRotated(rects, rotationOf, designX, designY, slopDesign)
     if (hit != null) {
         return GestureTarget.Move(hit, rects.first { it.first == hit }.second, hit in freeIds)
     }
@@ -294,6 +346,8 @@ private fun SelectionOverlay(
     frameW: Float,
     frameH: Float,
     selected: DesignRect?,
+    rotation: Int,
+    showTools: Boolean,
     ghost: DesignRect?,
     viewport: Viewport
 ) {
@@ -323,17 +377,46 @@ private fun SelectionOverlay(
         }
 
         val rect = selected?.let { CanvasMath.toScreenRect(viewport, density, it) } ?: return@Canvas
-        drawRect(
-            color = SelectionColor,
-            topLeft = Offset(rect.left, rect.top),
-            size = Size(rect.width, rect.height),
-            style = Stroke(2.dp.toPx())
-        )
-        val radius = HANDLE_VISUAL_DP.dp.toPx()
-        CanvasMath.handlePositions(rect, EDGE_HANDLE_MIN_SIDE_DP * density).forEach { h ->
-            val center = Offset(h.x, h.y)
-            drawCircle(Color.White, radius, center)
-            drawCircle(SelectionColor, radius, center, style = Stroke(2.dp.toPx()))
+        val pivot = Offset((rect.left + rect.right) / 2f, (rect.top + rect.bottom) / 2f)
+        rotate(rotation.toFloat(), pivot) {
+            drawRect(
+                color = SelectionColor,
+                topLeft = Offset(rect.left, rect.top),
+                size = Size(rect.width, rect.height),
+                style = Stroke(2.dp.toPx())
+            )
+            val radius = HANDLE_VISUAL_DP.dp.toPx()
+            CanvasMath.handlePositions(rect, EDGE_HANDLE_MIN_SIDE_DP * density).forEach { h ->
+                val center = Offset(h.x, h.y)
+                drawCircle(Color.White, radius, center)
+                drawCircle(SelectionColor, radius, center, style = Stroke(2.dp.toPx()))
+            }
+            if (showTools) {
+                val off = TOOL_OFFSET_DP.dp.toPx()
+                val r = TOOL_RADIUS_DP.dp.toPx()
+                val stroke = 2.dp.toPx()
+                // مقبض التدوير: دائرة بيضاء بسهم دائري، يصله خط بالعنصر.
+                val rc = Offset(pivot.x, rect.top - off)
+                drawLine(SelectionColor, Offset(pivot.x, rect.top), Offset(rc.x, rc.y + r), stroke)
+                drawCircle(Color.White, r, rc)
+                drawCircle(SelectionColor, r, rc, style = Stroke(stroke))
+                drawArc(
+                    color = SelectionColor,
+                    startAngle = -60f,
+                    sweepAngle = 270f,
+                    useCenter = false,
+                    topLeft = Offset(rc.x - r * 0.5f, rc.y - r * 0.5f),
+                    size = Size(r, r),
+                    style = Stroke(stroke)
+                )
+                // زر التكرار «+».
+                val pc = Offset(pivot.x, rect.bottom + off)
+                drawLine(SelectionColor, Offset(pivot.x, rect.bottom), Offset(pc.x, pc.y - r), stroke)
+                drawCircle(SelectionColor, r, pc)
+                val arm = r * 0.5f
+                drawLine(Color.White, Offset(pc.x - arm, pc.y), Offset(pc.x + arm, pc.y), stroke)
+                drawLine(Color.White, Offset(pc.x, pc.y - arm), Offset(pc.x, pc.y + arm), stroke)
+            }
         }
     }
 }

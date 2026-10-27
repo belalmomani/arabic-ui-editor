@@ -125,4 +125,26 @@ class CanvasMathTest {
         // داخل العنصر وقريب جدًا من الزاوية: مقبض
         assertNotNull(CanvasMath.hitHandle(handles, rect, 110f, 110f, outerRadius = 70f, innerRadius = 30f))
     }
+
+    @Test
+    fun rotationMathIsClockwiseAndNormalized() {
+        val (x, y) = CanvasMath.rotatePoint(10f, 0f, 0f, 0f, 90f)
+        assertEquals(0f, x, 0.001f)
+        assertEquals(10f, y, 0.001f)
+        assertEquals(90f, CanvasMath.angleDegrees(0f, 0f, 0f, 5f), 0.001f)
+        assertEquals(350, CanvasMath.normalizeDegrees(-10f))
+        assertEquals(0, CanvasMath.normalizeDegrees(360f))
+        assertEquals(90, CanvasMath.snapAngle(92))
+        assertEquals(0, CanvasMath.snapAngle(358))
+        assertEquals(100, CanvasMath.snapAngle(100))
+    }
+
+    @Test
+    fun rotatedHitTestFollowsTheRotatedShape() {
+        // مستطيل أفقي طويل حول (100,100) مدار 90°: يصبح رأسيًا.
+        val rects = listOf("bar" to DesignRect(0f, 90f, 200f, 20f))
+        val rot = { _: String -> 90 }
+        assertEquals("bar", CanvasMath.hitTestRotated(rects, rot, 100f, 10f, 0f))
+        assertNull(CanvasMath.hitTestRotated(rects, rot, 10f, 100f, 0f))
+    }
 }

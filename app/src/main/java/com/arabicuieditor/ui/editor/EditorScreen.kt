@@ -250,7 +250,11 @@ private fun EditorContent(
                         modifier = Modifier.fillMaxSize(),
                         layout = layout,
                         editable = editable,
-                        onElementDrop = viewModel::dropElement
+                        onElementDrop = viewModel::dropElement,
+                        onElementRotate = { id, degrees ->
+                            viewModel.setProperty(id, com.arabicuieditor.data.model.PropertyKeys.ROTATION, degrees.toString())
+                        },
+                        onElementRepeat = { viewModel.duplicateSelected() }
                     )
                     // شريحة حجم المعاينة: نقرة تنتقل إلى الحجم التالي (حجم التصميم ثم الأحجام الجاهزة).
                     AssistChip(

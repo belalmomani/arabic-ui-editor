@@ -30,9 +30,10 @@ class ScreenOpsTest {
 
     @Test
     fun renameKeepsNamesUnique() {
-        val renamed = ScreenOps.rename(screens(), "s2", "الإعدادات")
+        val list = screens()
+        val renamed = ScreenOps.rename(list, "s2", "الإعدادات")
         assertEquals("الإعدادات 2", renamed.first { it.id == "s2" }.name)
-        assertEquals(screens(), ScreenOps.rename(screens(), "missing", "x"))
+        assertEquals(list, ScreenOps.rename(list, "missing", "x"))
     }
 
     @Test
