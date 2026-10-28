@@ -21,6 +21,9 @@ import com.arabicuieditor.data.model.ScreenOps
 import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.SizeSpec
 import com.arabicuieditor.data.model.Tokens
+import com.arabicuieditor.data.storage.ALLOWED_GRIDS
+import com.arabicuieditor.ui.editor.canvas.AlignEdge
+import com.arabicuieditor.ui.editor.canvas.SmartAlign
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.newElement
@@ -194,6 +197,62 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
 
     fun resetDesignSystem() {
         edit { it.copy(designSystem = DesignSystem.DEFAULT) }
+    }
+
+    // ---- المحاذاة الذكية ----
+
+    /** إعدادات الالتقاط والشبكة؛ إعداد عرض لا يدخل في التراجع. */
+    fun setSnapObjects(enabled: Boolean) {
+        edit { it.copy(snapObjects = enabled) }
+    }
+
+    fun setGridSize(size: Int) {
+        if (size !in ALLOWED_GRIDS) return
+        edit { it.copy(gridSize = size) }
+    }
+
+    /** يحاذي العنصر الحر المحدد داخل منطقة محتوى أبيه. */
+    fun alignSelected(edge: AlignEdge) {
+        val id = _selectedId.value ?: return
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        if (id !in layout.freeIds) return
+        val frame = layout.frames[id] ?: return
+        setElementRect(id, SmartAlign.alignIn(frame, layout.parentContentOf(id), edge))
+    }
+
+    /**
+     * يوزّع العناصر الحرة المتشاركة مع العنصر المحدد في الأب نفسه بفجوات متساوية (الأول والأخير ثابتان).
+     * يحتاج 3 عناصر حرة على الأقل. خطوة تراجع واحدة.
+     */
+    fun distributeSelected(horizontal: Boolean) {
+        val id = _selectedId.value ?: return
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        if (id !in layout.freeIds) return
+        val parent = layout.parentOf[id]
+        val frames = layout.freeIds
+            .filter { layout.parentOf[it] == parent }
+            .mapNotNull { sid -> layout.frames[sid]?.let { sid to it } }
+        val moved = SmartAlign.distribute(frames, horizontal)
+        if (moved.isEmpty()) return
+        val content = layout.parentContentOf(id)
+        editScreen(screen.id) { s ->
+            var roots = s.elements
+            for ((mid, r) in moved) {
+                roots = ElementTree.update(roots, mid) { e ->
+                    e.copy(
+                        layout = e.layout.copy(
+                            x = (r.x - content.x).roundToInt().toFloat(),
+                            y = (r.y - content.y).roundToInt().toFloat()
+                        )
+                    )
+                }
+            }
+            s.copy(elements = roots)
+        }
     }
 
     /** يضبط حجم المعاينة؛ 0 يعني العودة إلى حجم تصميم الشاشة. لا يدخل في سجل التراجع. */

@@ -64,6 +64,7 @@ import com.arabicuieditor.ui.editor.canvas.CanvasMath
 import com.arabicuieditor.ui.editor.canvas.DesignCanvas
 import com.arabicuieditor.ui.editor.canvas.DesignRect
 import com.arabicuieditor.ui.editor.canvas.LayoutEngine
+import com.arabicuieditor.ui.editor.canvas.SnapSettings
 import com.arabicuieditor.ui.editor.canvas.Viewport
 import com.arabicuieditor.ui.screens.AppTopBar
 import kotlin.math.roundToInt
@@ -257,7 +258,8 @@ private fun EditorContent(
                             viewModel.setProperty(id, com.arabicuieditor.data.model.PropertyKeys.ROTATION, degrees.toString())
                         },
                         onElementRepeat = { viewModel.duplicateSelected() },
-                        designSystem = project.designSystem
+                        designSystem = project.designSystem,
+                        snap = SnapSettings(project.snapObjects, project.gridSize)
                     )
                     // شريحة حجم المعاينة: نقرة تنتقل إلى الحجم التالي (حجم التصميم ثم الأحجام الجاهزة).
                     AssistChip(
@@ -376,7 +378,9 @@ private fun EditorContent(
                                         selectedElement?.let { viewModel.setChildLayout(it.id, l) }
                                     },
                                     onWrap = viewModel::wrapSelected,
-                                    onUnwrap = viewModel::unwrapSelected
+                                    onUnwrap = viewModel::unwrapSelected,
+                                    onAlign = viewModel::alignSelected,
+                                    onDistribute = viewModel::distributeSelected
                                 )
 
                                 BottomTab.LAYERS -> LayersPanel(
@@ -400,6 +404,10 @@ private fun EditorContent(
                                     onSetScreenSize = { w, h -> viewModel.setScreenSize(screen.id, w, h) },
                                     onSetLayout = viewModel::setScreenLayout,
                                     onSetScreenProperty = viewModel::setScreenProperty,
+                                    snapObjects = project.snapObjects,
+                                    gridSize = project.gridSize,
+                                    onSetSnapObjects = viewModel::setSnapObjects,
+                                    onSetGrid = viewModel::setGridSize,
                                     modifier = Modifier.fillMaxSize()
                                 )
 

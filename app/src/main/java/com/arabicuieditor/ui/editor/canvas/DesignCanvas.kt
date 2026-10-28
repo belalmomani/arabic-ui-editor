@@ -101,12 +101,15 @@ fun DesignCanvas(
     onElementDrop: ((String, Float, Float) -> Unit)? = null,
     onElementRotate: ((String, Int) -> Unit)? = null,
     onElementRepeat: ((String) -> Unit)? = null,
-    designSystem: DesignSystem = DesignSystem.DEFAULT
+    designSystem: DesignSystem = DesignSystem.DEFAULT,
+    snap: SnapSettings = SnapSettings()
 ) {
     val latestLayout by rememberUpdatedState(layout)
     val latestEditable by rememberUpdatedState(editable)
     val latestOnDrop by rememberUpdatedState(onElementDrop)
     var ghost by remember { mutableStateOf<DesignRect?>(null) }
+    var guides by remember { mutableStateOf<List<Guide>>(emptyList()) }
+    val latestSnap by rememberUpdatedState(snap)
     val elementsById = remember(screen, designSystem) {
         ElementTree.flatten(screen.elements).map { it.resolved(designSystem) }.associateBy { it.id }
     }
@@ -153,6 +156,15 @@ fun DesignCanvas(
                             latestOnSelect(target.id)
                         }
 
+                        // أهداف الالتقاط تُحسب مرة عند بداية اللمس (عناصر الشاشة الأخرى لا تتحرك أثناءه).
+                        val snapId = when (target) {
+                            is GestureTarget.Move -> if (target.free) target.id else null
+                            is GestureTarget.Resize -> if (target.rotation == 0) target.id else null
+                            else -> null
+                        }
+                        val snapTargets = if (snapId != null) SmartAlign.targetsFor(lay, snapId) else emptyList()
+                        val screenRect = DesignRect(0f, 0f, frameW, frameH)
+
                         var totalX = 0f
                         var totalY = 0f
                         var appliedPanX = 0f
@@ -193,10 +205,19 @@ fun DesignCanvas(
                                             val (ldx, ldy) = CanvasMath.rotatePoint(
                                                 totalX, totalY, 0f, 0f, -dragTarget.rotation.toFloat()
                                             )
-                                            latestOnRect(
-                                                dragTarget.id,
-                                                CanvasMath.resize(dragTarget.start, dragTarget.handle, ldx / pxPerDp, ldy / pxPerDp)
+                                            val raw = CanvasMath.resize(
+                                                dragTarget.start, dragTarget.handle, ldx / pxPerDp, ldy / pxPerDp
                                             )
+                                            if (dragTarget.rotation == 0) {
+                                                val s = SmartAlign.snapResize(
+                                                    raw, dragTarget.handle, snapTargets, screenRect,
+                                                    SmartAlign.THRESHOLD_DP / vp.scale, latestSnap
+                                                )
+                                                guides = s.guides
+                                                latestOnRect(dragTarget.id, s.rect)
+                                            } else {
+                                                latestOnRect(dragTarget.id, raw)
+                                            }
                                         }
 
                                         is GestureTarget.Rotate -> {
@@ -213,7 +234,14 @@ fun DesignCanvas(
                                                 totalX / pxPerDp, totalY / pxPerDp,
                                                 frameW, frameH
                                             )
-                                            if (dragTarget.free) latestOnRect(dragTarget.id, next) else ghost = next
+                                            if (dragTarget.free) {
+                                                val s = SmartAlign.snapMove(
+                                                    next, snapTargets, screenRect,
+                                                    SmartAlign.THRESHOLD_DP / vp.scale, latestSnap
+                                                )
+                                                guides = s.guides
+                                                latestOnRect(dragTarget.id, s.rect)
+                                            } else ghost = next
                                         }
 
                                         GestureTarget.Pan -> {
@@ -232,6 +260,7 @@ fun DesignCanvas(
                         } while (event.changes.any { it.pressed })
 
                         ghost = null
+                        guides = emptyList()
                         // نقرة على «+» دون سحب: تكرار العنصر المحدد.
                         if (!moved && !multiTouch && target is GestureTarget.Repeat && latestEditable) {
                             latestOnRepeat?.invoke(target.id)
@@ -292,6 +321,8 @@ fun DesignCanvas(
                 rotation = selectedId?.let { elementsById[it]?.intProp(PropertyKeys.ROTATION) } ?: 0,
                 showTools = editable && (onElementRotate != null || onElementRepeat != null),
                 ghost = ghost,
+                guides = guides,
+                grid = snap.grid,
                 viewport = viewport
             )
         }
@@ -355,6 +386,8 @@ private fun SelectionOverlay(
     rotation: Int,
     showTools: Boolean,
     ghost: DesignRect?,
+    guides: List<Guide>,
+    grid: Int,
     viewport: Viewport
 ) {
     val density = LocalDensity.current.density
@@ -366,6 +399,22 @@ private fun SelectionOverlay(
             size = Size(frame.width, frame.height),
             style = Stroke(1.dp.toPx())
         )
+
+        // شبكة اختيارية: تُخفى إذا تقاربت خطوطها كثيرًا على الشاشة.
+        if (grid > 0 && grid * density * viewport.scale >= 8f) {
+            val step = grid * density * viewport.scale
+            val gridColor = Color(0x22000000)
+            var gx = frame.left + step
+            while (gx < frame.right) {
+                drawLine(gridColor, Offset(gx, frame.top), Offset(gx, frame.bottom), 1f)
+                gx += step
+            }
+            var gy = frame.top + step
+            while (gy < frame.bottom) {
+                drawLine(gridColor, Offset(frame.left, gy), Offset(frame.right, gy), 1f)
+                gy += step
+            }
+        }
 
         if (ghost != null) {
             val g = CanvasMath.toScreenRect(viewport, density, ghost)
@@ -380,6 +429,22 @@ private fun SelectionOverlay(
                 size = Size(g.width, g.height),
                 style = Stroke(2.dp.toPx())
             )
+        }
+
+        // الخطوط الإرشادية: وردي للالتقاط، وبنفسجي للتباعد المتساوي.
+        for (gd in guides) {
+            val color = if (gd.spacing) Color(0xFF9C27B0) else Color(0xFFE91E63)
+            if (gd.vertical) {
+                val x = CanvasMath.toScreenX(viewport, density, gd.pos)
+                val y1 = CanvasMath.toScreenY(viewport, density, gd.start)
+                val y2 = CanvasMath.toScreenY(viewport, density, gd.end)
+                drawLine(color, Offset(x, y1), Offset(x, y2), 1.5.dp.toPx())
+            } else {
+                val y = CanvasMath.toScreenY(viewport, density, gd.pos)
+                val x1 = CanvasMath.toScreenX(viewport, density, gd.start)
+                val x2 = CanvasMath.toScreenX(viewport, density, gd.end)
+                drawLine(color, Offset(x1, y), Offset(x2, y), 1.5.dp.toPx())
+            }
         }
 
         val rect = selected?.let { CanvasMath.toScreenRect(viewport, density, it) } ?: return@Canvas

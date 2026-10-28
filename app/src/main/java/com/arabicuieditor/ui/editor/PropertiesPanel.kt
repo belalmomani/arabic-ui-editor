@@ -59,6 +59,7 @@ import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.spec
 import com.arabicuieditor.data.model.prop
+import com.arabicuieditor.ui.editor.canvas.AlignEdge
 import com.arabicuieditor.ui.editor.canvas.DesignRect
 
 /** ألوان جاهزة للاختيار السريع (بصيغة #AARRGGBB). غير محصورة: يمكن إدخال أي لون سداسي. */
@@ -90,7 +91,9 @@ fun PropertiesPanel(
     onSetPercent: (Axis, Int) -> Unit = { _, _ -> },
     onSetChildLayout: (ChildLayout) -> Unit = {},
     onWrap: (ChildLayout) -> Unit = {},
-    onUnwrap: () -> Unit = {}
+    onUnwrap: () -> Unit = {},
+    onAlign: (AlignEdge) -> Unit = {},
+    onDistribute: (horizontal: Boolean) -> Unit = {}
 ) {
     if (element == null || rect == null) {
         Box(modifier, contentAlignment = Alignment.Center) {
@@ -109,6 +112,27 @@ fun PropertiesPanel(
     LazyColumn(modifier = modifier.testTag("props_list"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item(key = "actions") {
             ActionsRow(onDuplicate, onDelete, onReorder, onWrap, onUnwrap, canUnwrap = element.children.isNotEmpty())
+        }
+
+        if (isFree) {
+            item(key = "align") {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SectionHeader(stringResource(R.string.group_align))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ActionChip(stringResource(R.string.align_to_left), "align_left") { onAlign(AlignEdge.LEFT) }
+                        ActionChip(stringResource(R.string.align_to_center_h), "align_center_h") { onAlign(AlignEdge.CENTER_H) }
+                        ActionChip(stringResource(R.string.align_to_right), "align_right") { onAlign(AlignEdge.RIGHT) }
+                        ActionChip(stringResource(R.string.align_to_top), "align_top") { onAlign(AlignEdge.TOP) }
+                        ActionChip(stringResource(R.string.align_to_center_v), "align_center_v") { onAlign(AlignEdge.CENTER_V) }
+                        ActionChip(stringResource(R.string.align_to_bottom), "align_bottom") { onAlign(AlignEdge.BOTTOM) }
+                        ActionChip(stringResource(R.string.distribute_h), "distribute_h") { onDistribute(true) }
+                        ActionChip(stringResource(R.string.distribute_v), "distribute_v") { onDistribute(false) }
+                    }
+                }
+            }
         }
 
         item(key = "sizes") {

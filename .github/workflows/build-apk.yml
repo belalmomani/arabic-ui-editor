@@ -39,7 +39,7 @@ jobs:
 
       # اختبارات المنطق (الهندسة، الخصائص، التراجع، JSON، الحفظ). فشلها يجعل التشغيل أحمر.
       - name: Run logic tests
-        run: gradle :app:testDebugUnitTest --tests "*CanvasMathTest" --tests "*ProjectStorageTest" --tests "*EditHistoryTest" --tests "*PropertyRegistryTest" --tests "*ElementOpsTest" --tests "*ComponentLibraryTest" --tests "*PropertyPersistenceTest" --tests "*LayoutEngineTest" --tests "*ElementTreeTest" --tests "*ScreenOpsTest" --tests "*ScreensPersistenceTest" --tests "*PreviewSizesTest" --tests "*DesignSystemTest" --stacktrace
+        run: gradle :app:testDebugUnitTest --tests "*CanvasMathTest" --tests "*ProjectStorageTest" --tests "*EditHistoryTest" --tests "*PropertyRegistryTest" --tests "*ElementOpsTest" --tests "*ComponentLibraryTest" --tests "*PropertyPersistenceTest" --tests "*LayoutEngineTest" --tests "*ElementTreeTest" --tests "*ScreenOpsTest" --tests "*ScreensPersistenceTest" --tests "*PreviewSizesTest" --tests "*DesignSystemTest" --tests "*SmartAlignTest" --stacktrace
 
       # اختبارات واجهة حقيقية عبر Robolectric: إيماءات مساحة التصميم، ولوحة الخصائص،
       # تُشغَّل حتى لو فشلت اختبارات المنطق.

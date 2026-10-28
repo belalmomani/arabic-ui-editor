@@ -101,7 +101,11 @@ data class Project(
     val previewWidth: Float = 0f,
     val previewHeight: Float = 0f,
     /** نظام التصميم: ألوان وزوايا وأحجام نصوص مركزية تشير إليها العناصر بمراجع. */
-    val designSystem: DesignSystem = DesignSystem.DEFAULT
+    val designSystem: DesignSystem = DesignSystem.DEFAULT,
+    /** التقاط العناصر إلى حواف ومراكز غيرها والتباعد المتساوي أثناء السحب. */
+    val snapObjects: Boolean = true,
+    /** حجم الشبكة بالـ dp؛ 0 يعني بلا شبكة. */
+    val gridSize: Int = 0
 ) {
     /** معرّف شاشة البداية الفعلي (يتراجع إلى أول شاشة إن كان المخزَّن غير صالح). */
     val effectiveStartScreenId: String?

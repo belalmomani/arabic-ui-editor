@@ -24,6 +24,9 @@ class UnsupportedSchemaException(val found: Int) :
  * تحويل المشروع من/إلى JSON منظم.
  * يحتوي JSON على بيانات التصميم ومراجع الموارد فقط؛ الملفات نفسها تبقى في مجلد resources.
  */
+/** أحجام الشبكة المسموحة (0 = بلا شبكة). */
+val ALLOWED_GRIDS = listOf(0, 4, 8, 16)
+
 object ProjectJsonCodec {
 
     fun encode(project: Project): String = JSONObject().apply {
@@ -36,6 +39,8 @@ object ProjectJsonCodec {
         put("previewWidth", project.previewWidth.toDouble())
         put("previewHeight", project.previewHeight.toDouble())
         put("designSystem", designToJson(project.designSystem))
+        put("snapObjects", project.snapObjects)
+        put("gridSize", project.gridSize)
         put("screens", JSONArray().also { arr -> project.screens.forEach { arr.put(screenToJson(it)) } })
         put("resources", JSONArray().also { arr -> project.resources.forEach { arr.put(resourceToJson(it)) } })
     }.toString(2)
@@ -56,7 +61,9 @@ object ProjectJsonCodec {
             startScreenId = migrated.optString("startScreenId").takeIf { it.isNotEmpty() },
             previewWidth = migrated.optDouble("previewWidth", 0.0).toFloat(),
             previewHeight = migrated.optDouble("previewHeight", 0.0).toFloat(),
-            designSystem = designFromJson(migrated.optJSONObject("designSystem"))
+            designSystem = designFromJson(migrated.optJSONObject("designSystem")),
+            snapObjects = migrated.optBoolean("snapObjects", true),
+            gridSize = migrated.optInt("gridSize", 0).takeIf { it in ALLOWED_GRIDS } ?: 0
         )
     }
 

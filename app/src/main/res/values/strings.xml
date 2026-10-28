@@ -350,4 +350,20 @@
     <string name="theme_sunset">الغروب</string>
     <string name="theme_rose">الوردي</string>
     <string name="theme_night">ليلي</string>
+
+    <!-- المحاذاة الذكية -->
+    <string name="group_align">محاذاة وتوزيع</string>
+    <string name="align_to_left">إلى اليسار</string>
+    <string name="align_to_center_h">وسط أفقي</string>
+    <string name="align_to_right">إلى اليمين</string>
+    <string name="align_to_top">إلى الأعلى</string>
+    <string name="align_to_center_v">وسط رأسي</string>
+    <string name="align_to_bottom">إلى الأسفل</string>
+    <string name="distribute_h">توزيع أفقي متساوٍ</string>
+    <string name="distribute_v">توزيع رأسي متساوٍ</string>
+    <string name="snap_title">المحاذاة الذكية</string>
+    <string name="snap_objects">التقاط للعناصر</string>
+    <string name="grid_off">بلا شبكة</string>
+    <string name="grid_size">شبكة %1$d</string>
+    <string name="snap_note">عند السحب تظهر خطوط إرشادية وردية لمحاذاة الحواف والمراكز، وبنفسجية للتباعد المتساوي. الشبكة تلتقط الحواف العلوية واليسرى.</string>
 </resources>

@@ -36,6 +36,7 @@ import com.arabicuieditor.data.model.PropertyRegistry
 import com.arabicuieditor.data.model.SCREEN_TYPE
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.prop
+import com.arabicuieditor.data.storage.ALLOWED_GRIDS
 import com.arabicuieditor.ui.projects.NameDialog
 
 private enum class ScreenDialog { RENAME, DELETE }
@@ -63,7 +64,11 @@ fun ScreenPanel(
     onSetScreenSize: (Float, Float) -> Unit,
     onSetLayout: (ChildLayout) -> Unit,
     onSetScreenProperty: (String, String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    snapObjects: Boolean = true,
+    gridSize: Int = 0,
+    onSetSnapObjects: (Boolean) -> Unit = {},
+    onSetGrid: (Int) -> Unit = {}
 ) {
     var dialog by remember { mutableStateOf<ScreenDialog?>(null) }
     val isStart = project.effectiveStartScreenId == screen.id
@@ -167,6 +172,38 @@ fun ScreenPanel(
                         modifier = Modifier.testTag("preview_rotate")
                     )
                 }
+            }
+        }
+
+        item(key = "snap") {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SectionHeader(stringResource(R.string.snap_title))
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = snapObjects,
+                        onClick = { onSetSnapObjects(!snapObjects) },
+                        label = { Text(stringResource(R.string.snap_objects)) },
+                        modifier = Modifier.testTag("snap_objects")
+                    )
+                    ALLOWED_GRIDS.forEach { g ->
+                        FilterChip(
+                            selected = gridSize == g,
+                            onClick = { onSetGrid(g) },
+                            label = {
+                                Text(if (g == 0) stringResource(R.string.grid_off) else stringResource(R.string.grid_size, g))
+                            },
+                            modifier = Modifier.testTag("grid_$g")
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.snap_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 
