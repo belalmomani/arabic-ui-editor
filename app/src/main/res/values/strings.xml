@@ -90,6 +90,13 @@
     <string name="prop_name">الاسم الداخلي</string>
     <string name="prop_visible">ظاهر</string>
     <string name="prop_opacity">الشفافية (%)</string>
+    <string name="contrast_title">تباين النص (WCAG)</string>
+    <string name="contrast_ratio">%1$.1f : 1</string>
+    <string name="contrast_aaa">ممتاز: يجتاز AAA</string>
+    <string name="contrast_aa">جيد: يجتاز AA للنص العادي</string>
+    <string name="contrast_large_ok">يجتاز AA لأن النص كبير فقط؛ ويفشل للنص العادي</string>
+    <string name="contrast_large_only">ضعيف: لا يصلح إلا للنص الكبير (18 فأكثر)، كبّر الخط أو غيّر اللون</string>
+    <string name="contrast_fail">غير مقروء بما يكفي: غيّر لون النص أو الخلفية</string>
     <string name="prop_rotation">الدوران (°)</string>
     <string name="prop_text">النص</string>
     <string name="prop_hint">النص التوضيحي</string>

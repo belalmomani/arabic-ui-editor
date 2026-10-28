@@ -48,6 +48,10 @@ import com.arabicuieditor.R
 import com.arabicuieditor.data.model.Axis
 import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ColorUtil
+import com.arabicuieditor.data.model.Contrast
+import com.arabicuieditor.data.model.colorProp
+import com.arabicuieditor.data.model.intProp
+import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.PropertyContext
 import com.arabicuieditor.data.model.PropertyDef
@@ -132,6 +136,12 @@ fun PropertiesPanel(
                         ActionChip(stringResource(R.string.distribute_v), "distribute_v") { onDistribute(false) }
                     }
                 }
+            }
+        }
+
+        if (defs.any { it.key == PropertyKeys.TEXT_COLOR }) {
+            item(key = "contrast") {
+                ContrastCheck(element)
             }
         }
 
@@ -658,5 +668,50 @@ private fun ToggleField(
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
         Switch(checked = checked, onCheckedChange = onChecked, modifier = Modifier.testTag(tag))
+    }
+}
+
+/** فحص تباين لون النص مع خلفية العنصر (أو خلفية الشاشة إن كانت خلفيته شفافة). */
+@Composable
+private fun ContrastCheck(element: UiElement) {
+    val ds = LocalDesignSystem.current
+    val fg = element.colorProp(PropertyKeys.TEXT_COLOR)
+    val own = element.colorProp(PropertyKeys.BG_COLOR)
+    val backdrop = Contrast.over(own, ds.color(Tokens.BACKGROUND))
+    val ratio = Contrast.ratio(fg, backdrop)
+    val large = Contrast.isLargeText(element.intProp(PropertyKeys.FONT_SIZE))
+    val level = Contrast.level(ratio)
+    val ok = level == Contrast.Level.AAA || level == Contrast.Level.AA ||
+        (large && level == Contrast.Level.AA_LARGE_ONLY)
+    val messageRes = when {
+        level == Contrast.Level.AAA -> R.string.contrast_aaa
+        level == Contrast.Level.AA -> R.string.contrast_aa
+        ok -> R.string.contrast_large_ok
+        level == Contrast.Level.AA_LARGE_ONLY -> R.string.contrast_large_only
+        else -> R.string.contrast_fail
+    }
+    val tint = if (ok) Color(0xFF2E7D32) else Color(0xFFC62828)
+    Column(
+        modifier = Modifier.testTag("contrast_check"),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        SectionHeader(stringResource(R.string.contrast_title))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                Modifier
+                    .size(width = 56.dp, height = 28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(backdrop))
+                    .border(1.dp, Color(0xFFB0B7BF), RoundedCornerShape(6.dp)),
+                contentAlignment = Alignment.Center
+            ) { Text("Aa", color = Color(fg), fontSize = 14.sp) }
+            Text(
+                text = stringResource(R.string.contrast_ratio, ratio),
+                color = tint,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.testTag("contrast_ratio")
+            )
+        }
+        Text(stringResource(messageRes), color = tint, style = MaterialTheme.typography.bodySmall)
     }
 }
