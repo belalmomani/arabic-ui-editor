@@ -39,7 +39,10 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
+import com.arabicuieditor.data.model.DesignSystem
 import com.arabicuieditor.data.model.ElementTree
+import com.arabicuieditor.data.model.Tokens
+import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.UiScreen
@@ -97,13 +100,16 @@ fun DesignCanvas(
     editable: Boolean = true,
     onElementDrop: ((String, Float, Float) -> Unit)? = null,
     onElementRotate: ((String, Int) -> Unit)? = null,
-    onElementRepeat: ((String) -> Unit)? = null
+    onElementRepeat: ((String) -> Unit)? = null,
+    designSystem: DesignSystem = DesignSystem.DEFAULT
 ) {
     val latestLayout by rememberUpdatedState(layout)
     val latestEditable by rememberUpdatedState(editable)
     val latestOnDrop by rememberUpdatedState(onElementDrop)
     var ghost by remember { mutableStateOf<DesignRect?>(null) }
-    val elementsById = remember(screen) { ElementTree.flatten(screen.elements).associateBy { it.id } }
+    val elementsById = remember(screen, designSystem) {
+        ElementTree.flatten(screen.elements).map { it.resolved(designSystem) }.associateBy { it.id }
+    }
     val latestSelected by rememberUpdatedState(selectedId)
     val latestViewport by rememberUpdatedState(viewport)
     val latestOnViewport by rememberUpdatedState(onViewportChange)
@@ -258,7 +264,7 @@ fun DesignCanvas(
                         translationY = viewport.offsetY
                         clip = true
                     }
-                    .background(Color.White)
+                    .background(Color(designSystem.color(Tokens.BACKGROUND)))
             ) {
                 // كل العناصر (بما فيها المتداخلة) تُرسم مسطّحة بإطاراتها المحسوبة، الأب قبل أبنائه.
                 layout.paintOrder.forEach { id ->

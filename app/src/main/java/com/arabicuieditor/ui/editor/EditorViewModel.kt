@@ -9,6 +9,8 @@ import com.arabicuieditor.R
 import com.arabicuieditor.data.model.Axis
 import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ComponentPreset
+import com.arabicuieditor.data.model.DesignSystem
+import com.arabicuieditor.data.model.DesignThemes
 import com.arabicuieditor.data.model.ElementOps
 import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.LayoutEditing
@@ -18,6 +20,7 @@ import com.arabicuieditor.data.model.SCREEN_TYPE
 import com.arabicuieditor.data.model.ScreenOps
 import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.SizeSpec
+import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.newElement
@@ -47,9 +50,13 @@ sealed interface EditorState {
 enum class ReorderOp { FORWARD, BACKWARD, TO_FRONT, TO_BACK }
 
 /** ما يُسجَّل في سجل التراجع: الشاشات وشاشة البداية (حجم المعاينة إعداد عرض ولا يُسجَّل). */
-private data class DesignSnapshot(val screens: List<UiScreen>, val startScreenId: String?)
+private data class DesignSnapshot(
+    val screens: List<UiScreen>,
+    val startScreenId: String?,
+    val designSystem: DesignSystem
+)
 
-private fun Project.snapshot() = DesignSnapshot(screens, startScreenId)
+private fun Project.snapshot() = DesignSnapshot(screens, startScreenId, designSystem)
 
 /**
  * يحمّل مشروعًا ويطبّق عليه التعديلات مع حفظ تلقائي وتراجع/إعادة:
@@ -160,6 +167,33 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
 
     fun setStartScreen(id: String) {
         edit { p -> if (p.screens.any { it.id == id }) p.copy(startScreenId = id) else p }
+    }
+
+    // ---- نظام التصميم ----
+
+    fun setDesignColor(name: String, argb: Int) {
+        if (name !in Tokens.colorNames) return
+        edit("ds:color:$name") { it.copy(designSystem = it.designSystem.withColor(name, argb)) }
+    }
+
+    fun setDesignRadius(name: String, dp: Int) {
+        if (name !in Tokens.radiusNames) return
+        edit("ds:radius:$name") { it.copy(designSystem = it.designSystem.withRadius(name, dp)) }
+    }
+
+    fun setDesignTextSize(name: String, sp: Int) {
+        if (name !in Tokens.textNames) return
+        edit("ds:text:$name") { it.copy(designSystem = it.designSystem.withTextSize(name, sp)) }
+    }
+
+    /** يطبّق سمة جاهزة (كل الألوان) ويبقي الزوايا وأحجام النصوص. */
+    fun applyDesignTheme(themeId: String) {
+        val theme = DesignThemes.all.firstOrNull { it.id == themeId } ?: return
+        edit { it.copy(designSystem = it.designSystem.copy(colors = theme.colors).completed()) }
+    }
+
+    fun resetDesignSystem() {
+        edit { it.copy(designSystem = DesignSystem.DEFAULT) }
     }
 
     /** يضبط حجم المعاينة؛ 0 يعني العودة إلى حجم تصميم الشاشة. لا يدخل في سجل التراجع. */
@@ -469,7 +503,13 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     }
 
     private fun applySnapshot(current: Project, snapshot: DesignSnapshot) {
-        commit(current.copy(screens = snapshot.screens, startScreenId = snapshot.startScreenId))
+        commit(
+            current.copy(
+                screens = snapshot.screens,
+                startScreenId = snapshot.startScreenId,
+                designSystem = snapshot.designSystem
+            )
+        )
         // لا نترك تحديدًا أو شاشة حالية تشير إلى شيء اختفى بعد التراجع.
         if (snapshot.screens.none { it.id == _currentScreenId.value }) {
             _currentScreenId.value = snapshot.screens.firstOrNull()?.id

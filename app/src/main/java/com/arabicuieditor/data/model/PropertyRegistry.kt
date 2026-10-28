@@ -289,9 +289,10 @@ object PropertyRegistry {
         PropertyDef(PropertyKeys.ITEM_HEIGHT, R.string.prop_item_height, PropertyGroup.TEXT, PropertyKind.Integer(16, 120), setOf(ElementTypes.LIST), fallback = "40"),
         PropertyDef(
             PropertyKeys.TEXT_COLOR, R.string.prop_text_color, PropertyGroup.TEXT, PropertyKind.ColorValue, TEXTUAL,
-            defaults = mapOf(ElementTypes.BUTTON to WHITE, ElementTypes.INPUT to HINT_GREY), fallback = INK
+            defaults = mapOf(ElementTypes.BUTTON to Tokens.color(Tokens.ON_PRIMARY), ElementTypes.INPUT to Tokens.color(Tokens.MUTED)),
+            fallback = Tokens.color(Tokens.TEXT_COLOR)
         ),
-        PropertyDef(PropertyKeys.FONT_SIZE, R.string.prop_font_size, PropertyGroup.TEXT, PropertyKind.Integer(8, 72), TEXTUAL, fallback = "14"),
+        PropertyDef(PropertyKeys.FONT_SIZE, R.string.prop_font_size, PropertyGroup.TEXT, PropertyKind.Integer(8, 72), TEXTUAL, fallback = Tokens.text(Tokens.BODY)),
         PropertyDef(
             PropertyKeys.FONT_WEIGHT, R.string.prop_font_weight, PropertyGroup.TEXT,
             PropertyKind.Choice(
@@ -321,11 +322,11 @@ object PropertyRegistry {
             PropertyKeys.BG_COLOR, R.string.prop_bg_color, PropertyGroup.APPEARANCE, PropertyKind.ColorValue,
             BOXED + ElementTypes.DIVIDER,
             defaults = mapOf(
-                ElementTypes.BUTTON to ACCENT,
-                ElementTypes.CARD to WHITE,
+                ElementTypes.BUTTON to Tokens.color(Tokens.PRIMARY),
+                ElementTypes.CARD to Tokens.color(Tokens.SURFACE),
                 ElementTypes.CONTAINER to CONTAINER_FILL,
                 ElementTypes.IMAGE to IMAGE_FILL,
-                ElementTypes.DIVIDER to LINE
+                ElementTypes.DIVIDER to Tokens.color(Tokens.BORDER)
             ),
             fallback = TRANSPARENT
         ),
@@ -335,13 +336,13 @@ object PropertyRegistry {
         ),
         PropertyDef(
             PropertyKeys.BORDER_COLOR, R.string.prop_border_color, PropertyGroup.APPEARANCE, PropertyKind.ColorValue, BOXED,
-            defaults = mapOf(ElementTypes.INPUT to HINT_GREY, ElementTypes.CARD to CARD_BORDER), fallback = LINE
+            defaults = mapOf(ElementTypes.INPUT to Tokens.color(Tokens.MUTED), ElementTypes.CARD to Tokens.color(Tokens.BORDER)), fallback = LINE
         ),
         PropertyDef(
             PropertyKeys.CORNER_RADIUS, R.string.prop_corner_radius, PropertyGroup.APPEARANCE, PropertyKind.Integer(0, 100), BOXED,
             defaults = mapOf(
-                ElementTypes.BUTTON to "8", ElementTypes.CARD to "12",
-                ElementTypes.INPUT to "6", ElementTypes.IMAGE to "4"
+                ElementTypes.BUTTON to Tokens.radius(Tokens.MEDIUM), ElementTypes.CARD to Tokens.radius(Tokens.LARGE),
+                ElementTypes.INPUT to Tokens.radius(Tokens.SMALL), ElementTypes.IMAGE to "4"
             ),
             fallback = "0"
         ),
@@ -378,8 +379,12 @@ object PropertyRegistry {
         val def = byKey[key] ?: return null
         return when (val kind = def.kind) {
             is PropertyKind.Text -> raw.take(MAX_TEXT_LENGTH)
-            is PropertyKind.Integer -> raw.trim().toIntOrNull()?.coerceIn(kind.min, kind.max)?.toString()
-            PropertyKind.ColorValue -> ColorUtil.parse(raw)?.let { ColorUtil.format(it) }
+            is PropertyKind.Integer ->
+                if (Tokens.isToken(raw.trim())) raw.trim().takeIf { Tokens.accepts(key, kind, it) }
+                else raw.trim().toIntOrNull()?.coerceIn(kind.min, kind.max)?.toString()
+            PropertyKind.ColorValue ->
+                if (Tokens.isToken(raw.trim())) raw.trim().takeIf { Tokens.accepts(key, kind, it) }
+                else ColorUtil.parse(raw)?.let { ColorUtil.format(it) }
             is PropertyKind.Choice -> raw.takeIf { v -> kind.options.any { it.first == v } }
             PropertyKind.Toggle -> raw.takeIf { it == "true" || it == "false" }
         }
@@ -407,12 +412,14 @@ object ColorUtil {
 fun UiElement.prop(key: String): String = properties[key] ?: PropertyRegistry.defaultOf(type, key)
 
 fun UiElement.intProp(key: String): Int =
-    prop(key).toIntOrNull() ?: PropertyRegistry.defaultOf(type, key).toIntOrNull() ?: 0
+    prop(key).let { it.toIntOrNull() ?: Tokens.resolveInt(it) }
+        ?: PropertyRegistry.defaultOf(type, key).let { it.toIntOrNull() ?: Tokens.resolveInt(it) } ?: 0
 
 fun UiElement.boolProp(key: String): Boolean = prop(key) != "false"
 
 fun UiElement.colorProp(key: String): Int =
-    ColorUtil.parse(prop(key)) ?: ColorUtil.parse(PropertyRegistry.defaultOf(type, key)) ?: 0
+    prop(key).let { ColorUtil.parse(it) ?: Tokens.resolveColor(it) }
+        ?: PropertyRegistry.defaultOf(type, key).let { ColorUtil.parse(it) ?: Tokens.resolveColor(it) } ?: 0
 
 fun UiElement.withProp(key: String, value: String): UiElement = copy(properties = properties + (key to value))
 

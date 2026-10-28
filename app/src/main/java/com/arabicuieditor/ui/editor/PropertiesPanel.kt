@@ -54,6 +54,7 @@ import com.arabicuieditor.data.model.PropertyDef
 import com.arabicuieditor.data.model.PropertyGroup
 import com.arabicuieditor.data.model.PropertyKind
 import com.arabicuieditor.data.model.PropertyRegistry
+import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.spec
@@ -330,15 +331,91 @@ internal fun PropertyEditorRow(
 ) {
     val label = stringResource(def.labelRes)
     val tag = "prop_${def.key}"
+    val ds = LocalDesignSystem.current
     when (val kind = def.kind) {
         is PropertyKind.Text -> TextPropertyField(label, current, kind.multiline, { onSet(def.key, it) }, modifier, tag)
-        is PropertyKind.Integer -> NumberField(
-            label, current.toIntOrNull() ?: kind.min, kind.min, kind.max,
-            { onSet(def.key, it.toString()) }, modifier, tag
-        )
-        PropertyKind.ColorValue -> ColorField(label, current, { onSet(def.key, it) }, modifier, tag)
+        is PropertyKind.Integer -> {
+            val family = Tokens.intFamilyOf(def.key)
+            val shown = current.toIntOrNull() ?: Tokens.resolveInt(current, ds) ?: kind.min
+            Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                NumberField(
+                    label, shown, kind.min, kind.max,
+                    { onSet(def.key, it.toString()) }, Modifier, tag
+                )
+                if (family != null) {
+                    val names = if (family == Tokens.RADIUS) Tokens.radiusNames else Tokens.textNames
+                    TokenChips(
+                        refs = names.map { n ->
+                            (if (family == Tokens.RADIUS) Tokens.radius(n) else Tokens.text(n)) to
+                                (if (family == Tokens.RADIUS) Tokens.radiusLabel(n) else Tokens.textLabel(n))
+                        },
+                        current = current,
+                        onPick = { onSet(def.key, it) },
+                        tag = tag,
+                        swatch = null
+                    )
+                }
+            }
+        }
+        PropertyKind.ColorValue -> {
+            val shown = if (Tokens.isToken(current)) {
+                Tokens.resolveColor(current, ds)?.let { ColorUtil.format(it) } ?: current
+            } else current
+            Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                ColorField(label, shown, { onSet(def.key, it) }, Modifier, tag)
+                TokenChips(
+                    refs = Tokens.colorNames.map { Tokens.color(it) to Tokens.colorLabel(it) },
+                    current = current,
+                    onPick = { onSet(def.key, it) },
+                    tag = tag,
+                    swatch = { ref -> Tokens.resolveColor(ref, ds) }
+                )
+            }
+        }
         is PropertyKind.Choice -> ChoiceField(label, current, kind, { onSet(def.key, it) }, modifier, tag)
         PropertyKind.Toggle -> ToggleField(label, current != "false", { onSet(def.key, it.toString()) }, modifier, tag)
+    }
+}
+
+/** رقاقات «ربط بنظام التصميم»: اختيار مرجع بدل قيمة ثابتة. المحدد هو المرجع الحالي للخاصية. */
+@Composable
+internal fun TokenChips(
+    refs: List<Pair<String, Int>>,
+    current: String,
+    onPick: (String) -> Unit,
+    tag: String,
+    swatch: ((String) -> Int?)?
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            stringResource(R.string.link_to_system),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            refs.forEach { (ref, labelRes) ->
+                FilterChip(
+                    selected = current == ref,
+                    onClick = { onPick(ref) },
+                    label = { Text(stringResource(labelRes), maxLines = 1) },
+                    leadingIcon = swatch?.let { f ->
+                        {
+                            Box(
+                                Modifier
+                                    .size(14.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(f(ref) ?: 0))
+                                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                            )
+                        }
+                    },
+                    modifier = Modifier.testTag("${tag}_tok_${ref.substringAfter('/')}")
+                )
+            }
+        }
     }
 }
 
@@ -435,7 +512,7 @@ private fun StepButton(symbol: String, tag: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ColorField(
+internal fun ColorField(
     label: String,
     value: String,
     onValue: (String) -> Unit,

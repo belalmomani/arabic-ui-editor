@@ -2,12 +2,15 @@ package com.arabicuieditor.data.storage
 
 import com.arabicuieditor.data.model.CURRENT_SCHEMA_VERSION
 import com.arabicuieditor.data.model.ChildLayout
+import com.arabicuieditor.data.model.ColorUtil
+import com.arabicuieditor.data.model.DesignSystem
 import com.arabicuieditor.data.model.ElementLayout
 import com.arabicuieditor.data.model.EventBinding
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.ResourceRef
 import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.SizeSpec
+import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.UiScreen
 import org.json.JSONArray
@@ -32,6 +35,7 @@ object ProjectJsonCodec {
         project.startScreenId?.let { put("startScreenId", it) }
         put("previewWidth", project.previewWidth.toDouble())
         put("previewHeight", project.previewHeight.toDouble())
+        put("designSystem", designToJson(project.designSystem))
         put("screens", JSONArray().also { arr -> project.screens.forEach { arr.put(screenToJson(it)) } })
         put("resources", JSONArray().also { arr -> project.resources.forEach { arr.put(resourceToJson(it)) } })
     }.toString(2)
@@ -51,7 +55,8 @@ object ProjectJsonCodec {
             resources = migrated.optJSONArray("resources").mapObjects { resourceFromJson(it) },
             startScreenId = migrated.optString("startScreenId").takeIf { it.isNotEmpty() },
             previewWidth = migrated.optDouble("previewWidth", 0.0).toFloat(),
-            previewHeight = migrated.optDouble("previewHeight", 0.0).toFloat()
+            previewHeight = migrated.optDouble("previewHeight", 0.0).toFloat(),
+            designSystem = designFromJson(migrated.optJSONObject("designSystem"))
         )
     }
 
@@ -61,9 +66,38 @@ object ProjectJsonCodec {
      * عند فك الترميز، فتُفتح مشاريع المرحلة 2 كما هي.
      * 2 → 3: لا تغيير مطلوب؛ الحقول الجديدة (شاشة البداية، حجم المعاينة، تخطيط الشاشة وخصائصها،
      * وضع BOX ونمط FRACTION) كلها اختيارية. التصاميم القديمة كلها بتخطيط حر فتظهر كما كانت.
+     * 3 → 4: لا تغيير مطلوب؛ حقل designSystem اختياري، وغيابه يعني النظام الافتراضي، وهو يطابق
+     * ألوان وأحجام ما كان مرسومًا قبله، فتظهر المشاريع القديمة كما كانت. العناصر تحفظ مراجع
+     * مثل "@color/primary" في خصائصها كنصوص عادية.
      */
     @Suppress("UNUSED_PARAMETER")
     private fun migrate(root: JSONObject, fromVersion: Int): JSONObject = root
+
+    // ---- نظام التصميم ----
+
+    private fun designToJson(ds: DesignSystem) = JSONObject().apply {
+        put("colors", JSONObject().also { o -> ds.colors.forEach { (k, v) -> o.put(k, ColorUtil.format(v)) } })
+        put("radii", JSONObject().also { o -> ds.radii.forEach { (k, v) -> o.put(k, v) } })
+        put("textSizes", JSONObject().also { o -> ds.textSizes.forEach { (k, v) -> o.put(k, v) } })
+    }
+
+    /** يقرأ بتسامح: مفتاح مجهول أو قيمة غير صالحة تُهمل، والناقص يُكمَّل بالافتراضي. */
+    private fun designFromJson(o: JSONObject?): DesignSystem {
+        if (o == null) return DesignSystem.DEFAULT
+        val colors = mutableMapOf<String, Int>()
+        o.optJSONObject("colors")?.let { c ->
+            for (k in Tokens.colorNames) ColorUtil.parse(c.optString(k))?.let { colors[k] = it }
+        }
+        val radii = mutableMapOf<String, Int>()
+        o.optJSONObject("radii")?.let { r ->
+            for (k in Tokens.radiusNames) if (r.has(k)) radii[k] = r.optInt(k).coerceIn(0, 100)
+        }
+        val sizes = mutableMapOf<String, Int>()
+        o.optJSONObject("textSizes")?.let { t ->
+            for (k in Tokens.textNames) if (t.has(k)) sizes[k] = t.optInt(k).coerceIn(8, 72)
+        }
+        return DesignSystem(colors, radii, sizes).completed()
+    }
 
     // ---- ترميز ----
 

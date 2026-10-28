@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -76,7 +77,8 @@ private enum class BottomTab(val labelRes: Int) {
     LIBRARY(R.string.tab_library),
     PROPERTIES(R.string.tab_properties),
     LAYERS(R.string.tab_layers),
-    SCREEN(R.string.tab_screen)
+    SCREEN(R.string.tab_screen),
+    DESIGN(R.string.tab_design)
 }
 
 /** عنصر يُسحب الآن من القائمة (للعرض الشبحي ولتحديد مكان الإفلات). */
@@ -254,7 +256,8 @@ private fun EditorContent(
                         onElementRotate = { id, degrees ->
                             viewModel.setProperty(id, com.arabicuieditor.data.model.PropertyKeys.ROTATION, degrees.toString())
                         },
-                        onElementRepeat = { viewModel.duplicateSelected() }
+                        onElementRepeat = { viewModel.duplicateSelected() },
+                        designSystem = project.designSystem
                     )
                     // شريحة حجم المعاينة: نقرة تنتقل إلى الحجم التالي (حجم التصميم ثم الأحجام الجاهزة).
                     AssistChip(
@@ -309,6 +312,7 @@ private fun EditorContent(
                     if (openTab != null) {
                         Spacer(Modifier.height(8.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(PANEL_HEIGHT_DP.dp)) {
+                            CompositionLocalProvider(LocalDesignSystem provides project.designSystem) {
                             when (openTab) {
                                 BottomTab.ELEMENTS -> ElementPalette(
                                     onTapAdd = { type ->
@@ -399,7 +403,18 @@ private fun EditorContent(
                                     modifier = Modifier.fillMaxSize()
                                 )
 
+                                BottomTab.DESIGN -> DesignSystemPanel(
+                                    designSystem = project.designSystem,
+                                    onThemeSelect = viewModel::applyDesignTheme,
+                                    onColor = viewModel::setDesignColor,
+                                    onRadius = viewModel::setDesignRadius,
+                                    onTextSize = viewModel::setDesignTextSize,
+                                    onReset = viewModel::resetDesignSystem,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
                                 null -> Unit
+                            }
                             }
                         }
                     }

@@ -9,9 +9,12 @@ import com.arabicuieditor.R
  */
 internal object ProComponents {
 
-    private const val MUTED = "#FF5F6B76"
-    private const val DANGER = "#FFB3261E"
-    private const val SOFT = "#FFEEF2F6"
+    private val MUTED = Tokens.color(Tokens.MUTED)
+    private val DANGER = Tokens.color(Tokens.DANGER)
+    private val SOFT = Tokens.color(Tokens.BORDER)
+    private val PRIMARY = Tokens.color(Tokens.PRIMARY)
+    private val ON_PRIMARY = Tokens.color(Tokens.ON_PRIMARY)
+    private val SURFACE = Tokens.color(Tokens.SURFACE)
 
     // ---- أدوات بناء ----
 
@@ -76,13 +79,13 @@ internal object ProComponents {
             BtnStyle.DANGER -> p[PropertyKeys.BG_COLOR] = DANGER
             BtnStyle.OUTLINE -> {
                 p[PropertyKeys.BG_COLOR] = PropertyRegistry.TRANSPARENT
-                p[PropertyKeys.TEXT_COLOR] = PropertyRegistry.ACCENT
+                p[PropertyKeys.TEXT_COLOR] = PRIMARY
                 p[PropertyKeys.BORDER_WIDTH] = "2"
-                p[PropertyKeys.BORDER_COLOR] = PropertyRegistry.ACCENT
+                p[PropertyKeys.BORDER_COLOR] = PRIMARY
             }
             BtnStyle.TEXT -> {
                 p[PropertyKeys.BG_COLOR] = PropertyRegistry.TRANSPARENT
-                p[PropertyKeys.TEXT_COLOR] = PropertyRegistry.ACCENT
+                p[PropertyKeys.TEXT_COLOR] = PRIMARY
             }
         }
         if (weight > 0) p[PropertyKeys.WEIGHT] = "$weight"
@@ -205,7 +208,7 @@ internal object ProComponents {
                 children = listOf(
                     image(fill(), 120f, 8),
                     text(t(R.string.pc_product_name), fill(), 22f, 15, bold = true),
-                    text(t(R.string.pc_product_price), fill(), 22f, 15, bold = true, color = PropertyRegistry.ACCENT),
+                    text(t(R.string.pc_product_price), fill(), 22f, 15, bold = true, color = PRIMARY),
                     button(t(R.string.pc_add_to_cart), fill(), 40f)
                 )
             )
@@ -219,7 +222,7 @@ internal object ProComponents {
                         fixed(100f), 80f, spacing = 6, weight = 1,
                         children = listOf(
                             text(t(R.string.pc_product_name), fill(), 24f, 15, bold = true),
-                            text(t(R.string.pc_product_price), fill(), 22f, 14, color = PropertyRegistry.ACCENT)
+                            text(t(R.string.pc_product_price), fill(), 22f, 14, color = PRIMARY)
                         )
                     ),
                     button(t(R.string.pc_add), fixed(72f), 36f)
@@ -232,7 +235,7 @@ internal object ProComponents {
                 children = listOf(
                     image(fill(), 100f, 8),
                     text(t(R.string.pc_product_name), fill(), 22f, 14, bold = true),
-                    text(t(R.string.pc_product_price), fill(), 22f, 14, color = PropertyRegistry.ACCENT)
+                    text(t(R.string.pc_product_price), fill(), 22f, 14, color = PRIMARY)
                 )
             )
             row(fill(), 232f, spacing = 12, padding = 6, children = listOf(cell(), cell()), extra = mapOf(PropertyKeys.CHILD_ALIGN_V to Aligns.START))
@@ -247,13 +250,13 @@ internal object ProComponents {
                     image(fixed(24f), 24f, 12),
                     text(
                         t(label), fill(), 16f, 11, bold = active,
-                        color = if (active) PropertyRegistry.ACCENT else MUTED, align = TextAligns.CENTER
+                        color = if (active) PRIMARY else MUTED, align = TextAligns.CENTER
                     )
                 )
             )
             row(
                 fill(), 68f, padding = 8, spacing = 0,
-                extra = mapOf(PropertyKeys.BG_COLOR to PropertyRegistry.WHITE, PropertyKeys.ARRANGEMENT to Arrangements.EVENLY),
+                extra = mapOf(PropertyKeys.BG_COLOR to SURFACE, PropertyKeys.ARRANGEMENT to Arrangements.EVENLY),
                 children = listOf(
                     item(R.string.pc_nav_home, true), item(R.string.pc_nav_search, false),
                     item(R.string.pc_nav_cart, false), item(R.string.pc_nav_profile, false)
@@ -263,11 +266,11 @@ internal object ProComponents {
         preset("pro_tabs", R.string.pc_tabs, PresetCategory.NAVIGATION) { t ->
             fun tab(label: Int, active: Boolean) = text(
                 t(label), fixed(90f), 40f, 14, bold = active,
-                color = if (active) PropertyRegistry.ACCENT else MUTED, align = TextAligns.CENTER, weight = 1
+                color = if (active) PRIMARY else MUTED, align = TextAligns.CENTER, weight = 1
             )
             column(
                 fill(), 46f, spacing = 0,
-                extra = mapOf(PropertyKeys.BG_COLOR to PropertyRegistry.WHITE),
+                extra = mapOf(PropertyKeys.BG_COLOR to SURFACE),
                 children = listOf(
                     row(
                         fill(), 42f, spacing = 0,
@@ -275,7 +278,7 @@ internal object ProComponents {
                     ),
                     node(
                         ElementTypes.DIVIDER, fill(), fixed(3f),
-                        mapOf(PropertyKeys.BG_COLOR to PropertyRegistry.ACCENT)
+                        mapOf(PropertyKeys.BG_COLOR to PRIMARY)
                     )
                 )
             )
@@ -283,10 +286,10 @@ internal object ProComponents {
         preset("pro_appbar", R.string.pc_appbar, PresetCategory.NAVIGATION) { t ->
             row(
                 fill(), 56f, padding = 12, spacing = 12,
-                extra = mapOf(PropertyKeys.BG_COLOR to PropertyRegistry.ACCENT),
+                extra = mapOf(PropertyKeys.BG_COLOR to PRIMARY),
                 children = listOf(
                     image(fixed(24f), 24f, 4),
-                    text(t(R.string.pc_screen_title), fixed(100f), 28f, 18, bold = true, color = PropertyRegistry.WHITE, weight = 1),
+                    text(t(R.string.pc_screen_title), fixed(100f), 28f, 18, bold = true, color = ON_PRIMARY, weight = 1),
                     image(fixed(24f), 24f, 4)
                 )
             )
@@ -372,7 +375,7 @@ internal object ProComponents {
                 children = listOf(
                     node(
                         ElementTypes.CONTAINER, fixed(40f), fixed(4f),
-                        mapOf(PropertyKeys.BG_COLOR to PropertyRegistry.LINE, PropertyKeys.CORNER_RADIUS to "2")
+                        mapOf(PropertyKeys.BG_COLOR to SOFT, PropertyKeys.CORNER_RADIUS to "2")
                     ),
                     text(t(R.string.pc_sheet_title), fill(), 26f, 17, bold = true),
                     item(R.string.pc_menu_share), item(R.string.pc_menu_edit), item(R.string.pc_menu_delete)
@@ -389,7 +392,7 @@ internal object ProComponents {
                     column(
                         fill(), 140f, padding = 12, spacing = 6,
                         children = listOf(
-                            text(t(R.string.pc_news_tag), fill(), 18f, 12, bold = true, color = PropertyRegistry.ACCENT),
+                            text(t(R.string.pc_news_tag), fill(), 18f, 12, bold = true, color = PRIMARY),
                             text(t(R.string.pc_news_title), fill(), 44f, 17, bold = true),
                             text(t(R.string.pc_news_date), fill(), 18f, 12, color = MUTED)
                         )
@@ -441,15 +444,15 @@ internal object ProComponents {
         preset("pro_chat_out", R.string.pc_chat_out, PresetCategory.CHAT) { t ->
             node(
                 ElementTypes.CONTAINER, fixed(220f), fixed(48f),
-                pad(12) + mapOf(PropertyKeys.BG_COLOR to PropertyRegistry.ACCENT, PropertyKeys.CORNER_RADIUS to "16"),
+                pad(12) + mapOf(PropertyKeys.BG_COLOR to PRIMARY, PropertyKeys.CORNER_RADIUS to "16"),
                 ChildLayout.BOX,
-                listOf(text(t(R.string.pc_chat_msg_out), fill(), 22f, 14, color = PropertyRegistry.WHITE))
+                listOf(text(t(R.string.pc_chat_msg_out), fill(), 22f, 14, color = ON_PRIMARY))
             )
         },
         preset("pro_chat_input", R.string.pc_chat_input, PresetCategory.CHAT) { t ->
             row(
                 fill(), 64f, padding = 8, spacing = 8,
-                extra = mapOf(PropertyKeys.BG_COLOR to PropertyRegistry.WHITE),
+                extra = mapOf(PropertyKeys.BG_COLOR to SURFACE),
                 children = listOf(
                     input(t(R.string.pc_chat_type), fixed(100f), 44f, weight = 1),
                     button(t(R.string.pc_send), fixed(72f), 44f)

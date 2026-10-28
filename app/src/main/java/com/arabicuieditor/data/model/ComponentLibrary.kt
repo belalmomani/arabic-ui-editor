@@ -80,8 +80,8 @@ object ComponentLibrary {
 
     private fun fill() = SizeSpec(SizeMode.MATCH_PARENT, 200f)
 
-    private const val DANGER = "#FFB3261E"
-    private const val MUTED = "#FF5F6B76"
+    private val DANGER = Tokens.color(Tokens.DANGER)
+    private val MUTED = Tokens.color(Tokens.MUTED)
 
     val presets: List<ComponentPreset> = listOf(
         // أزرار
@@ -95,9 +95,9 @@ object ComponentLibrary {
                     props = arrayOf(
                         PropertyKeys.TEXT to t(R.string.preset_btn_outline),
                         PropertyKeys.BG_COLOR to PropertyRegistry.TRANSPARENT,
-                        PropertyKeys.TEXT_COLOR to PropertyRegistry.ACCENT,
+                        PropertyKeys.TEXT_COLOR to Tokens.color(Tokens.PRIMARY),
                         PropertyKeys.BORDER_WIDTH to "2",
-                        PropertyKeys.BORDER_COLOR to PropertyRegistry.ACCENT
+                        PropertyKeys.BORDER_COLOR to Tokens.color(Tokens.PRIMARY)
                     )
                 )
             )
@@ -109,7 +109,7 @@ object ComponentLibrary {
                     props = arrayOf(
                         PropertyKeys.TEXT to t(R.string.preset_btn_text),
                         PropertyKeys.BG_COLOR to PropertyRegistry.TRANSPARENT,
-                        PropertyKeys.TEXT_COLOR to PropertyRegistry.ACCENT
+                        PropertyKeys.TEXT_COLOR to Tokens.color(Tokens.PRIMARY)
                     )
                 )
             )
@@ -292,7 +292,7 @@ object ComponentLibrary {
                             ElementTypes.TEXT, SizeSpec.fixed(140f), SizeSpec.fixed(28f),
                             mapOf(
                                 PropertyKeys.TEXT to t(R.string.preset_layout_title),
-                                PropertyKeys.TEXT_COLOR to PropertyRegistry.WHITE,
+                                PropertyKeys.TEXT_COLOR to Tokens.color(Tokens.ON_PRIMARY),
                                 PropertyKeys.FONT_SIZE to "18",
                                 PropertyKeys.FONT_WEIGHT to FontWeights.BOLD
                             )
@@ -306,7 +306,7 @@ object ComponentLibrary {
                         )
                     ),
                     padAll(10) + mapOf(
-                        PropertyKeys.BG_COLOR to PropertyRegistry.ACCENT,
+                        PropertyKeys.BG_COLOR to Tokens.color(Tokens.PRIMARY),
                         PropertyKeys.ARRANGEMENT to Arrangements.BETWEEN,
                         PropertyKeys.CHILD_ALIGN_V to Aligns.CENTER
                     )

@@ -319,4 +319,35 @@
     <string name="pc_chat_msg_out">بخير، شكرًا لك!</string>
     <string name="pc_chat_type">اكتب رسالة</string>
     <string name="pc_send">إرسال</string>
+
+    <!-- نظام التصميم -->
+    <string name="tab_design">التصميم</string>
+    <string name="link_to_system">ربط بنظام التصميم</string>
+    <string name="design_note">القيم المركزية للمشروع كله. العناصر المرتبطة بها تتغير فور تعديلها في كل الشاشات.</string>
+    <string name="design_themes">سمات جاهزة</string>
+    <string name="design_reset">استعادة الافتراضي</string>
+    <string name="design_colors">الألوان</string>
+    <string name="design_radii">الزوايا (dp)</string>
+    <string name="design_texts">أحجام النصوص (sp)</string>
+    <string name="tok_primary">الرئيسي</string>
+    <string name="tok_on_primary">نص الرئيسي</string>
+    <string name="tok_background">الخلفية</string>
+    <string name="tok_surface">السطح</string>
+    <string name="tok_text">النص</string>
+    <string name="tok_muted">النص الخافت</string>
+    <string name="tok_border">الحدود</string>
+    <string name="tok_danger">التحذير</string>
+    <string name="tok_small">صغيرة</string>
+    <string name="tok_medium">متوسطة</string>
+    <string name="tok_large">كبيرة</string>
+    <string name="tok_caption">تعليق</string>
+    <string name="tok_body">نص</string>
+    <string name="tok_title">عنوان فرعي</string>
+    <string name="tok_heading">عنوان</string>
+    <string name="theme_ocean">المحيط</string>
+    <string name="theme_forest">الغابة</string>
+    <string name="theme_violet">البنفسجي</string>
+    <string name="theme_sunset">الغروب</string>
+    <string name="theme_rose">الوردي</string>
+    <string name="theme_night">ليلي</string>
 </resources>

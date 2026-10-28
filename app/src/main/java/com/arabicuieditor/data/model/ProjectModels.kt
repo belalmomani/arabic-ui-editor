@@ -8,7 +8,7 @@ import java.util.UUID
  * 2: المرحلة 3 (تخطيط العناصر وأبعاد الشاشة).
  * 3: المرحلة 5 (شاشة البداية، حجم المعاينة، تخطيط الشاشة الجذري، تخطيطات Row/Column/Box، أبعاد نسبية).
  */
-const val CURRENT_SCHEMA_VERSION = 3
+const val CURRENT_SCHEMA_VERSION = 4
 
 /**
  * طريقة تحديد بُعد العنصر:
@@ -99,7 +99,9 @@ data class Project(
     val startScreenId: String? = null,
     /** حجم المعاينة الحالي بوحدة dp؛ 0 يعني «حجم تصميم الشاشة نفسه». */
     val previewWidth: Float = 0f,
-    val previewHeight: Float = 0f
+    val previewHeight: Float = 0f,
+    /** نظام التصميم: ألوان وزوايا وأحجام نصوص مركزية تشير إليها العناصر بمراجع. */
+    val designSystem: DesignSystem = DesignSystem.DEFAULT
 ) {
     /** معرّف شاشة البداية الفعلي (يتراجع إلى أول شاشة إن كان المخزَّن غير صالح). */
     val effectiveStartScreenId: String?
