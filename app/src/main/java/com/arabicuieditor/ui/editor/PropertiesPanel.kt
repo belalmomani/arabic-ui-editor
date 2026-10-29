@@ -49,6 +49,7 @@ import com.arabicuieditor.data.model.Axis
 import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ColorUtil
 import com.arabicuieditor.data.model.Contrast
+import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.model.colorProp
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.PropertyKeys
@@ -675,11 +676,13 @@ private fun ToggleField(
 @Composable
 private fun ContrastCheck(element: UiElement) {
     val ds = LocalDesignSystem.current
-    val fg = element.colorProp(PropertyKeys.TEXT_COLOR)
-    val own = element.colorProp(PropertyKeys.BG_COLOR)
+    // الرموز تُحلّ مقابل نظام التصميم الفعلي (ومنه الوضع الليلي) لا الافتراضي.
+    val shown = element.resolved(ds)
+    val fg = shown.colorProp(PropertyKeys.TEXT_COLOR)
+    val own = shown.colorProp(PropertyKeys.BG_COLOR)
     val backdrop = Contrast.over(own, ds.color(Tokens.BACKGROUND))
     val ratio = Contrast.ratio(fg, backdrop)
-    val large = Contrast.isLargeText(element.intProp(PropertyKeys.FONT_SIZE))
+    val large = Contrast.isLargeText(shown.intProp(PropertyKeys.FONT_SIZE))
     val level = Contrast.level(ratio)
     val ok = level == Contrast.Level.AAA || level == Contrast.Level.AA ||
         (large && level == Contrast.Level.AA_LARGE_ONLY)

@@ -221,6 +221,8 @@
     <string name="preview_readonly_note">التعديل بالسحب متاح فقط عند حجم التصميم؛ الخصائص قابلة للتعديل دائمًا</string>
     <string name="preview_base">حجم التصميم %1$s</string>
     <string name="preview_rotate">تدوير</string>
+    <string name="mode_light">فاتح</string>
+    <string name="mode_dark">ليلي</string>
     <string name="preview_label">معاينة</string>
     <string name="preview_small">هاتف صغير</string>
     <string name="preview_standard">هاتف قياسي</string>

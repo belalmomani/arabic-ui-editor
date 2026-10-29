@@ -181,6 +181,11 @@ private fun EditorContent(
     var viewport by remember(screen.id, previewW, previewH) { mutableStateOf<Viewport?>(null) }
     var drag by remember { mutableStateOf<PaletteDrag?>(null) }
     var openTab by rememberSaveable { mutableStateOf<BottomTab?>(BottomTab.ELEMENTS) }
+    // معاينة الوضع الليلي: تغيّر الرسم فقط (ألوان الرموز)، ولا تُخزَّن ولا تُسجَّل في التراجع.
+    var darkPreview by rememberSaveable { mutableStateOf(false) }
+    val effectiveDesign = remember(project.designSystem, darkPreview) {
+        if (darkPreview) com.arabicuieditor.data.model.DarkMode.apply(project.designSystem) else project.designSystem
+    }
 
     val selectedElement = selectedId?.let { ElementTree.find(screen.elements, it) }
     // إطار العنصر المحدد نسبةً إلى أبيه (للوحة الخصائص) وأصل منطقة محتوى أبيه.
@@ -258,7 +263,7 @@ private fun EditorContent(
                             viewModel.setProperty(id, com.arabicuieditor.data.model.PropertyKeys.ROTATION, degrees.toString())
                         },
                         onElementRepeat = { viewModel.duplicateSelected() },
-                        designSystem = project.designSystem,
+                        designSystem = effectiveDesign,
                         snap = SnapSettings(project.snapObjects, project.gridSize)
                     )
                     // شريحة حجم المعاينة: نقرة تنتقل إلى الحجم التالي (حجم التصميم ثم الأحجام الجاهزة).
@@ -278,6 +283,19 @@ private fun EditorContent(
                             .align(Alignment.TopStart)
                             .padding(8.dp)
                             .testTag("preview_pill")
+                    )
+                    androidx.compose.material3.FilterChip(
+                        selected = darkPreview,
+                        onClick = { darkPreview = !darkPreview },
+                        label = {
+                            Text(
+                                stringResource(if (darkPreview) R.string.mode_dark else R.string.mode_light)
+                            )
+                        },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .testTag("dark_toggle")
                     )
                 } else {
                     // نقيس الحجم أولًا ثم نرسم المساحة بعد حساب الملاءمة.
@@ -314,7 +332,7 @@ private fun EditorContent(
                     if (openTab != null) {
                         Spacer(Modifier.height(8.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(PANEL_HEIGHT_DP.dp)) {
-                            CompositionLocalProvider(LocalDesignSystem provides project.designSystem) {
+                            CompositionLocalProvider(LocalDesignSystem provides effectiveDesign) {
                             when (openTab) {
                                 BottomTab.ELEMENTS -> ElementPalette(
                                     onTapAdd = { type ->
