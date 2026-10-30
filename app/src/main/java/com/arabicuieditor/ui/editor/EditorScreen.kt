@@ -110,6 +110,7 @@ fun EditorScreen(
     val title = ready?.project?.name ?: stringResource(R.string.editor_title)
 
     var playing by rememberSaveable { mutableStateOf(false) }
+    var exporting by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
     Scaffold(
@@ -126,6 +127,11 @@ fun EditorScreen(
                         enabled = ready != null,
                         modifier = Modifier.testTag("btn_play")
                     ) { Text(stringResource(R.string.proto_play)) }
+                    TextButton(
+                        onClick = { exporting = true },
+                        enabled = ready != null,
+                        modifier = Modifier.testTag("btn_export")
+                    ) { Text(stringResource(R.string.export_btn)) }
                     TextButton(onClick = viewModel::undo, enabled = canUndo, modifier = Modifier.testTag("btn_undo")) {
                         Text(stringResource(R.string.action_undo))
                     }
@@ -162,6 +168,13 @@ fun EditorScreen(
                 )
             }
         }
+    }
+    if (exporting && ready != null) {
+        ExportCodeDialog(
+            project = ready.project,
+            currentScreenId = currentScreenId,
+            onDismiss = { exporting = false }
+        )
     }
     if (playing && ready != null) {
         val startId = currentScreenId?.takeIf { id -> ready.project.screens.any { it.id == id } }

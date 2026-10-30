@@ -73,6 +73,15 @@
     <string name="proto_play">تشغيل</string>
     <string name="proto_close">إغلاق المعاينة</string>
     <string name="proto_back">رجوع</string>
+    <string name="export_btn">كود</string>
+    <string name="export_title">كود Jetpack Compose</string>
+    <string name="export_close">إغلاق</string>
+    <string name="export_scope_project">المشروع كله (مع التنقل)</string>
+    <string name="export_scope_screen">الشاشة الحالية</string>
+    <string name="export_note">الصق الكود في ملف .kt داخل تطبيقك وغيّر الحزمة (com.example.app). يحتاج Compose وMaterial3 وactivity-compose. الصور والأيقونات مواضع TODO.</string>
+    <string name="export_copy">نسخ</string>
+    <string name="export_copied">تم النسخ</string>
+    <string name="export_share">مشاركة</string>
     <string name="tab_library">المكتبة</string>
     <string name="tab_properties">الخصائص</string>
     <string name="tab_layers">الطبقات</string>
