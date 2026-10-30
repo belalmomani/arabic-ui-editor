@@ -118,7 +118,7 @@ object ProjectJsonCodec {
         put("elements", JSONArray().also { arr -> s.elements.forEach { arr.put(elementToJson(it)) } })
     }
 
-    private fun elementToJson(e: UiElement): JSONObject = JSONObject().apply {
+    internal fun elementToJson(e: UiElement): JSONObject = JSONObject().apply {
         put("id", e.id)
         put("type", e.type)
         put("layout", layoutToJson(e.layout))
@@ -168,7 +168,7 @@ object ProjectJsonCodec {
         properties = o.optJSONObject("properties").toStringMap()
     )
 
-    private fun elementFromJson(o: JSONObject): UiElement = UiElement(
+    internal fun elementFromJson(o: JSONObject): UiElement = UiElement(
         id = o.getString("id"),
         type = o.optString("type"),
         layout = layoutFromJson(o.optJSONObject("layout")),

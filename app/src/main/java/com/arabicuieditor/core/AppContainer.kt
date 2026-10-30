@@ -2,6 +2,7 @@ package com.arabicuieditor.core
 
 import android.content.Context
 import com.arabicuieditor.data.storage.ProjectRepository
+import com.arabicuieditor.data.storage.UserLibraryRepository
 import java.io.File
 
 /**
@@ -12,4 +13,5 @@ import java.io.File
  */
 class AppContainer(context: Context) {
     val projects: ProjectRepository = ProjectRepository(File(context.filesDir, "projects"))
+    val library: UserLibraryRepository = UserLibraryRepository(File(context.filesDir, "library/library.json"))
 }

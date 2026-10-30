@@ -22,6 +22,7 @@ import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.SizeSpec
 import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.storage.ALLOWED_GRIDS
+import com.arabicuieditor.data.storage.UserComponent
 import com.arabicuieditor.ui.editor.canvas.AlignEdge
 import com.arabicuieditor.ui.editor.canvas.SmartAlign
 import com.arabicuieditor.data.model.UiElement
@@ -78,6 +79,11 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
 
     private val repository = (app as ArabicUiEditorApp).container.projects
     private val projectId: String = handle.get<String>("projectId").orEmpty()
+    private val libraryRepo = (app as ArabicUiEditorApp).container.library
+
+    private val _userComponents = MutableStateFlow<List<UserComponent>>(emptyList())
+    /** المكتبة الشخصية (مشتركة بين كل المشاريع). */
+    val userComponents: StateFlow<List<UserComponent>> = _userComponents.asStateFlow()
 
     private val _state = MutableStateFlow<EditorState>(EditorState.Loading)
     val state: StateFlow<EditorState> = _state.asStateFlow()
@@ -101,6 +107,13 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     private var saveJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            _userComponents.value = try {
+                withContext(Dispatchers.IO) { libraryRepo.list() }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
         viewModelScope.launch {
             val project = try {
                 withContext(Dispatchers.IO) { repository.load(projectId) }
@@ -301,6 +314,46 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     fun addPreset(preset: ComponentPreset, centerX: Float, centerY: Float, atPoint: Boolean = false) {
         val built = preset.build { str(it) }
         insertElements(built, centerX, centerY, atPoint)
+    }
+
+    // ---- المكتبة الشخصية ----
+
+    /** يحفظ العنصر المحدد (بأبنائه) في المكتبة الشخصية باسم [name]. لا يغيّر المشروع ولا التراجع. */
+    fun saveSelectedToLibrary(name: String) {
+        val screen = currentScreen() ?: return
+        val element = _selectedId.value?.let { ElementTree.find(screen.elements, it) } ?: return
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            try {
+                _userComponents.value = withContext(Dispatchers.IO) { libraryRepo.add(name, element) }
+            } catch (_: Exception) {
+                // فشل الحفظ لا يمسّ التصميم؛ تبقى القائمة كما هي.
+            }
+        }
+    }
+
+    /** يدرج نسخة بمعرّفات جديدة من مكوّن شخصي في الشاشة الحالية (مثل [addPreset]). */
+    fun addUserComponent(component: UserComponent, centerX: Float, centerY: Float, atPoint: Boolean = false) {
+        insertElements(listOf(ElementTree.reId(component.root)), centerX, centerY, atPoint)
+    }
+
+    fun renameUserComponent(id: String, name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            try {
+                _userComponents.value = withContext(Dispatchers.IO) { libraryRepo.rename(id, name) }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun deleteUserComponent(id: String) {
+        viewModelScope.launch {
+            try {
+                _userComponents.value = withContext(Dispatchers.IO) { libraryRepo.delete(id) }
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun insertElements(raw: List<UiElement>, centerX: Float, centerY: Float, atPoint: Boolean) {

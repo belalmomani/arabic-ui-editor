@@ -168,6 +168,7 @@ private fun EditorContent(
     val screen: UiScreen = project.screens.firstOrNull { it.id == currentScreenId }
         ?: project.screens.firstOrNull()
         ?: return
+    val userComponents by viewModel.userComponents.collectAsState()
     val density = LocalDensity.current.density
     val (previewW, previewH) = project.previewSizeFor(screen)
     // التخطيط يُحسب عند حجم المعاينة؛ السحب والتحجيم متاحان فقط عند حجم التصميم نفسه.
@@ -362,7 +363,19 @@ private fun EditorContent(
                                     onAdd = { preset ->
                                         val (cx, cy) = newElementCenter() ?: return@LibraryPanel
                                         viewModel.addPreset(preset, cx, cy)
-                                    }
+                                    },
+                                    userComponents = userComponents,
+                                    canSaveSelected = selectedElement != null,
+                                    selectedName = selectedElement?.let { el ->
+                                        el.properties[com.arabicuieditor.data.model.PropertyKeys.NAME].orEmpty()
+                                    }.orEmpty(),
+                                    onSaveSelected = viewModel::saveSelectedToLibrary,
+                                    onAddUser = { comp ->
+                                        val (cx, cy) = newElementCenter() ?: return@LibraryPanel
+                                        viewModel.addUserComponent(comp, cx, cy)
+                                    },
+                                    onRenameUser = viewModel::renameUserComponent,
+                                    onDeleteUser = viewModel::deleteUserComponent
                                 )
 
                                 BottomTab.PROPERTIES -> PropertiesPanel(

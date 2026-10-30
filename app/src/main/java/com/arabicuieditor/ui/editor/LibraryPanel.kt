@@ -8,6 +8,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import com.arabicuieditor.data.storage.UserComponent
+import com.arabicuieditor.data.storage.UserLibraryRepository
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -37,52 +46,187 @@ import com.arabicuieditor.data.model.PresetCategory
 @Composable
 fun LibraryPanel(
     onAdd: (ComponentPreset) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    userComponents: List<UserComponent> = emptyList(),
+    canSaveSelected: Boolean = false,
+    selectedName: String = "",
+    onSaveSelected: (String) -> Unit = {},
+    onAddUser: (UserComponent) -> Unit = {},
+    onRenameUser: (String, String) -> Unit = { _, _ -> },
+    onDeleteUser: (String) -> Unit = {}
 ) {
+    // الفهرس -1 = «مكتبتي» (المكوّنات الشخصية)، وما بعده فئات المكتبة الجاهزة.
     var categoryIndex by rememberSaveable { mutableIntStateOf(0) }
     val categories = PresetCategory.entries
+    val mine = categoryIndex < 0
     val category = categories[categoryIndex.coerceIn(0, categories.lastIndex)]
+    var nameDialog by remember { mutableStateOf<NameDialog?>(null) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            FilterChip(
+                selected = mine,
+                onClick = { categoryIndex = -1 },
+                label = { Text(stringResource(R.string.lib_mine)) },
+                modifier = Modifier.testTag("cat_MINE")
+            )
             categories.forEachIndexed { index, c ->
                 FilterChip(
-                    selected = c == category,
+                    selected = !mine && c == category,
                     onClick = { categoryIndex = index },
                     label = { Text(stringResource(c.labelRes)) },
                     modifier = Modifier.testTag("cat_${c.name}")
                 )
             }
         }
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ComponentLibrary.byCategory(category).forEach { preset ->
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier
-                        .width(112.dp)
-                        .height(72.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onAdd(preset) }
-                        .testTag("preset_${preset.id}")
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = stringResource(preset.labelRes),
-                            style = MaterialTheme.typography.labelLarge,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(8.dp)
-                        )
+        if (mine) {
+            MineSection(
+                userComponents, canSaveSelected,
+                onSave = { nameDialog = NameDialog(null, selectedName) },
+                onAddUser = onAddUser,
+                onRename = { c -> nameDialog = NameDialog(c.id, c.name) },
+                onDelete = onDeleteUser
+            )
+        } else {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ComponentLibrary.byCategory(category).forEach { preset ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .width(112.dp)
+                            .height(72.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onAdd(preset) }
+                            .testTag("preset_${preset.id}")
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = stringResource(preset.labelRes),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
                     }
                 }
             }
         }
     }
+
+    nameDialog?.let { d ->
+        NameDialogView(
+            initial = d.initial,
+            onDismiss = { nameDialog = null },
+            onConfirm = { name ->
+                if (d.id == null) onSaveSelected(name) else onRenameUser(d.id, name)
+                nameDialog = null
+            }
+        )
+    }
+}
+
+private class NameDialog(val id: String?, val initial: String)
+
+@Composable
+private fun MineSection(
+    items: List<UserComponent>,
+    canSave: Boolean,
+    onSave: () -> Unit,
+    onAddUser: (UserComponent) -> Unit,
+    onRename: (UserComponent) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(
+            onClick = onSave,
+            enabled = canSave,
+            modifier = Modifier.testTag("lib_save_selected")
+        ) {
+            Text(stringResource(if (canSave) R.string.lib_save_selected else R.string.lib_save_hint))
+        }
+        if (items.isEmpty()) {
+            Text(
+                stringResource(R.string.lib_empty),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("lib_empty")
+            )
+        } else {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items.forEach { c ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.width(132.dp).testTag("user_${c.id}")
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .clickable { onAddUser(c) }
+                                    .testTag("user_add_${c.id}"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    c.name,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
+                            }
+                            Row {
+                                TextButton(onClick = { onRename(c) }) {
+                                    Text(stringResource(R.string.action_rename), style = MaterialTheme.typography.labelSmall)
+                                }
+                                TextButton(
+                                    onClick = { onDelete(c.id) },
+                                    modifier = Modifier.testTag("user_delete_${c.id}")
+                                ) {
+                                    Text(stringResource(R.string.action_delete), style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NameDialogView(initial: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var text by remember { mutableStateOf(initial.take(UserLibraryRepository.MAX_NAME_LENGTH)) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.lib_name)) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it.take(UserLibraryRepository.MAX_NAME_LENGTH) },
+                singleLine = true,
+                modifier = Modifier.testTag("lib_name_field")
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(text.trim()) },
+                enabled = text.isNotBlank(),
+                modifier = Modifier.testTag("lib_name_ok")
+            ) { Text(stringResource(R.string.action_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
+    )
 }
