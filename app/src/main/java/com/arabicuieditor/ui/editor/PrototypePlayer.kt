@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -30,8 +31,10 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.arabicuieditor.R
 import com.arabicuieditor.data.model.ClickAction
@@ -91,6 +94,8 @@ fun PrototypePlayer(
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp).testTag("proto_screen")
             )
         }
+        // الشاشة المصمَّمة تُرسم يسار-يمين دائمًا (كمساحة التصميم)، وإلا انزاحت العناصر في واجهة RTL.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
             val scale = min(maxWidth.value / screen.width, maxHeight.value / screen.height)
             Box(
@@ -134,6 +139,7 @@ fun PrototypePlayer(
                     }
                 }
             }
+        }
         }
     }
 }
