@@ -12,7 +12,9 @@ import com.arabicuieditor.data.model.ComponentPreset
 import com.arabicuieditor.data.model.DesignSystem
 import com.arabicuieditor.data.model.DesignThemes
 import com.arabicuieditor.data.model.ElementOps
+import com.arabicuieditor.data.model.ClickAction
 import com.arabicuieditor.data.model.ElementTree
+import com.arabicuieditor.data.model.Interactions
 import com.arabicuieditor.data.model.LayoutEditing
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.PropertyRegistry
@@ -476,6 +478,14 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val normalized = PropertyRegistry.normalize(key, value) ?: return
         editScreen(screen.id, key = "prop:$elementId:$key") { s ->
             s.copy(elements = ElementTree.update(s.elements, elementId) { it.withProp(key, normalized) })
+        }
+    }
+
+    /** يضبط إجراء «عند النقر» لعنصر (انتقال إلى شاشة، رجوع، أو بلا إجراء). خطوة تراجع واحدة. */
+    fun setClickAction(elementId: String, action: ClickAction) {
+        val screen = currentScreen() ?: return
+        editScreen(screen.id, key = "click:$elementId") { s ->
+            s.copy(elements = ElementTree.update(s.elements, elementId) { Interactions.withClickAction(it, action) })
         }
     }
 

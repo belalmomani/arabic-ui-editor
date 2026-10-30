@@ -47,7 +47,10 @@ import androidx.compose.ui.unit.sp
 import com.arabicuieditor.R
 import com.arabicuieditor.data.model.Axis
 import com.arabicuieditor.data.model.ChildLayout
+import com.arabicuieditor.data.model.ClickAction
 import com.arabicuieditor.data.model.ColorUtil
+import com.arabicuieditor.data.model.Interactions
+import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.Contrast
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.model.colorProp
@@ -98,7 +101,9 @@ fun PropertiesPanel(
     onWrap: (ChildLayout) -> Unit = {},
     onUnwrap: () -> Unit = {},
     onAlign: (AlignEdge) -> Unit = {},
-    onDistribute: (horizontal: Boolean) -> Unit = {}
+    onDistribute: (horizontal: Boolean) -> Unit = {},
+    screens: List<UiScreen> = emptyList(),
+    onSetClick: (ClickAction) -> Unit = {}
 ) {
     if (element == null || rect == null) {
         Box(modifier, contentAlignment = Alignment.Center) {
@@ -144,6 +149,10 @@ fun PropertiesPanel(
             item(key = "contrast") {
                 ContrastCheck(element)
             }
+        }
+
+        item(key = "interaction") {
+            InteractionSection(element, screens, onSetClick)
         }
 
         item(key = "sizes") {
@@ -716,5 +725,65 @@ private fun ContrastCheck(element: UiElement) {
             )
         }
         Text(stringResource(messageRes), color = tint, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** «عند النقر»: بلا إجراء، أو انتقال إلى شاشة، أو رجوع. يعمل في وضع المعاينة (زر «تشغيل»). */
+@Composable
+private fun InteractionSection(element: UiElement, screens: List<UiScreen>, onSetClick: (ClickAction) -> Unit) {
+    val action = Interactions.clickAction(element)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("interaction")) {
+        SectionHeader(stringResource(R.string.ia_title))
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = action == ClickAction.None,
+                onClick = { onSetClick(ClickAction.None) },
+                label = { Text(stringResource(R.string.ia_none)) },
+                modifier = Modifier.testTag("click_none")
+            )
+            FilterChip(
+                selected = action is ClickAction.Navigate,
+                onClick = {
+                    if (action !is ClickAction.Navigate) {
+                        onSetClick(ClickAction.Navigate(screens.firstOrNull()?.id.orEmpty()))
+                    }
+                },
+                enabled = screens.isNotEmpty(),
+                label = { Text(stringResource(R.string.ia_navigate)) },
+                modifier = Modifier.testTag("click_nav")
+            )
+            FilterChip(
+                selected = action == ClickAction.Back,
+                onClick = { onSetClick(ClickAction.Back) },
+                label = { Text(stringResource(R.string.ia_back)) },
+                modifier = Modifier.testTag("click_back")
+            )
+        }
+        if (action is ClickAction.Navigate) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                screens.forEach { s ->
+                    FilterChip(
+                        selected = s.id == action.screenId,
+                        onClick = { onSetClick(ClickAction.Navigate(s.id)) },
+                        label = { Text(s.name) },
+                        modifier = Modifier.testTag("click_to_${s.id}")
+                    )
+                }
+            }
+            if (!Interactions.isTargetValid(screens, action)) {
+                Text(
+                    stringResource(R.string.ia_target_missing),
+                    color = Color(0xFFC62828),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag("click_missing")
+                )
+            }
+        }
     }
 }

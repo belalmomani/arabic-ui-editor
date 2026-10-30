@@ -65,6 +65,14 @@
     <string name="lib_save_hint">حدّد عنصرًا في الشاشة لحفظه</string>
     <string name="lib_empty">مكتبتك فارغة. حدّد عنصرًا (مع أبنائه) واحفظه لتعيد استخدامه في أي مشروع.</string>
     <string name="lib_name">اسم المكوّن</string>
+    <string name="ia_title">عند النقر</string>
+    <string name="ia_none">بلا إجراء</string>
+    <string name="ia_navigate">انتقال إلى شاشة</string>
+    <string name="ia_back">رجوع</string>
+    <string name="ia_target_missing">الشاشة المستهدفة محذوفة؛ اختر شاشة أخرى</string>
+    <string name="proto_play">تشغيل</string>
+    <string name="proto_close">إغلاق المعاينة</string>
+    <string name="proto_back">رجوع</string>
     <string name="tab_library">المكتبة</string>
     <string name="tab_properties">الخصائص</string>
     <string name="tab_layers">الطبقات</string>

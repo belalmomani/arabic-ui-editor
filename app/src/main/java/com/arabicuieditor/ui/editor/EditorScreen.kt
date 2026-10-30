@@ -109,6 +109,9 @@ fun EditorScreen(
     val ready = state as? EditorState.Ready
     val title = ready?.project?.name ?: stringResource(R.string.editor_title)
 
+    var playing by rememberSaveable { mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             AppTopBar(
@@ -118,6 +121,11 @@ fun EditorScreen(
                     onBack()
                 },
                 actions = {
+                    TextButton(
+                        onClick = { playing = true },
+                        enabled = ready != null,
+                        modifier = Modifier.testTag("btn_play")
+                    ) { Text(stringResource(R.string.proto_play)) }
                     TextButton(onClick = viewModel::undo, enabled = canUndo, modifier = Modifier.testTag("btn_undo")) {
                         Text(stringResource(R.string.action_undo))
                     }
@@ -154,6 +162,20 @@ fun EditorScreen(
                 )
             }
         }
+    }
+    if (playing && ready != null) {
+        val startId = currentScreenId?.takeIf { id -> ready.project.screens.any { it.id == id } }
+            ?: ready.project.effectiveStartScreenId
+        if (startId != null) {
+            PrototypePlayer(
+                project = ready.project,
+                startScreenId = startId,
+                designSystem = ready.project.designSystem,
+                onClose = { playing = false },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
     }
 }
 
@@ -411,7 +433,11 @@ private fun EditorContent(
                                     onWrap = viewModel::wrapSelected,
                                     onUnwrap = viewModel::unwrapSelected,
                                     onAlign = viewModel::alignSelected,
-                                    onDistribute = viewModel::distributeSelected
+                                    onDistribute = viewModel::distributeSelected,
+                                    screens = project.screens,
+                                    onSetClick = { action ->
+                                        selectedElement?.let { viewModel.setClickAction(it.id, action) }
+                                    }
                                 )
 
                                 BottomTab.LAYERS -> LayersPanel(
