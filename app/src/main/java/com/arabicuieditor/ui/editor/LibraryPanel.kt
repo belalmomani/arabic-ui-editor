@@ -20,6 +20,7 @@ import com.arabicuieditor.data.storage.UserLibraryRepository
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -67,7 +68,8 @@ fun LibraryPanel(
     val category = categories[categoryIndex.coerceIn(0, categories.lastIndex)]
     var nameDialog by remember { mutableStateOf<NameDialog?>(null) }
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // الارتفاع ثابت في اللوحة السفلية؛ التمرير الرأسي يضمن ظهور كل ما تحت الفئات (القوالب مثلًا).
+    Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
