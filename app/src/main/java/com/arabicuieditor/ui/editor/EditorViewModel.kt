@@ -158,6 +158,16 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         _selectedId.value = null
     }
 
+    /** يضيف شاشات قالب إلى المشروع (لا يمسّ الموجود) وينتقل إلى أولاها. خطوة تراجع واحدة. */
+    fun addTemplate(template: com.arabicuieditor.data.model.AppTemplate) {
+        val project = readyProject() ?: return
+        val added = com.arabicuieditor.data.model.Templates.build(template, project.screens) { str(it) }
+        if (added.isEmpty()) return
+        edit { it.copy(screens = it.screens + added) }
+        _currentScreenId.value = added.first().id
+        _selectedId.value = null
+    }
+
     fun renameScreen(id: String, name: String) {
         if (name.isBlank()) return
         edit { it.copy(screens = ScreenOps.rename(it.screens, id, name)) }
