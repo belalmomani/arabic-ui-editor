@@ -318,3 +318,6 @@ AGP 8.7.3 · Kotlin 2.0.21 · Compose BOM 2024.12.01 · Gradle 8.10.2 (يُثب�
 - تصدير الكود: `Image(painterResource(R.drawable.img_N), contentScale = Crop)` مع تعليق باسم الملف الذي تنسخه إلى `res/drawable`.
 - اختبارات جديدة: `ImageNamesTest` (6). **لم يُترجم ولم يُختبر محليًا؛ سيُختبر أول مرة في CI.**
 - حدود: لا قص/تحجيم يدوي (Crop فقط)، لا مصغّرات للصور في اللوحات، الملفات اليتيمة لا تُحذف تلقائيًا.
+
+### 0.14.1 — إصلاح ترجمة
+- import ناقص (`PropertyKeys`) في `EditorViewModel.kt`. لا تغيير وظيفي.

@@ -20,6 +20,7 @@ import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Interactions
 import com.arabicuieditor.data.model.LayoutEditing
 import com.arabicuieditor.data.model.Project
+import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.PropertyRegistry
 import com.arabicuieditor.data.model.SCREEN_TYPE
 import com.arabicuieditor.data.model.ScreenOps
