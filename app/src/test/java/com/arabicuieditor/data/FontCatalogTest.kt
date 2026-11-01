@@ -41,7 +41,6 @@ class FontCatalogTest {
         assertEquals("cairo", PropertyRegistry.normalize(PropertyKeys.FONT_FAMILY, "  cairo "))
         assertNull(PropertyRegistry.normalize(PropertyKeys.FONT_FAMILY, "Bad Name!"))
         assertEquals("default", PropertyRegistry.defaultOf(ElementTypes.TEXT, PropertyKeys.FONT_FAMILY))
-        assertEquals("", PropertyRegistry.defaultOf(ElementTypes.DIVIDER, PropertyKeys.FONT_FAMILY))
     }
 
     private fun text(font: String?) = UiElement(

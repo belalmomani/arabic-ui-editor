@@ -171,7 +171,9 @@ class PropertiesPanelTest {
     @Test
     fun sizeModeChipsReportAxisAndMode() {
         show(button())
+        scrollTo("size_w_MATCH_PARENT")
         rule.onNodeWithTag("size_w_MATCH_PARENT").performScrollTo().performClick()
+        scrollTo("size_h_WRAP_CONTENT")
         rule.onNodeWithTag("size_h_WRAP_CONTENT").performScrollTo().performClick()
         assertEquals(listOf(Axis.HORIZONTAL to SizeMode.MATCH_PARENT, Axis.VERTICAL to SizeMode.WRAP_CONTENT), modes)
     }
