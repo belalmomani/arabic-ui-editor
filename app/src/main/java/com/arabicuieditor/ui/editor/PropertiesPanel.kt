@@ -47,11 +47,15 @@ import androidx.compose.ui.unit.sp
 import com.arabicuieditor.R
 import com.arabicuieditor.data.model.Axis
 import com.arabicuieditor.data.model.ChildLayout
+import com.arabicuieditor.data.model.Anchor
+import com.arabicuieditor.data.model.AnchorEdge
 import com.arabicuieditor.data.model.ClickAction
+import com.arabicuieditor.data.model.Constraints
 import com.arabicuieditor.data.model.ColorUtil
 import com.arabicuieditor.data.model.Interactions
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.Contrast
+import com.arabicuieditor.data.model.FontCatalog
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.model.colorProp
 import com.arabicuieditor.data.model.intProp
@@ -103,7 +107,9 @@ fun PropertiesPanel(
     onAlign: (AlignEdge) -> Unit = {},
     onDistribute: (horizontal: Boolean) -> Unit = {},
     screens: List<UiScreen> = emptyList(),
-    onSetClick: (ClickAction) -> Unit = {}
+    onSetClick: (ClickAction) -> Unit = {},
+    siblings: List<UiElement> = emptyList(),
+    onSetAnchor: (AnchorEdge, Anchor?) -> Unit = { _, _ -> }
 ) {
     if (element == null || rect == null) {
         Box(modifier, contentAlignment = Alignment.Center) {
@@ -145,9 +151,21 @@ fun PropertiesPanel(
             }
         }
 
+        if (defs.any { it.key == PropertyKeys.FONT_FAMILY }) {
+            item(key = "font") {
+                FontSection(element) { onSetProperty(PropertyKeys.FONT_FAMILY, it) }
+            }
+        }
+
         if (defs.any { it.key == PropertyKeys.TEXT_COLOR }) {
             item(key = "contrast") {
                 ContrastCheck(element)
+            }
+        }
+
+        if (parentLayout == ChildLayout.CONSTRAINT) {
+            item(key = "constraints") {
+                ConstraintSection(element, siblings, onSetAnchor)
             }
         }
 
@@ -171,7 +189,7 @@ fun PropertiesPanel(
           Column {
             SectionHeader(stringResource(R.string.group_geometry))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (isFree) {
+                if (isFree || parentLayout == ChildLayout.CONSTRAINT) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         NumberField(stringResource(R.string.geo_x), rect.x.toInt(), -2000, 4000,
                             { onSetRect(rect.copy(x = it.toFloat())) }, Modifier.weight(1f), "geo_x")
@@ -196,7 +214,7 @@ fun PropertiesPanel(
         }
 
         PropertyGroup.entries.forEach { group ->
-            val groupDefs = defs.filter { it.group == group }
+            val groupDefs = defs.filter { it.group == group && it.key != PropertyKeys.FONT_FAMILY }
             val hasKindChooser = group == PropertyGroup.LAYOUT && isContainer
             if (groupDefs.isNotEmpty() || hasKindChooser) {
                 item(key = "group_${group.name}") {
@@ -341,7 +359,8 @@ internal val ChildLayoutOptions = listOf(
     ChildLayout.ABSOLUTE to R.string.layout_free,
     ChildLayout.COLUMN to R.string.layout_column,
     ChildLayout.ROW to R.string.layout_row,
-    ChildLayout.BOX to R.string.layout_box
+    ChildLayout.BOX to R.string.layout_box,
+    ChildLayout.CONSTRAINT to R.string.layout_constraint
 )
 
 @Composable
@@ -784,6 +803,94 @@ private fun InteractionSection(element: UiElement, screens: List<UiScreen>, onSe
                     modifier = Modifier.testTag("click_missing")
                 )
             }
+        }
+    }
+}
+
+/** «القيود»: لكل حافة ومركز اختر ما ترتبط به (بلا، الأب، أو أحد الإخوة) والمسافة. ربط الجانبين يمدّد العنصر. */
+@Composable
+private fun ConstraintSection(element: UiElement, siblings: List<UiElement>, onSet: (AnchorEdge, Anchor?) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("constraints")) {
+        SectionHeader(stringResource(R.string.cs_title))
+        Text(stringResource(R.string.cs_hint), style = MaterialTheme.typography.bodySmall)
+        val edges = listOf(
+            AnchorEdge.LEFT to R.string.cs_left, AnchorEdge.RIGHT to R.string.cs_right,
+            AnchorEdge.TOP to R.string.cs_top, AnchorEdge.BOTTOM to R.string.cs_bottom,
+            AnchorEdge.CENTER_H to R.string.cs_center_h, AnchorEdge.CENTER_V to R.string.cs_center_v
+        )
+        edges.forEach { (edge, labelRes) ->
+            val current = Constraints.read(element, edge)
+            val isCenter = edge == AnchorEdge.CENTER_H || edge == AnchorEdge.CENTER_V
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(labelRes), style = MaterialTheme.typography.labelMedium)
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FilterChip(
+                        selected = current == null,
+                        onClick = { onSet(edge, null) },
+                        label = { Text(stringResource(R.string.cs_none)) },
+                        modifier = Modifier.testTag("cs_${edge.name}_none")
+                    )
+                    FilterChip(
+                        selected = current?.target == Constraints.PARENT,
+                        onClick = { onSet(edge, Anchor(Constraints.PARENT, current?.margin ?: 16)) },
+                        label = { Text(stringResource(R.string.cs_parent)) },
+                        modifier = Modifier.testTag("cs_${edge.name}_parent")
+                    )
+                    if (!isCenter) {
+                        siblings.forEach { sib ->
+                            val name = sib.properties[PropertyKeys.NAME].orEmpty()
+                                .ifBlank { stringResource(elementLabelRes(sib.type)) }
+                            FilterChip(
+                                selected = current?.target == sib.id,
+                                onClick = { onSet(edge, Anchor(sib.id, current?.margin ?: 8)) },
+                                label = { Text(name) },
+                                modifier = Modifier.testTag("cs_${edge.name}_${sib.id}")
+                            )
+                        }
+                    }
+                }
+                if (current != null && !isCenter) {
+                    NumberField(
+                        stringResource(R.string.cs_margin), current.margin, 0, Constraints.MAX_MARGIN,
+                        { onSet(edge, current.copy(margin = it)) },
+                        Modifier.width(120.dp), "cs_${edge.name}_margin"
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** «الخط»: قائمة بكل الخطوط المتاحة، كل صف مكتوب بنص العنصر نفسه بشكل ذلك الخط. */
+@Composable
+private fun FontSection(element: UiElement, onPick: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val options = remember { AppFonts.options(context) }
+    val current = element.prop(PropertyKeys.FONT_FAMILY)
+    val raw = listOf(PropertyKeys.TEXT, PropertyKeys.HINT, PropertyKeys.ITEMS)
+        .map { element.properties[it].orEmpty() }.firstOrNull { it.isNotBlank() }.orEmpty()
+    val sample = raw.lineSequence().firstOrNull().orEmpty().take(28).ifBlank { stringResource(R.string.font_sample) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("font_section")) {
+        SectionHeader(stringResource(R.string.prop_font_family))
+        options.forEach { o ->
+            val selected = o.id == current || (current !in options.map { it.id } && o.id == FontCatalog.DEFAULT)
+            androidx.compose.material3.Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onPick(o.id) }.testTag("font_${o.id}")
+            ) {
+                Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                    Text(o.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(sample, fontFamily = o.family, fontSize = 20.sp, maxLines = 1)
+                }
+            }
+        }
+        if (options.none { !it.isSystem }) {
+            Text(stringResource(R.string.font_hint), style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("font_hint"))
         }
     }
 }

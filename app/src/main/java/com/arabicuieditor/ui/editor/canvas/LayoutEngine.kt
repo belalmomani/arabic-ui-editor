@@ -1,6 +1,8 @@
 package com.arabicuieditor.ui.editor.canvas
 
 import com.arabicuieditor.data.model.Aligns
+import com.arabicuieditor.data.model.Constraints
+import com.arabicuieditor.data.model.AnchorEdge
 import com.arabicuieditor.data.model.Arrangements
 import com.arabicuieditor.data.model.Axis
 import com.arabicuieditor.data.model.ChildLayout
@@ -289,6 +291,7 @@ object LayoutEngine {
                 ChildLayout.COLUMN -> flow(parentId, true, props, children, content)
                 ChildLayout.ROW -> flow(parentId, false, props, children, content)
                 ChildLayout.BOX -> box(parentId, props, children, content)
+                ChildLayout.CONSTRAINT -> constraintLayout(parentId, children, content)
                 else -> freeLayout(parentId, children, content, parentBase)
             }
         }
@@ -314,6 +317,68 @@ object LayoutEngine {
                     if (childBase == null) null else parentBase.h, childBase?.h, fillH
                 )
                 place(child, parentId, DesignRect(content.x + left, content.y + top, width, height))
+            }
+        }
+
+        // ---- قيود ----
+
+        private fun constraintLayout(parentId: String?, children: List<UiElement>, content: DesignRect) {
+            val byId = children.associateBy { it.id }
+            val rects = HashMap<String, DesignRect>()
+            val visiting = HashSet<String>()
+
+            fun resolve(c: UiElement): DesignRect {
+                rects[c.id]?.let { return it }
+                val l = c.layout
+                val fillW = l.width.mode == SizeMode.MATCH_PARENT
+                val fillH = l.height.mode == SizeMode.MATCH_PARENT
+                val w = sizeOf(l.width, content.w - (if (fillW) l.x else 0f)) { intrinsic(c, Axis.HORIZONTAL) }
+                val h = sizeOf(l.height, content.h - (if (fillH) l.y else 0f)) { intrinsic(c, Axis.VERTICAL) }
+                val fallback = DesignRect(content.x + l.x, content.y + l.y, w, h)
+                if (!visiting.add(c.id)) return fallback // دائرة ربط: يُتجاهل الربط عند هذه النقطة
+
+                fun target(edge: AnchorEdge): Float? {
+                    val a = Constraints.read(c, edge) ?: return null
+                    val m = a.margin.toFloat()
+                    if (a.target == Constraints.PARENT) {
+                        return when (edge) {
+                            AnchorEdge.LEFT -> content.x + m
+                            AnchorEdge.RIGHT -> content.x + content.w - m
+                            AnchorEdge.TOP -> content.y + m
+                            AnchorEdge.BOTTOM -> content.y + content.h - m
+                            else -> null
+                        }
+                    }
+                    val sib = byId[a.target]?.takeIf { it.id != c.id } ?: return null
+                    val r = resolve(sib)
+                    return when (edge) {
+                        AnchorEdge.LEFT -> r.x + r.w + m
+                        AnchorEdge.RIGHT -> r.x - m
+                        AnchorEdge.TOP -> r.y + r.h + m
+                        AnchorEdge.BOTTOM -> r.y - m
+                        else -> null
+                    }
+                }
+
+                fun centered(edge: AnchorEdge, center: Float): Float? =
+                    if (Constraints.read(c, edge)?.target == Constraints.PARENT) center else null
+
+                val (x, rw) = Constraints.solveAxis(
+                    target(AnchorEdge.LEFT), target(AnchorEdge.RIGHT),
+                    centered(AnchorEdge.CENTER_H, content.x + content.w / 2f), w, fallback.x, MIN
+                )
+                val (y, rh) = Constraints.solveAxis(
+                    target(AnchorEdge.TOP), target(AnchorEdge.BOTTOM),
+                    centered(AnchorEdge.CENTER_V, content.y + content.h / 2f), h, fallback.y, MIN
+                )
+                visiting.remove(c.id)
+                return DesignRect(x, y, rw, rh).also { rects[c.id] = it }
+            }
+
+            for (child in children) {
+                // يُسحب بالإصبع فقط ما لا ربط فيه (إحداثياته الحرة هي التي تحدد موضعه).
+                if (!Constraints.hasAny(child)) free += child.id
+                place(child, parentId, resolve(child))
             }
         }
 

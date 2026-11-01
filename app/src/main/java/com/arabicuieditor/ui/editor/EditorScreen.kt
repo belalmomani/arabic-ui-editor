@@ -449,6 +449,15 @@ private fun EditorContent(
                                     onAlign = viewModel::alignSelected,
                                     onDistribute = viewModel::distributeSelected,
                                     screens = project.screens,
+                                    siblings = selectedElement?.let { sel ->
+                                        val pid = layout.parentOf[sel.id]
+                                        val list = if (pid == null) screen.elements
+                                        else ElementTree.find(screen.elements, pid)?.children.orEmpty()
+                                        list.filter { it.id != sel.id }
+                                    }.orEmpty(),
+                                    onSetAnchor = { edge, anchor ->
+                                        selectedElement?.let { viewModel.setAnchor(it.id, edge, anchor) }
+                                    },
                                     onSetClick = { action ->
                                         selectedElement?.let { viewModel.setClickAction(it.id, action) }
                                     }

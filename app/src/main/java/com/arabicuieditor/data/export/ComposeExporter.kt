@@ -7,6 +7,8 @@ import com.arabicuieditor.data.model.ClickAction
 import com.arabicuieditor.data.model.ColorUtil
 import com.arabicuieditor.data.model.DesignSystem
 import com.arabicuieditor.data.model.ElementTypes
+import com.arabicuieditor.data.model.ElementTree
+import com.arabicuieditor.data.model.FontCatalog
 import com.arabicuieditor.data.model.FontWeights
 import com.arabicuieditor.data.model.Interactions
 import com.arabicuieditor.data.model.Project
@@ -18,6 +20,8 @@ import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.prop
+import com.arabicuieditor.ui.editor.canvas.LayoutEngine
+import com.arabicuieditor.ui.editor.canvas.LayoutResult
 
 /**
  * يولّد كود Jetpack Compose (Kotlin) من شجرة العناصر. دالة نقية بلا اعتماد على أندرويد.
@@ -51,6 +55,7 @@ object ComposeExporter {
         private val sb = StringBuilder()
         private var depth = 0
         private var inputCounter = 0
+        private var frames: LayoutResult? = null
 
         private val screenIndex: Map<String, Int> =
             project.screens.mapIndexed { i, s -> s.id to i }.toMap()
@@ -164,10 +169,17 @@ object ComposeExporter {
         fun generate(screens: List<UiScreen>): String {
             line("// تصدير من «محرر الواجهات العربي» — مشروع: ${project.name.replace('\n', ' ')}")
             line("// الأسماء العربية للشاشات في تعليقات؛ الدوال Screen1، Screen2... (معرّفات لاتينية).")
-            line("// التخطيط الحر (x, y) بأبعاد التصميم ثابتة؛ لا يُصدَّر سلوك التثبيت عند تغيّر حجم الشاشة.")
+            line("// التخطيط الحر والقيود تُصدَّر بمواضع وأبعاد التصميم الثابتة؛ لا يُصدَّر سلوك التثبيت أو القيود الحيّة عند تغيّر حجم الشاشة.")
             line("package $pkg")
             line()
             line("import androidx.activity.compose.BackHandler")
+            val usesCustomFont = project.screens.any { sc ->
+                ElementTree.flatten(sc.elements).any { fontExpr(it)?.startsWith("FontFamily(Font(") == true }
+            }
+            if (usesCustomFont) {
+                line("// يستعمل خطوطًا مخصصة: انسخ ملفاتها نفسها إلى res/font في مشروعك، واستورد R الخاص بحزمتك.")
+                line("import $pkg.R")
+            }
             for (p in listOf(
                 "foundation", "foundation.layout", "foundation.text", "material3", "runtime", "ui",
                 "ui.draw", "ui.graphics", "ui.platform", "ui.text", "ui.text.font", "ui.text.style", "ui.unit"
@@ -229,6 +241,7 @@ object ComposeExporter {
         private fun screen(s: UiScreen) {
             val idx = screenIndex[s.id] ?: 0
             inputCounter = 0
+            frames = LayoutEngine.layout(s)
             line("// الشاشة: ${s.name.replace('\n', ' ')}")
             line("@Composable")
             line("fun ${screenFunction(idx)}(onNavigate: (String) -> Unit = {}, onBack: () -> Unit = {}) {")
@@ -248,7 +261,7 @@ object ComposeExporter {
         }
 
         /** حاوية بتخطيط [kind] وأبنائها. [read] يقرأ خصائص التخطيط (ARRANGEMENT/SPACING/CHILD_ALIGN...). */
-        private fun layoutNode(kind: ChildLayout, read: (String) -> String, mods: List<String>, children: List<UiElement>) {
+        private fun layoutNode(kind: ChildLayout, read: (String) -> String, mods: List<String>, children: List<UiElement>, owner: String? = null) {
             val spacing = read(PropertyKeys.SPACING).toIntOrNull() ?: 0
             val ah = read(PropertyKeys.CHILD_ALIGN_H)
             val av = read(PropertyKeys.CHILD_ALIGN_V)
@@ -258,20 +271,23 @@ object ComposeExporter {
                     val args = ArrayList<String>()
                     arrangement(arr, spacing, vertical = true)?.let { args += "verticalArrangement = $it" }
                     args += "horizontalAlignment = ${alignH(ah)}"
-                    call("Column", args, mods) { children.forEach { child(it, ChildLayout.COLUMN, ah, av) } }
+                    call("Column", args, mods) { children.forEach { child(it, ChildLayout.COLUMN, ah, av, owner) } }
                 }
                 ChildLayout.ROW -> {
                     val args = ArrayList<String>()
                     arrangement(arr, spacing, vertical = false)?.let { args += "horizontalArrangement = $it" }
                     args += "verticalAlignment = ${alignV(av)}"
-                    call("Row", args, mods) { children.forEach { child(it, ChildLayout.ROW, ah, av) } }
+                    call("Row", args, mods) { children.forEach { child(it, ChildLayout.ROW, ah, av, owner) } }
                 }
                 ChildLayout.BOX ->
                     call("Box", listOf("contentAlignment = ${boxAlign(ah, av)}"), mods) {
-                        children.forEach { child(it, ChildLayout.BOX, ah, av) }
+                        children.forEach { child(it, ChildLayout.BOX, ah, av, owner) }
                     }
                 else ->
-                    call("Box", emptyList(), mods) { children.forEach { child(it, ChildLayout.ABSOLUTE, ah, av) } }
+                    call("Box", emptyList(), mods) {
+                        val k = if (kind == ChildLayout.CONSTRAINT) ChildLayout.CONSTRAINT else ChildLayout.ABSOLUTE
+                        children.forEach { child(it, k, ah, av, owner) }
+                    }
             }
         }
 
@@ -296,8 +312,20 @@ object ComposeExporter {
         private fun isContainerType(t: String) = t == ElementTypes.CONTAINER || t == ElementTypes.CARD
 
         /** معدّلات التموضع والحجم داخل الأب (الجزء المشترك لكل الأنواع). */
-        private fun placement(e: UiElement, parent: ChildLayout, parentAh: String, parentAv: String): List<String> {
+        private fun placement(e: UiElement, parent: ChildLayout, parentAh: String, parentAv: String, owner: String?): List<String> {
             val out = ArrayList<String>()
+            if (parent == ChildLayout.CONSTRAINT) {
+                // القيود تُحلّ بحجم التصميم: يُصدَّر الموضع والحجم الناتجان (لا قيود حيّة بعد).
+                val r = frames
+                val f = r?.frames?.get(e.id)
+                val c = r?.contents?.get(owner ?: LayoutEngine.ROOT)
+                if (f != null && c != null) {
+                    return listOf(
+                        ".offset(${dp(f.x - c.x)}, ${dp(f.y - c.y)})",
+                        ".size(${dp(f.w)}, ${dp(f.h)})"
+                    )
+                }
+            }
             val weight = intOf(e, PropertyKeys.WEIGHT)
             val selfH = e.prop(PropertyKeys.SELF_ALIGN_H)
             val selfV = e.prop(PropertyKeys.SELF_ALIGN_V)
@@ -393,14 +421,14 @@ object ComposeExporter {
             intOf(e, PropertyKeys.PADDING_END), intOf(e, PropertyKeys.PADDING_BOTTOM)
         )
 
-        private fun child(e: UiElement, parent: ChildLayout, parentAh: String, parentAv: String) {
+        private fun child(e: UiElement, parent: ChildLayout, parentAh: String, parentAv: String, owner: String? = null) {
             val label = e.prop(PropertyKeys.NAME).replace('\n', ' ').trim()
             if (e.prop(PropertyKeys.VISIBLE) == "false") {
                 line("// ${label.ifEmpty { e.type }} (مخفي في التصميم، لم يُصدَّر)")
                 return
             }
             if (label.isNotEmpty()) line("// $label")
-            val place = placement(e, parent, parentAh, parentAv)
+            val place = placement(e, parent, parentAh, parentAv, owner)
             when (e.type) {
                 ElementTypes.TEXT, ElementTypes.BUTTON -> textBox(e, place, e.prop(PropertyKeys.TEXT), singleLine = e.type == ElementTypes.BUTTON)
                 ElementTypes.INPUT -> inputBox(e, place)
@@ -411,7 +439,7 @@ object ComposeExporter {
                 ElementTypes.CONTAINER, ElementTypes.CARD -> {
                     val shadowed = e.type == ElementTypes.CARD
                     val mods = place + visual(e, shadowed) + listOfNotNull(contentPadding(e))
-                    layoutNode(e.childLayout, { k -> e.prop(k) }, mods, e.children)
+                    layoutNode(e.childLayout, { k -> e.prop(k) }, mods, e.children, e.id)
                 }
                 ElementTypes.DIVIDER -> {
                     call("Box", listOf("contentAlignment = Alignment.Center"), place) {
@@ -424,8 +452,19 @@ object ComposeExporter {
             }
         }
 
+        /** تعبير الخط، أو null للافتراضي. المخصص يفترض وجود الملف نفسه في res/font في مشروع الوجهة. */
+        private fun fontExpr(e: UiElement): String? = when (val id = e.prop(PropertyKeys.FONT_FAMILY)) {
+            FontCatalog.SANS -> "FontFamily.SansSerif"
+            FontCatalog.SERIF -> "FontFamily.Serif"
+            FontCatalog.MONO -> "FontFamily.Monospace"
+            FontCatalog.CURSIVE -> "FontFamily.Cursive"
+            FontCatalog.DEFAULT, "" -> null
+            else -> if (FontCatalog.isValid(id)) "FontFamily(Font(R.font.$id))" else null
+        }
+
         private fun textStyleArgs(e: UiElement, singleLine: Boolean): List<String> {
             val args = ArrayList<String>()
+            fontExpr(e)?.let { args += "fontFamily = $it" }
             args += "color = ${colorExpr(e.prop(PropertyKeys.TEXT_COLOR))}"
             args += "fontSize = ${textSizeExpr(e.prop(PropertyKeys.FONT_SIZE))}"
             when (e.prop(PropertyKeys.FONT_WEIGHT)) {
@@ -466,8 +505,9 @@ object ComposeExporter {
             line("var $v by remember { mutableStateOf(\"\") }")
             call("Box", listOf("contentAlignment = ${boxContentAlignment(e)}"), place + visual(e)) {
                 val pad = innerPadMods(e)
+                val fam = fontExpr(e)?.let { "fontFamily = $it, " }.orEmpty()
                 val style = "TextStyle(color = ${colorExpr(e.prop(PropertyKeys.TEXT_COLOR))}, " +
-                    "fontSize = ${textSizeExpr(e.prop(PropertyKeys.FONT_SIZE))}, textAlign = ${textAlign(e)})"
+                    "fontSize = ${textSizeExpr(e.prop(PropertyKeys.FONT_SIZE))}, ${fam}textAlign = ${textAlign(e)})"
                 call(
                     "BasicTextField",
                     listOf("value = $v", "onValueChange = { $v = it }", "singleLine = true", "textStyle = $style"),

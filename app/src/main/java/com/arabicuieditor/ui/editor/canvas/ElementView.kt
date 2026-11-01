@@ -137,6 +137,7 @@ private fun StyledText(
         text = text,
         color = argb(element.colorProp(PropertyKeys.TEXT_COLOR)),
         fontSize = element.intProp(PropertyKeys.FONT_SIZE).sp,
+        fontFamily = com.arabicuieditor.ui.editor.rememberFontFamily(element.prop(PropertyKeys.FONT_FAMILY)),
         fontWeight = fontWeightOf(element.prop(PropertyKeys.FONT_WEIGHT)),
         textAlign = textAlignOf(element.prop(PropertyKeys.TEXT_ALIGN)),
         maxLines = if (singleLine) 1 else Int.MAX_VALUE,

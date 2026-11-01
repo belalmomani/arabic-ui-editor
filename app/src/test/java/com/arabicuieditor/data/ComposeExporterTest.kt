@@ -220,4 +220,20 @@ class ComposeExporterTest {
         val p = project(UiScreen("s1", "أ", elements = listOf(el("t", ElementTypes.TEXT))))
         assertEquals(code(p), code(p))
     }
+
+    @Test fun constraintChildrenExportResolvedFrames() {
+        val box = el(
+            "box", ElementTypes.CONTAINER, w = 300f, h = 200f, layout = ChildLayout.CONSTRAINT,
+            children = listOf(
+                com.arabicuieditor.data.model.Constraints.write(
+                    el("a", ElementTypes.BUTTON, w = 80f, h = 40f, props = mapOf(PropertyKeys.TEXT to "x")),
+                    com.arabicuieditor.data.model.AnchorEdge.RIGHT, com.arabicuieditor.data.model.Anchor("parent", 10)
+                )
+            )
+        ).copy(layout = ElementLayout(20f, 30f, SizeSpec.fixed(300f), SizeSpec.fixed(200f)))
+        val src = code(project(UiScreen("s1", "أ", elements = listOf(box))))
+        assertBalanced(src)
+        assertTrue(src.contains(".offset(210.dp, 0.dp)"))
+        assertTrue(src.contains(".size(80.dp, 40.dp)"))
+    }
 }

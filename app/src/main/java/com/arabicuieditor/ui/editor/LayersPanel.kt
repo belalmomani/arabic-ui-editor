@@ -85,5 +85,6 @@ fun layoutLabelRes(layout: ChildLayout): Int = when (layout) {
     ChildLayout.COLUMN -> R.string.layout_column
     ChildLayout.ROW -> R.string.layout_row
     ChildLayout.BOX -> R.string.layout_box
+    ChildLayout.CONSTRAINT -> R.string.layout_constraint
     else -> R.string.layout_free
 }

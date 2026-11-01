@@ -103,10 +103,22 @@ object ElementTree {
         }
     }
 
-    /** نسخة بمعرّفات جديدة للعنصر وأبنائه وأحداثه. */
-    fun reId(e: UiElement): UiElement = e.copy(
-        id = newId(),
-        events = e.events.map { it.copy(id = newId()) },
-        children = e.children.map { reId(it) }
-    )
+    /** نسخة بمعرّفات جديدة للعنصر وأبنائه وأحداثه، مع تحديث ربط القيود بين عناصر الشجرة نفسها. */
+    fun reId(e: UiElement): UiElement {
+        val map = HashMap<String, String>()
+        fun collect(x: UiElement) {
+            map[x.id] = newId()
+            x.children.forEach { collect(it) }
+        }
+        collect(e)
+        fun rebuild(x: UiElement): UiElement = Constraints.remap(
+            x.copy(
+                id = map.getValue(x.id),
+                events = x.events.map { it.copy(id = newId()) },
+                children = x.children.map { rebuild(it) }
+            ),
+            map
+        )
+        return rebuild(e)
+    }
 }

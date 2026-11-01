@@ -44,6 +44,7 @@ import com.arabicuieditor.data.model.ComponentPreset
 import com.arabicuieditor.data.model.AppTemplate
 import com.arabicuieditor.data.model.PresetCategory
 import com.arabicuieditor.data.model.TemplateCategory
+import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.Templates
 
 /** مكتبة المكونات الجاهزة: فئات في الأعلى، ومكوّنات الفئة المختارة في صف أفقي. نقرة تضيف المكوّن. */
@@ -110,24 +111,38 @@ fun LibraryPanel(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val ds = LocalDesignSystem.current
                 ComponentLibrary.byCategory(category).forEach { preset ->
+                    val thumb = remember(preset.id) {
+                        UiScreen(
+                            id = "thumb_${preset.id}", name = "", width = 300f, height = 640f,
+                            elements = preset.build { context.getString(it) }
+                        )
+                    }
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surface,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
-                            .width(112.dp)
-                            .height(72.dp)
+                            .width(144.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { onAdd(preset) }
                             .testTag("preset_${preset.id}")
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Column(
+                            Modifier.padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(Modifier.height(64.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                ScreenThumbnail(thumb, ds, 124f, 64f, wholeScreen = false)
+                            }
                             Text(
                                 text = stringResource(preset.labelRes),
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.labelMedium,
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(8.dp)
+                                maxLines = 1
                             )
                         }
                     }
@@ -186,6 +201,12 @@ private fun MineSection(
                         modifier = Modifier.width(132.dp).testTag("user_${c.id}")
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.height(64.dp).fillMaxWidth().padding(top = 6.dp), contentAlignment = Alignment.Center) {
+                                val shot = remember(c.id) {
+                                    UiScreen(id = "thumb_${c.id}", name = "", width = 300f, height = 640f, elements = listOf(c.root))
+                                }
+                                ScreenThumbnail(shot, LocalDesignSystem.current, 112f, 58f, wholeScreen = false)
+                            }
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -252,6 +273,12 @@ private fun TemplatesSection(onUse: (AppTemplate) -> Unit) {
     var cat by rememberSaveable { mutableIntStateOf(-1) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val category = TemplateCategory.entries.getOrNull(cat)
+    val ds = LocalDesignSystem.current
+    val thumbScreens = remember {
+        Templates.all.associate { t ->
+            t.id to Templates.build(t, emptyList()) { context.getString(it) }.first()
+        }
+    }
     val shown = Templates.filter(category, query) { context.getString(it.labelRes) + " " + context.getString(it.descRes) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
@@ -281,6 +308,9 @@ private fun TemplatesSection(onUse: (AppTemplate) -> Unit) {
                         modifier = Modifier.width(190.dp).testTag("tpl_${t.id}")
                     ) {
                         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(Modifier.height(200.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                ScreenThumbnail(thumbScreens.getValue(t.id), ds, 170f, 200f, wholeScreen = true)
+                            }
                             Text(stringResource(t.labelRes), style = MaterialTheme.typography.titleSmall)
                             Text(stringResource(t.descRes), style = MaterialTheme.typography.bodySmall, maxLines = 3)
                             Button(onClick = { onUse(t) }, modifier = Modifier.testTag("tpl_use_${t.id}")) {

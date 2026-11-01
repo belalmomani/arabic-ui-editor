@@ -12,7 +12,10 @@ import com.arabicuieditor.data.model.ComponentPreset
 import com.arabicuieditor.data.model.DesignSystem
 import com.arabicuieditor.data.model.DesignThemes
 import com.arabicuieditor.data.model.ElementOps
+import com.arabicuieditor.data.model.Anchor
+import com.arabicuieditor.data.model.AnchorEdge
 import com.arabicuieditor.data.model.ClickAction
+import com.arabicuieditor.data.model.Constraints
 import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Interactions
 import com.arabicuieditor.data.model.LayoutEditing
@@ -297,7 +300,6 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
 
     fun setScreenLayout(layout: ChildLayout) {
         val screen = currentScreen() ?: return
-        if (layout == ChildLayout.CONSTRAINT) return
         editScreen(screen.id) { it.copy(childLayout = layout) }
     }
 
@@ -471,7 +473,6 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     /** يغيّر طريقة ترتيب أبناء حاوية. */
     fun setChildLayout(elementId: String, layout: ChildLayout) {
         val screen = currentScreen() ?: return
-        if (layout == ChildLayout.CONSTRAINT) return
         editScreen(screen.id) { s ->
             s.copy(elements = ElementTree.update(s.elements, elementId) { e ->
                 if (ElementTree.canContain(e.type)) e.copy(childLayout = layout) else e
@@ -496,6 +497,14 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val screen = currentScreen() ?: return
         editScreen(screen.id, key = "click:$elementId") { s ->
             s.copy(elements = ElementTree.update(s.elements, elementId) { Interactions.withClickAction(it, action) })
+        }
+    }
+
+    /** يضبط (أو يمسح بـ null) ربط حافة عنصر داخل حاوية «قيود». دمج التعديلات المتتالية في خطوة تراجع. */
+    fun setAnchor(elementId: String, edge: AnchorEdge, anchor: Anchor?) {
+        val screen = currentScreen() ?: return
+        editScreen(screen.id, key = "anchor:$elementId:${edge.key}") { s ->
+            s.copy(elements = ElementTree.update(s.elements, elementId) { Constraints.write(it, edge, anchor) })
         }
     }
 

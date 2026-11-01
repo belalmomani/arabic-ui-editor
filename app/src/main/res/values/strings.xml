@@ -115,6 +115,14 @@
     <string name="tpl_none">لا قوالب مطابقة</string>
     <string name="tpl_screens_count">%1$d شاشات</string>
     <string name="tpl_tab">قوالب</string>
+    <string name="prop_font_family">الخط</string>
+    <string name="font_default">الخط الافتراضي</string>
+    <string name="font_sans">بلا زوائد (Sans)</string>
+    <string name="font_serif">بزوائد (Serif)</string>
+    <string name="font_mono">أحادي العرض</string>
+    <string name="font_cursive">يدوي (Cursive)</string>
+    <string name="font_sample">أبجد هوز ١٢٣</string>
+    <string name="font_hint">لإضافة خطوط عربية: ضع ملفاتها (ttf أو otf) في app/src/main/res/font باسم بأحرف صغيرة مثل cairo.ttf وtajawal.ttf، ثم أعد البناء فتظهر هنا تلقائيًا.</string>
     <string name="tab_library">المكتبة</string>
     <string name="tab_properties">الخصائص</string>
     <string name="tab_layers">الطبقات</string>
@@ -221,6 +229,18 @@
     <string name="layout_free">حر</string>
     <string name="layout_column">عمود</string>
     <string name="layout_row">صف</string>
+    <string name="layout_constraint">قيود</string>
+    <string name="cs_title">القيود (ربط الحواف)</string>
+    <string name="cs_hint">اربط حافة العنصر بالأب أو بعنصر آخر بمسافة. ربط الجانبين معًا يمدّد العنصر بينهما فيتكيف مع أي حجم شاشة. ما لا ربط فيه يبقى بموضعه الحر.</string>
+    <string name="cs_left">اليسار (يبدأ بعد)</string>
+    <string name="cs_right">اليمين (ينتهي قبل)</string>
+    <string name="cs_top">الأعلى (يبدأ بعد)</string>
+    <string name="cs_bottom">الأسفل (ينتهي قبل)</string>
+    <string name="cs_center_h">توسيط أفقي في الأب</string>
+    <string name="cs_center_v">توسيط رأسي في الأب</string>
+    <string name="cs_none">بلا</string>
+    <string name="cs_parent">الأب</string>
+    <string name="cs_margin">المسافة</string>
     <string name="layout_box">صندوق</string>
     <string name="prop_child_layout">ترتيب الأبناء</string>
 
