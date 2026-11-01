@@ -492,6 +492,20 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         }
     }
 
+    /** مجلد موارد هذا المشروع (الصور المستوردة). */
+    val imagesDir: java.io.File get() = repository.resourcesDir(projectId)
+
+    /** يستورد صورة من [uri] ويربطها بالعنصر. [onDone] يستلم نجاح العملية على الخيط الرئيسي. */
+    fun importImage(elementId: String, uri: android.net.Uri, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val name = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.arabicuieditor.data.storage.ImageImporter.import(getApplication(), uri, imagesDir)
+            }
+            if (name != null) setProperty(elementId, PropertyKeys.IMAGE_SRC, name)
+            onDone(name != null)
+        }
+    }
+
     /** يضبط إجراء «عند النقر» لعنصر (انتقال إلى شاشة، رجوع، أو بلا إجراء). خطوة تراجع واحدة. */
     fun setClickAction(elementId: String, action: ClickAction) {
         val screen = currentScreen() ?: return

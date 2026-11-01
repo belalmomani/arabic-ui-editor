@@ -106,6 +106,7 @@ fun PropertiesPanel(
     onUnwrap: () -> Unit = {},
     onAlign: (AlignEdge) -> Unit = {},
     onDistribute: (horizontal: Boolean) -> Unit = {},
+    onPickImage: () -> Unit = {},
     screens: List<UiScreen> = emptyList(),
     onSetClick: (ClickAction) -> Unit = {},
     siblings: List<UiElement> = emptyList(),
@@ -148,6 +149,12 @@ fun PropertiesPanel(
                         ActionChip(stringResource(R.string.distribute_v), "distribute_v") { onDistribute(false) }
                     }
                 }
+            }
+        }
+
+        if (defs.any { it.key == PropertyKeys.IMAGE_SRC }) {
+            item(key = "image") {
+                ImageSection(element, onPickImage) { onSetProperty(PropertyKeys.IMAGE_SRC, "") }
             }
         }
 
@@ -214,7 +221,7 @@ fun PropertiesPanel(
         }
 
         PropertyGroup.entries.forEach { group ->
-            val groupDefs = defs.filter { it.group == group && it.key != PropertyKeys.FONT_FAMILY }
+            val groupDefs = defs.filter { it.group == group && it.key != PropertyKeys.FONT_FAMILY && it.key != PropertyKeys.IMAGE_SRC }
             val hasKindChooser = group == PropertyGroup.LAYOUT && isContainer
             if (groupDefs.isNotEmpty() || hasKindChooser) {
                 item(key = "group_${group.name}") {
@@ -891,6 +898,25 @@ private fun FontSection(element: UiElement, onPick: (String) -> Unit) {
         }
         if (options.none { !it.isSystem }) {
             Text(stringResource(R.string.font_hint), style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("font_hint"))
+        }
+    }
+}
+
+/** «الصورة»: اختيار صورة من المعرض أو إزالتها. */
+@Composable
+private fun ImageSection(element: UiElement, onPick: () -> Unit, onClear: () -> Unit) {
+    val has = element.prop(PropertyKeys.IMAGE_SRC).isNotEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("image_section")) {
+        SectionHeader(stringResource(R.string.prop_image_src))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.material3.Button(onClick = onPick, modifier = Modifier.testTag("image_pick")) {
+                Text(stringResource(if (has) R.string.image_change else R.string.image_choose))
+            }
+            if (has) {
+                androidx.compose.material3.OutlinedButton(onClick = onClear, modifier = Modifier.testTag("image_clear")) {
+                    Text(stringResource(R.string.image_remove))
+                }
+            }
         }
     }
 }

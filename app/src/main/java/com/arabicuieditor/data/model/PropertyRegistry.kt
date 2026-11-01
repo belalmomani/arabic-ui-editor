@@ -42,6 +42,8 @@ object PropertyKeys {
     /** معرّف الخط (انظر [FontCatalog]). */
     const val FONT_FAMILY = "fontFamily"
     const val TEXT_ALIGN = "textAlign"
+    /** اسم ملف الصورة داخل مجلد موارد المشروع (انظر [ImageNames]). */
+    const val IMAGE_SRC = "imageSrc"
     const val BG_COLOR = "bgColor"
     const val BORDER_WIDTH = "borderWidth"
     const val BORDER_COLOR = "borderColor"
@@ -295,6 +297,7 @@ object PropertyRegistry {
             fallback = Tokens.color(Tokens.TEXT_COLOR)
         ),
         PropertyDef(PropertyKeys.FONT_SIZE, R.string.prop_font_size, PropertyGroup.TEXT, PropertyKind.Integer(8, 72), TEXTUAL, fallback = Tokens.text(Tokens.BODY)),
+        PropertyDef(PropertyKeys.IMAGE_SRC, R.string.prop_image_src, PropertyGroup.APPEARANCE, PropertyKind.Text(), setOf(ElementTypes.IMAGE), fallback = ""),
         PropertyDef(PropertyKeys.FONT_FAMILY, R.string.prop_font_family, PropertyGroup.TEXT, PropertyKind.Text(), TEXTUAL, fallback = FontCatalog.DEFAULT),
         PropertyDef(
             PropertyKeys.FONT_WEIGHT, R.string.prop_font_weight, PropertyGroup.TEXT,
@@ -382,7 +385,11 @@ object PropertyRegistry {
         val def = byKey[key] ?: return null
         return when (val kind = def.kind) {
             is PropertyKind.Text ->
-                if (key == PropertyKeys.FONT_FAMILY) raw.trim().takeIf { FontCatalog.isValid(it) } else raw.take(MAX_TEXT_LENGTH)
+                when (key) {
+                    PropertyKeys.FONT_FAMILY -> raw.trim().takeIf { FontCatalog.isValid(it) }
+                    PropertyKeys.IMAGE_SRC -> raw.trim().takeIf { it.isEmpty() || ImageNames.isValid(it) }
+                    else -> raw.take(MAX_TEXT_LENGTH)
+                }
             is PropertyKind.Integer ->
                 if (Tokens.isToken(raw.trim())) raw.trim().takeIf { Tokens.accepts(key, kind, it) }
                 else raw.trim().toIntOrNull()?.coerceIn(kind.min, kind.max)?.toString()

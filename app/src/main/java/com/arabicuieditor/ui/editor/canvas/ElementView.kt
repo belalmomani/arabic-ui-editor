@@ -93,7 +93,15 @@ fun ElementView(element: UiElement, modifier: Modifier) {
         }
 
         ElementTypes.IMAGE -> Box(base.boxStyle()) {
-            Canvas(Modifier.fillMaxSize()) {
+            val bitmap = rememberProjectImage(element.prop(PropertyKeys.IMAGE_SRC))
+            if (bitmap != null) {
+                androidx.compose.foundation.Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else Canvas(Modifier.fillMaxSize()) {
                 val stroke = 1.dp.toPx()
                 drawLine(ImageCross, Offset.Zero, Offset(size.width, size.height), stroke)
                 drawLine(ImageCross, Offset(size.width, 0f), Offset(0f, size.height), stroke)

@@ -164,6 +164,11 @@
     <string name="prop_text">النص</string>
     <string name="prop_hint">النص التوضيحي</string>
     <string name="prop_items">عناصر القائمة (سطر لكل عنصر)</string>
+    <string name="prop_image_src">الصورة</string>
+    <string name="image_choose">اختيار صورة</string>
+    <string name="image_change">تغيير الصورة</string>
+    <string name="image_remove">إزالة</string>
+    <string name="image_failed">تعذّر استيراد الصورة</string>
     <string name="prop_item_height">ارتفاع العنصر</string>
     <string name="prop_text_color">لون النص</string>
     <string name="prop_font_size">حجم الخط</string>

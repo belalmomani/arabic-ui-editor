@@ -1,6 +1,7 @@
 package com.arabicuieditor.data.export
 
 import com.arabicuieditor.data.model.Aligns
+import com.arabicuieditor.data.model.ImageNames
 import com.arabicuieditor.data.model.Arrangements
 import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ClickAction
@@ -176,13 +177,22 @@ object ComposeExporter {
             val usesCustomFont = project.screens.any { sc ->
                 ElementTree.flatten(sc.elements).any { fontExpr(it)?.startsWith("FontFamily(Font(") == true }
             }
+            val usesImages = project.screens.any { sc ->
+                ElementTree.flatten(sc.elements).any {
+                    it.type == ElementTypes.IMAGE && ImageNames.isValid(it.prop(PropertyKeys.IMAGE_SRC))
+                }
+            }
             if (usesCustomFont) {
                 line("// يستعمل خطوطًا مخصصة: انسخ ملفاتها نفسها إلى res/font في مشروعك، واستورد R الخاص بحزمتك.")
-                line("import $pkg.R")
             }
+            if (usesImages) {
+                line("// يستعمل صورًا: انسخ ملفاتها إلى res/drawable في مشروعك (الأسماء في التعليقات أدناه).")
+                line("import androidx.compose.ui.res.painterResource")
+            }
+            if (usesCustomFont || usesImages) line("import $pkg.R")
             for (p in listOf(
                 "foundation", "foundation.layout", "foundation.text", "material3", "runtime", "ui",
-                "ui.draw", "ui.graphics", "ui.platform", "ui.text", "ui.text.font", "ui.text.style", "ui.unit"
+                "ui.draw", "ui.graphics", "ui.layout", "ui.platform", "ui.text", "ui.text.font", "ui.text.style", "ui.unit"
             )) line("import androidx.compose.$p.*")
             line()
             designObjects()
@@ -433,8 +443,22 @@ object ComposeExporter {
                 ElementTypes.TEXT, ElementTypes.BUTTON -> textBox(e, place, e.prop(PropertyKeys.TEXT), singleLine = e.type == ElementTypes.BUTTON)
                 ElementTypes.INPUT -> inputBox(e, place)
                 ElementTypes.IMAGE -> {
-                    line("// TODO: ضع صورتك هنا، مثل Image(painterResource(R.drawable.name), contentDescription = null)")
-                    call("Box", emptyList(), place + visual(e))
+                    val src = e.prop(PropertyKeys.IMAGE_SRC)
+                    if (src.isNotEmpty() && ImageNames.isValid(src)) {
+                        line("// انسخ الملف $src من resources إلى app/src/main/res/drawable/ (الاسم: ${ImageNames.drawableName(src)})")
+                        call(
+                            "Image",
+                            listOf(
+                                "painter = painterResource(R.drawable.${ImageNames.drawableName(src)})",
+                                "contentDescription = null",
+                                "contentScale = ContentScale.Crop"
+                            ),
+                            place + visual(e)
+                        )
+                    } else {
+                        line("// TODO: ضع صورتك هنا، مثل Image(painterResource(R.drawable.name), contentDescription = null)")
+                        call("Box", emptyList(), place + visual(e))
+                    }
                 }
                 ElementTypes.CONTAINER, ElementTypes.CARD -> {
                     val shadowed = e.type == ElementTypes.CARD

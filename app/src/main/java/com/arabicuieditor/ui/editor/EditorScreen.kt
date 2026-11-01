@@ -159,13 +159,17 @@ fun EditorScreen(
                     textAlign = TextAlign.Center
                 )
 
-                is EditorState.Ready -> EditorContent(
-                    project = s.project,
-                    currentScreenId = currentScreenId,
-                    selectedId = selectedId,
-                    saveFailed = saveFailed,
-                    viewModel = viewModel
-                )
+                is EditorState.Ready -> CompositionLocalProvider(
+                    com.arabicuieditor.ui.editor.canvas.LocalImageDir provides viewModel.imagesDir
+                ) {
+                    EditorContent(
+                        project = s.project,
+                        currentScreenId = currentScreenId,
+                        selectedId = selectedId,
+                        saveFailed = saveFailed,
+                        viewModel = viewModel
+                    )
+                }
             }
         }
     }
@@ -180,13 +184,17 @@ fun EditorScreen(
         val startId = currentScreenId?.takeIf { id -> ready.project.screens.any { it.id == id } }
             ?: ready.project.effectiveStartScreenId
         if (startId != null) {
-            PrototypePlayer(
-                project = ready.project,
-                startScreenId = startId,
-                designSystem = ready.project.designSystem,
-                onClose = { playing = false },
-                modifier = Modifier.fillMaxSize()
-            )
+            CompositionLocalProvider(
+                com.arabicuieditor.ui.editor.canvas.LocalImageDir provides viewModel.imagesDir
+            ) {
+                PrototypePlayer(
+                    project = ready.project,
+                    startScreenId = startId,
+                    designSystem = ready.project.designSystem,
+                    onClose = { playing = false },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
     }
@@ -204,6 +212,17 @@ private fun EditorContent(
         ?: project.screens.firstOrNull()
         ?: return
     val userComponents by viewModel.userComponents.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val imagePicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        val id = selectedId
+        if (uri != null && id != null) {
+            viewModel.importImage(id, uri) { ok ->
+                if (!ok) android.widget.Toast.makeText(context, context.getString(R.string.image_failed), android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     val density = LocalDensity.current.density
     val (previewW, previewH) = project.previewSizeFor(screen)
     // التخطيط يُحسب عند حجم المعاينة؛ السحب والتحجيم متاحان فقط عند حجم التصميم نفسه.
@@ -416,6 +435,7 @@ private fun EditorContent(
 
                                 BottomTab.PROPERTIES -> PropertiesPanel(
                                     element = selectedElement,
+                                    onPickImage = { imagePicker.launch("image/*") },
                                     rect = selectedRect,
                                     onSetProperty = { key, value ->
                                         selectedElement?.let { viewModel.setProperty(it.id, key, value) }
