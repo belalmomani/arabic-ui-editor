@@ -109,6 +109,7 @@ fun PropertiesPanel(
     onPickImage: () -> Unit = {},
     screens: List<UiScreen> = emptyList(),
     onSetClick: (ClickAction) -> Unit = {},
+    onSetLongPress: (ClickAction) -> Unit = {},
     siblings: List<UiElement> = emptyList(),
     onSetAnchor: (AnchorEdge, Anchor?) -> Unit = { _, _ -> }
 ) {
@@ -183,7 +184,10 @@ fun PropertiesPanel(
         }
 
         item(key = "interaction") {
-            InteractionSection(element, screens, onSetClick)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                InteractionSection(element, screens, onSetClick)
+                InteractionSection(element, screens, onSetLongPress, longPress = true)
+            }
         }
 
         item(key = "sizes") {
@@ -762,10 +766,16 @@ private fun ContrastCheck(element: UiElement) {
 
 /** «عند النقر»: بلا إجراء، أو انتقال إلى شاشة، أو رجوع. يعمل في وضع المعاينة (زر «تشغيل»). */
 @Composable
-private fun InteractionSection(element: UiElement, screens: List<UiScreen>, onSetClick: (ClickAction) -> Unit) {
-    val action = Interactions.clickAction(element)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("interaction")) {
-        SectionHeader(stringResource(R.string.ia_title))
+private fun InteractionSection(
+    element: UiElement,
+    screens: List<UiScreen>,
+    onSetClick: (ClickAction) -> Unit,
+    longPress: Boolean = false
+) {
+    val pre = if (longPress) "long" else "click"
+    val action = Interactions.actionFor(element, if (longPress) Interactions.TRIGGER_LONG_PRESS else Interactions.TRIGGER_CLICK)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag(if (longPress) "interaction_long" else "interaction")) {
+        SectionHeader(stringResource(if (longPress) R.string.ia_title_long else R.string.ia_title))
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -774,7 +784,7 @@ private fun InteractionSection(element: UiElement, screens: List<UiScreen>, onSe
                 selected = action == ClickAction.None,
                 onClick = { onSetClick(ClickAction.None) },
                 label = { Text(stringResource(R.string.ia_none)) },
-                modifier = Modifier.testTag("click_none")
+                modifier = Modifier.testTag("${pre}_none")
             )
             FilterChip(
                 selected = action is ClickAction.Navigate,
@@ -785,13 +795,13 @@ private fun InteractionSection(element: UiElement, screens: List<UiScreen>, onSe
                 },
                 enabled = screens.isNotEmpty(),
                 label = { Text(stringResource(R.string.ia_navigate)) },
-                modifier = Modifier.testTag("click_nav")
+                modifier = Modifier.testTag("${pre}_nav")
             )
             FilterChip(
                 selected = action == ClickAction.Back,
                 onClick = { onSetClick(ClickAction.Back) },
                 label = { Text(stringResource(R.string.ia_back)) },
-                modifier = Modifier.testTag("click_back")
+                modifier = Modifier.testTag("${pre}_back")
             )
         }
         if (action is ClickAction.Navigate) {
@@ -804,7 +814,7 @@ private fun InteractionSection(element: UiElement, screens: List<UiScreen>, onSe
                         selected = s.id == action.screenId,
                         onClick = { onSetClick(ClickAction.Navigate(s.id)) },
                         label = { Text(s.name) },
-                        modifier = Modifier.testTag("click_to_${s.id}")
+                        modifier = Modifier.testTag("${pre}_to_${s.id}")
                     )
                 }
             }
@@ -813,7 +823,7 @@ private fun InteractionSection(element: UiElement, screens: List<UiScreen>, onSe
                     stringResource(R.string.ia_target_missing),
                     color = Color(0xFFC62828),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.testTag("click_missing")
+                    modifier = Modifier.testTag("${pre}_missing")
                 )
             }
         }

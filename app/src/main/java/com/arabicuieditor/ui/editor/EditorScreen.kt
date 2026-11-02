@@ -110,6 +110,7 @@ fun EditorScreen(
     val title = ready?.project?.name ?: stringResource(R.string.editor_title)
 
     var playing by rememberSaveable { mutableStateOf(false) }
+    var darkPreview by rememberSaveable { mutableStateOf(false) }
     var exporting by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
@@ -167,7 +168,9 @@ fun EditorScreen(
                         currentScreenId = currentScreenId,
                         selectedId = selectedId,
                         saveFailed = saveFailed,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        darkPreview = darkPreview,
+                        onDarkPreview = { darkPreview = it }
                     )
                 }
             }
@@ -190,7 +193,8 @@ fun EditorScreen(
                 PrototypePlayer(
                     project = ready.project,
                     startScreenId = startId,
-                    designSystem = ready.project.designSystem,
+                    designSystem = if (darkPreview) com.arabicuieditor.data.model.DarkMode.apply(ready.project.designSystem)
+                    else ready.project.designSystem,
                     onClose = { playing = false },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -206,7 +210,9 @@ private fun EditorContent(
     currentScreenId: String?,
     selectedId: String?,
     saveFailed: Boolean,
-    viewModel: EditorViewModel
+    viewModel: EditorViewModel,
+    darkPreview: Boolean,
+    onDarkPreview: (Boolean) -> Unit
 ) {
     val screen: UiScreen = project.screens.firstOrNull { it.id == currentScreenId }
         ?: project.screens.firstOrNull()
@@ -239,7 +245,6 @@ private fun EditorContent(
     var drag by remember { mutableStateOf<PaletteDrag?>(null) }
     var openTab by rememberSaveable { mutableStateOf<BottomTab?>(BottomTab.ELEMENTS) }
     // معاينة الوضع الليلي: تغيّر الرسم فقط (ألوان الرموز)، ولا تُخزَّن ولا تُسجَّل في التراجع.
-    var darkPreview by rememberSaveable { mutableStateOf(false) }
     val effectiveDesign = remember(project.designSystem, darkPreview) {
         if (darkPreview) com.arabicuieditor.data.model.DarkMode.apply(project.designSystem) else project.designSystem
     }
@@ -356,7 +361,7 @@ private fun EditorContent(
                     )
                     androidx.compose.material3.FilterChip(
                         selected = darkPreview,
-                        onClick = { darkPreview = !darkPreview },
+                        onClick = { onDarkPreview(!darkPreview) },
                         label = {
                             Text(
                                 stringResource(if (darkPreview) R.string.mode_dark else R.string.mode_light)
@@ -492,6 +497,9 @@ private fun EditorContent(
                                     }.orEmpty(),
                                     onSetAnchor = { edge, anchor ->
                                         selectedElement?.let { viewModel.setAnchor(it.id, edge, anchor) }
+                                    },
+                                    onSetLongPress = { action ->
+                                        selectedElement?.let { viewModel.setLongPressAction(it.id, action) }
                                     },
                                     onSetClick = { action ->
                                         selectedElement?.let { viewModel.setClickAction(it.id, action) }

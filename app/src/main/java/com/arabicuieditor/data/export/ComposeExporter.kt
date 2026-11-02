@@ -472,7 +472,29 @@ object ComposeExporter {
                         }
                     } else if (src.isNotEmpty() && ImageNames.isValid(src)) {
                         line("// انسخ الملف $src من resources إلى app/src/main/res/drawable/ (الاسم: ${ImageNames.drawableName(src)})")
-                        call(
+                        val zoom = intOf(e, PropertyKeys.IMAGE_ZOOM)
+                        val px = intOf(e, PropertyKeys.IMAGE_PAN_X)
+                        val py = intOf(e, PropertyKeys.IMAGE_PAN_Y)
+                        val inner = if (zoom != 100 || px != 0 || py != 0) {
+                            listOf(
+                                ".fillMaxSize()",
+                                ".graphicsLayer { scaleX = ${zoom / 100.0}f; scaleY = ${zoom / 100.0}f; " +
+                                    "translationX = size.width * ${px / 100.0}f; translationY = size.height * ${py / 100.0}f }"
+                            )
+                        } else null
+                        if (inner != null) {
+                            call("Box", emptyList(), place + visual(e)) {
+                                call(
+                                    "Image",
+                                    listOf(
+                                        "painter = painterResource(R.drawable.${ImageNames.drawableName(src)})",
+                                        "contentDescription = null",
+                                        "contentScale = ContentScale.${when (e.prop(PropertyKeys.IMAGE_FIT)) { ImageFits.FIT -> "Fit"; ImageFits.FILL -> "FillBounds"; else -> "Crop" }}"
+                                    ),
+                                    inner
+                                )
+                            }
+                        } else call(
                             "Image",
                             listOf(
                                 "painter = painterResource(R.drawable.${ImageNames.drawableName(src)})",

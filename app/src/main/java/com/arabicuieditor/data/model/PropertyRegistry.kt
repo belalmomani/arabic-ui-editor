@@ -46,6 +46,10 @@ object PropertyKeys {
     const val IMAGE_SRC = "imageSrc"
     /** معرّف أيقونة (انظر [IconCatalog]) لعنصر «صورة»؛ تتقدّم على الصورة. */
     const val ICON = "icon"
+    /** تكبير الصورة داخل الإطار % (100 = بلا تكبير) وإزاحتها % من الإطار. */
+    const val IMAGE_ZOOM = "imageZoom"
+    const val IMAGE_PAN_X = "imagePanX"
+    const val IMAGE_PAN_Y = "imagePanY"
     /** طريقة ملء الصورة للإطار: crop | fit | fill (انظر [ImageFits]). */
     const val IMAGE_FIT = "imageFit"
     const val ICON_COLOR = "iconColor"
@@ -320,6 +324,9 @@ object PropertyRegistry {
             ),
             setOf(ElementTypes.IMAGE), fallback = ImageFits.CROP
         ),
+        PropertyDef(PropertyKeys.IMAGE_ZOOM, R.string.prop_image_zoom, PropertyGroup.APPEARANCE, PropertyKind.Integer(100, 400), setOf(ElementTypes.IMAGE), fallback = "100"),
+        PropertyDef(PropertyKeys.IMAGE_PAN_X, R.string.prop_image_pan_x, PropertyGroup.APPEARANCE, PropertyKind.Integer(-100, 100), setOf(ElementTypes.IMAGE), fallback = "0"),
+        PropertyDef(PropertyKeys.IMAGE_PAN_Y, R.string.prop_image_pan_y, PropertyGroup.APPEARANCE, PropertyKind.Integer(-100, 100), setOf(ElementTypes.IMAGE), fallback = "0"),
         PropertyDef(PropertyKeys.ICON, R.string.prop_icon, PropertyGroup.APPEARANCE, PropertyKind.Text(), setOf(ElementTypes.IMAGE), fallback = ""),
         PropertyDef(PropertyKeys.ICON_COLOR, R.string.prop_icon_color, PropertyGroup.APPEARANCE, PropertyKind.ColorValue, setOf(ElementTypes.IMAGE), fallback = Tokens.color(Tokens.TEXT_COLOR)),
         PropertyDef(PropertyKeys.FONT_FAMILY, R.string.prop_font_family, PropertyGroup.TEXT, PropertyKind.Text(), TEXTUAL, fallback = FontCatalog.DEFAULT),

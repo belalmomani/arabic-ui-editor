@@ -66,6 +66,7 @@
     <string name="lib_empty">مكتبتك فارغة. حدّد عنصرًا (مع أبنائه) واحفظه لتعيد استخدامه في أي مشروع.</string>
     <string name="lib_name">اسم المكوّن</string>
     <string name="ia_title">عند النقر</string>
+    <string name="ia_title_long">عند الضغط المطوّل</string>
     <string name="ia_none">بلا إجراء</string>
     <string name="ia_navigate">انتقال إلى شاشة</string>
     <string name="ia_back">رجوع</string>
@@ -178,6 +179,9 @@
     <string name="import_project">استيراد من الحافظة</string>
     <string name="import_failed">الحافظة لا تحوي نسخة احتياطية صالحة لمشروع</string>
     <string name="action_backup">نسخة احتياطية (مشاركة)</string>
+    <string name="prop_image_zoom">تكبير الصورة %</string>
+    <string name="prop_image_pan_x">إزاحة أفقية %</string>
+    <string name="prop_image_pan_y">إزاحة رأسية %</string>
     <string name="icon_none">بلا</string>
     <string name="image_choose">اختيار صورة</string>
     <string name="image_change">تغيير الصورة</string>

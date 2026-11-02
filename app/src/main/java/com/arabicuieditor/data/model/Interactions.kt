@@ -10,12 +10,18 @@ sealed interface ClickAction {
 /** قراءة وكتابة إجراء النقر (دوال نقية فوق [EventBinding] الموجود في النموذج). */
 object Interactions {
     const val TRIGGER_CLICK = "click"
+    const val TRIGGER_LONG_PRESS = "longpress"
     const val ACTION_NAVIGATE = "navigate"
     const val ACTION_BACK = "back"
     const val PARAM_SCREEN = "screen"
 
-    fun clickAction(e: UiElement): ClickAction {
-        val ev = e.events.firstOrNull { it.trigger == TRIGGER_CLICK } ?: return ClickAction.None
+    fun clickAction(e: UiElement): ClickAction = actionFor(e, TRIGGER_CLICK)
+
+    fun withClickAction(e: UiElement, action: ClickAction): UiElement = withAction(e, TRIGGER_CLICK, action)
+
+    /** إجراء محفِّز معيّن (نقر أو ضغطة مطوّلة). */
+    fun actionFor(e: UiElement, trigger: String): ClickAction {
+        val ev = e.events.firstOrNull { it.trigger == trigger } ?: return ClickAction.None
         return when (ev.action) {
             ACTION_NAVIGATE -> ClickAction.Navigate(ev.params[PARAM_SCREEN].orEmpty())
             ACTION_BACK -> ClickAction.Back
@@ -24,13 +30,13 @@ object Interactions {
     }
 
     /** يستبدل أحداث النقر بالإجراء الجديد ويُبقي بقية الأحداث كما هي. */
-    fun withClickAction(e: UiElement, action: ClickAction): UiElement {
-        val others = e.events.filterNot { it.trigger == TRIGGER_CLICK }
+    fun withAction(e: UiElement, trigger: String, action: ClickAction): UiElement {
+        val others = e.events.filterNot { it.trigger == trigger }
         val added = when (action) {
             ClickAction.None -> emptyList()
-            ClickAction.Back -> listOf(EventBinding(newId(), TRIGGER_CLICK, ACTION_BACK))
+            ClickAction.Back -> listOf(EventBinding(newId(), trigger, ACTION_BACK))
             is ClickAction.Navigate -> listOf(
-                EventBinding(newId(), TRIGGER_CLICK, ACTION_NAVIGATE, mapOf(PARAM_SCREEN to action.screenId))
+                EventBinding(newId(), trigger, ACTION_NAVIGATE, mapOf(PARAM_SCREEN to action.screenId))
             )
         }
         return e.copy(events = others + added)

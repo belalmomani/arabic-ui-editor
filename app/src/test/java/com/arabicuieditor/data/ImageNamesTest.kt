@@ -113,4 +113,20 @@ class ImageNamesTest {
         val src = ComposeExporter.export(base.copy(screens = listOf(screen), startScreenId = screen.id), null)
         assertTrue(src.contains("ContentScale.FillBounds"))
     }
+
+    @Test
+    fun zoomAndPanClampAndExport() {
+        assertEquals("400", PropertyRegistry.normalize(PropertyKeys.IMAGE_ZOOM, "900"))
+        assertEquals("100", PropertyRegistry.normalize(PropertyKeys.IMAGE_ZOOM, "5"))
+        assertEquals("-100", PropertyRegistry.normalize(PropertyKeys.IMAGE_PAN_X, "-500"))
+        val image = UiElement(
+            id = "i4", type = ElementTypes.IMAGE,
+            layout = ElementLayout(0f, 0f, SizeSpec(SizeMode.FIXED, 100f), SizeSpec(SizeMode.FIXED, 80f)),
+            properties = mapOf(PropertyKeys.IMAGE_SRC to "img_3.png", PropertyKeys.IMAGE_ZOOM to "150")
+        )
+        val base = newProject("ت", "أ")
+        val screen = base.screens.first().copy(elements = listOf(image))
+        val src = ComposeExporter.export(base.copy(screens = listOf(screen), startScreenId = screen.id), null)
+        assertTrue(src.contains("scaleX = 1.5f"))
+    }
 }

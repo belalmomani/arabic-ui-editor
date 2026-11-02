@@ -26,7 +26,10 @@ object Prototype {
      * من الأعلى رسمًا إلى الأسفل، أول عنصر ظاهر تحت النقطة له إجراء (أو لأحد آبائه).
      * العنصر بلا إجراء لا يحجب ما تحته (كالعرض غير القابل للنقر في أندرويد). الدوران يُتجاهل هنا.
      */
-    fun actionAt(screen: UiScreen, layout: LayoutResult, x: Float, y: Float): ClickAction {
+    fun actionAt(
+        screen: UiScreen, layout: LayoutResult, x: Float, y: Float,
+        trigger: String = Interactions.TRIGGER_CLICK
+    ): ClickAction {
         val byId = ElementTree.flatten(screen.elements).associateBy { it.id }
         for (id in layout.paintOrder.asReversed()) {
             val frame = layout.frames[id] ?: continue
@@ -37,7 +40,7 @@ object Prototype {
             while (cursor != null) {
                 val e = byId[cursor] ?: break
                 if (!e.boolProp(PropertyKeys.VISIBLE)) { hidden = true; break }
-                val a = Interactions.clickAction(e)
+                val a = Interactions.actionFor(e, trigger)
                 if (a != ClickAction.None) { found = a; break }
                 cursor = layout.parentOf[cursor]
             }

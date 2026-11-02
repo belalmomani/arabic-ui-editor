@@ -580,6 +580,15 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
     }
 
     /** يضبط إجراء «عند النقر» لعنصر (انتقال إلى شاشة، رجوع، أو بلا إجراء). خطوة تراجع واحدة. */
+    fun setLongPressAction(elementId: String, action: ClickAction) {
+        val screen = currentScreen() ?: return
+        editScreen(screen.id, key = "long:$elementId") { s ->
+            s.copy(elements = ElementTree.update(s.elements, elementId) {
+                Interactions.withAction(it, Interactions.TRIGGER_LONG_PRESS, action)
+            })
+        }
+    }
+
     fun setClickAction(elementId: String, action: ClickAction) {
         val screen = currentScreen() ?: return
         editScreen(screen.id, key = "click:$elementId") { s ->

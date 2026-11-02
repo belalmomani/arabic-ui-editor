@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -111,7 +112,13 @@ fun ElementView(element: UiElement, modifier: Modifier) {
                         com.arabicuieditor.data.model.ImageFits.FILL -> androidx.compose.ui.layout.ContentScale.FillBounds
                         else -> androidx.compose.ui.layout.ContentScale.Crop
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().graphicsLayer {
+                        val z = element.intProp(PropertyKeys.IMAGE_ZOOM) / 100f
+                        scaleX = z
+                        scaleY = z
+                        translationX = size.width * element.intProp(PropertyKeys.IMAGE_PAN_X) / 100f
+                        translationY = size.height * element.intProp(PropertyKeys.IMAGE_PAN_Y) / 100f
+                    }
                 )
             } else Canvas(Modifier.fillMaxSize()) {
                 val stroke = 1.dp.toPx()

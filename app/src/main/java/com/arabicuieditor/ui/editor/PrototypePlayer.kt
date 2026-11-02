@@ -103,7 +103,16 @@ fun PrototypePlayer(
                     .size((screen.width * scale).dp, (screen.height * scale).dp)
                     .clipToBounds()
                     .pointerInput(screen.id, scale) {
-                        detectTapGestures { offset ->
+                        detectTapGestures(
+                            onLongPress = { offset ->
+                                val x = offset.x / density / scale
+                                val y = offset.y / density / scale
+                                nav = nav.apply(
+                                    Prototype.actionAt(screen, layout, x, y, com.arabicuieditor.data.model.Interactions.TRIGGER_LONG_PRESS),
+                                    project.screens
+                                )
+                            }
+                        ) { offset ->
                             val x = offset.x / density / scale
                             val y = offset.y / density / scale
                             nav = nav.apply(Prototype.actionAt(screen, layout, x, y), project.screens)
