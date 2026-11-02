@@ -98,8 +98,16 @@ internal object ProComponents {
         return node(ElementTypes.INPUT, w, fixed(h), p)
     }
 
-    private fun image(w: SizeSpec, h: Float, radius: Int = 0, weight: Int = 0): UiElement {
+    private fun image(
+        w: SizeSpec, h: Float, radius: Int = 0, weight: Int = 0,
+        icon: String? = null, iconColor: String? = null
+    ): UiElement {
         val p = mutableMapOf<String, String>()
+        if (icon != null) {
+            p[PropertyKeys.ICON] = icon
+            p[PropertyKeys.BG_COLOR] = PropertyRegistry.TRANSPARENT
+            if (iconColor != null) p[PropertyKeys.ICON_COLOR] = iconColor
+        }
         if (radius > 0) p[PropertyKeys.CORNER_RADIUS] = "$radius"
         if (weight > 0) p[PropertyKeys.WEIGHT] = "$weight"
         return node(ElementTypes.IMAGE, w, fixed(h), p)
@@ -243,11 +251,11 @@ internal object ProComponents {
 
         // شريط التنقل والتبويبات
         preset("pro_bottom_nav", R.string.pc_bottom_nav, PresetCategory.NAVIGATION) { t ->
-            fun item(label: Int, active: Boolean) = column(
+            fun item(label: Int, active: Boolean, icon: String) = column(
                 fixed(60f), 52f, spacing = 2, weight = 1,
                 extra = mapOf(PropertyKeys.CHILD_ALIGN_H to Aligns.CENTER),
                 children = listOf(
-                    image(fixed(24f), 24f, 12),
+                    image(fixed(24f), 24f, 12, icon = icon, iconColor = if (active) PRIMARY else MUTED),
                     text(
                         t(label), fill(), 16f, 11, bold = active,
                         color = if (active) PRIMARY else MUTED, align = TextAligns.CENTER
@@ -258,8 +266,8 @@ internal object ProComponents {
                 fill(), 68f, padding = 8, spacing = 0,
                 extra = mapOf(PropertyKeys.BG_COLOR to SURFACE, PropertyKeys.ARRANGEMENT to Arrangements.EVENLY),
                 children = listOf(
-                    item(R.string.pc_nav_home, true), item(R.string.pc_nav_search, false),
-                    item(R.string.pc_nav_cart, false), item(R.string.pc_nav_profile, false)
+                    item(R.string.pc_nav_home, true, "Home"), item(R.string.pc_nav_search, false, "Search"),
+                    item(R.string.pc_nav_cart, false, "ShoppingCart"), item(R.string.pc_nav_profile, false, "Person")
                 )
             )
         },
@@ -288,9 +296,9 @@ internal object ProComponents {
                 fill(), 56f, padding = 12, spacing = 12,
                 extra = mapOf(PropertyKeys.BG_COLOR to PRIMARY),
                 children = listOf(
-                    image(fixed(24f), 24f, 4),
+                    image(fixed(24f), 24f, 4, icon = "Menu", iconColor = ON_PRIMARY),
                     text(t(R.string.pc_screen_title), fixed(100f), 28f, 18, bold = true, color = ON_PRIMARY, weight = 1),
-                    image(fixed(24f), 24f, 4)
+                    image(fixed(24f), 24f, 4, icon = "Search", iconColor = ON_PRIMARY)
                 )
             )
         },
@@ -300,7 +308,7 @@ internal object ProComponents {
             fun item(label: Int) = row(
                 fill(), 48f, spacing = 8,
                 children = listOf(
-                    image(fixed(24f), 24f, 12),
+                    image(fixed(24f), 24f, 12, icon = "Settings"),
                     text(t(label), fixed(100f), 24f, 15, weight = 1),
                     text("›", fixed(16f), 24f, 18, color = MUTED)
                 )
@@ -357,7 +365,7 @@ internal object ProComponents {
                 fixed(280f), 200f, padding = 20, type = ElementTypes.CARD,
                 extra = mapOf(PropertyKeys.CHILD_ALIGN_H to Aligns.CENTER),
                 children = listOf(
-                    image(fixed(48f), 48f, 24),
+                    image(fixed(48f), 48f, 24, icon = "Warning", iconColor = DANGER),
                     text(t(R.string.pc_alert_title), fill(), 26f, 18, bold = true, color = DANGER, align = TextAligns.CENTER),
                     text(t(R.string.pc_alert_body), fill(), 40f, 14, color = MUTED, align = TextAligns.CENTER),
                     button(t(R.string.pc_ok), fill(), 40f, BtnStyle.DANGER)
@@ -367,7 +375,7 @@ internal object ProComponents {
         preset("pro_bottom_sheet", R.string.pc_bottom_sheet, PresetCategory.DIALOGS) { t ->
             fun item(label: Int) = row(
                 fill(), 44f,
-                children = listOf(image(fixed(24f), 24f, 12), text(t(label), fixed(100f), 24f, 15, weight = 1))
+                children = listOf(image(fixed(24f), 24f, 12, icon = "Share"), text(t(label), fixed(100f), 24f, 15, weight = 1))
             )
             column(
                 fill(), 232f, padding = 16, type = ElementTypes.CARD,

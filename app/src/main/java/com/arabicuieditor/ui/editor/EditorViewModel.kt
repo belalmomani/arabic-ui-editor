@@ -28,6 +28,8 @@ import com.arabicuieditor.data.model.SizeMode
 import com.arabicuieditor.data.model.SizeSpec
 import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.storage.ALLOWED_GRIDS
+import com.arabicuieditor.data.storage.HistoryCodec
+import com.arabicuieditor.data.storage.ProjectJsonCodec
 import com.arabicuieditor.data.storage.UserComponent
 import com.arabicuieditor.ui.editor.canvas.AlignEdge
 import com.arabicuieditor.ui.editor.canvas.SmartAlign
@@ -131,6 +133,7 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
             } else {
                 _currentScreenId.value = project.effectiveStartScreenId
                 _state.value = EditorState.Ready(project)
+                restoreHistory(project)
             }
         }
     }
@@ -145,10 +148,79 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         if (readyProject()?.screens?.none { it.id == id } != false) return
         _currentScreenId.value = id
         _selectedId.value = null
+        _multi.value = emptySet()
     }
 
     fun selectElement(id: String?) {
         _selectedId.value = id
+    }
+
+    private val _multiMode = MutableStateFlow(false)
+    /** وضع التحديد المتعدد في لوحة الطبقات. */
+    val multiMode: StateFlow<Boolean> = _multiMode.asStateFlow()
+    private val _multi = MutableStateFlow<Set<String>>(emptySet())
+    val multi: StateFlow<Set<String>> = _multi.asStateFlow()
+
+    fun setMultiMode(on: Boolean) {
+        _multiMode.value = on
+        _multi.value = emptySet()
+    }
+
+    fun toggleMulti(id: String) {
+        _multi.value = if (id in _multi.value) _multi.value - id else _multi.value + id
+    }
+
+    /** يحاذي العناصر الحرة المحددة إلى الصندوق المحيط بها. خطوة تراجع واحدة. */
+    fun alignMulti(edge: AlignEdge) {
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val frames = _multi.value.filter { it in layout.freeIds }
+            .mapNotNull { id -> layout.frames[id]?.let { id to it } }
+        applyMoved(screen, layout, SmartAlign.alignGroup(frames, edge))
+    }
+
+    /** يوزّع العناصر الحرة المحددة (3 فأكثر) بفجوات متساوية. */
+    fun distributeMulti(horizontal: Boolean) {
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val frames = _multi.value.filter { it in layout.freeIds }
+            .mapNotNull { id -> layout.frames[id]?.let { id to it } }
+        applyMoved(screen, layout, SmartAlign.distribute(frames, horizontal))
+    }
+
+    /** يحذف كل العناصر المحددة دفعة واحدة (خطوة تراجع واحدة). */
+    fun deleteMulti() {
+        val ids = _multi.value
+        if (ids.isEmpty()) return
+        val screen = currentScreen() ?: return
+        editScreen(screen.id) { s ->
+            var roots = s.elements
+            for (id in ids) roots = ElementTree.remove(roots, id)
+            s.copy(elements = roots)
+        }
+        _multi.value = emptySet()
+        _selectedId.value = null
+    }
+
+    private fun applyMoved(screen: UiScreen, layout: LayoutResult, moved: Map<String, DesignRect>) {
+        if (moved.isEmpty()) return
+        editScreen(screen.id) { s ->
+            var roots = s.elements
+            for ((mid, r) in moved) {
+                val content = layout.parentContentOf(mid)
+                roots = ElementTree.update(roots, mid) { e ->
+                    e.copy(
+                        layout = e.layout.copy(
+                            x = (r.x - content.x).roundToInt().toFloat(),
+                            y = (r.y - content.y).roundToInt().toFloat()
+                        )
+                    )
+                }
+            }
+            s.copy(elements = roots)
+        }
     }
 
     // ---- إدارة الشاشات ----
@@ -678,6 +750,36 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         refreshHistoryFlags()
     }
 
+    /** يستعيد سجل التراجع المحفوظ لهذا المشروع (إن وُجد وسليم). أي فشل يُتجاهل. */
+    private suspend fun restoreHistory(base: Project) {
+        try {
+            val decoded = withContext(Dispatchers.IO) {
+                repository.readHistory(projectId)?.let { HistoryCodec.decode(it) }?.let { (u, r) ->
+                    fun toSnap(text: String): DesignSnapshot? = try {
+                        ProjectJsonCodec.decode(text).snapshot()
+                    } catch (_: Exception) { null }
+                    u.mapNotNull(::toSnap) to r.mapNotNull(::toSnap)
+                }
+            }
+            if (decoded != null && !history.canUndo && !history.canRedo) {
+                history.restore(decoded.first, decoded.second)
+                refreshHistoryFlags()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    /** يكتب سجل التراجع (آخر خطوات فقط) بجوار المشروع. */
+    private fun persistHistoryOf(base: Project, u: List<DesignSnapshot>, r: List<DesignSnapshot>) {
+        try {
+            fun enc(s: DesignSnapshot) = ProjectJsonCodec.encode(
+                base.copy(screens = s.screens, startScreenId = s.startScreenId, designSystem = s.designSystem)
+            )
+            repository.writeHistory(projectId, HistoryCodec.encode(u.map(::enc), r.map(::enc)))
+        } catch (_: Exception) {
+        }
+    }
+
     private fun refreshHistoryFlags() {
         _canUndo.value = history.canUndo
         _canRedo.value = history.canRedo
@@ -722,7 +824,12 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val snapshot = (_state.value as? EditorState.Ready)?.project ?: return
         dirty = false
         try {
-            val saved = withContext(Dispatchers.IO) { repository.save(snapshot) }
+            val (hu, hr) = history.export(HistoryCodec.MAX_UNDO, HistoryCodec.MAX_REDO)
+            val saved = withContext(Dispatchers.IO) {
+                val s = repository.save(snapshot)
+                persistHistoryOf(snapshot, hu, hr)
+                s
+            }
             _saveFailed.value = false
             // نحدّث وقت التعديل فقط كي لا نمسح تعديلات حدثت أثناء الحفظ.
             _state.update { s ->
@@ -745,6 +852,8 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
             if (project != null) {
                 try {
                     repository.save(project)
+                    val (u, r) = history.export(HistoryCodec.MAX_UNDO, HistoryCodec.MAX_REDO)
+                    persistHistoryOf(project, u, r)
                 } catch (_: Exception) {
                 }
             }

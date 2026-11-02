@@ -54,6 +54,19 @@ class ProjectsViewModel(app: Application) : AndroidViewModel(app) {
         runAndReload { repository.duplicate(project.id, copyName) }
     }
 
+    /** يستورد مشروعًا من نص نسخة احتياطية؛ عند الفشل يظهر خطأ. */
+    fun importText(text: String) {
+        viewModelScope.launch {
+            val imported = try {
+                withContext(Dispatchers.IO) { repository.importJson(text) }
+            } catch (e: Exception) {
+                null
+            }
+            if (imported == null) _error.value = R.string.import_failed
+            reload()
+        }
+    }
+
     fun delete(id: String) = runAndReload { repository.delete(id) }
 
     private fun runAndReload(block: () -> Unit) {

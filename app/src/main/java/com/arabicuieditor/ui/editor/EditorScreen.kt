@@ -212,6 +212,8 @@ private fun EditorContent(
         ?: project.screens.firstOrNull()
         ?: return
     val userComponents by viewModel.userComponents.collectAsState()
+    val multiMode by viewModel.multiMode.collectAsState()
+    val multiSet by viewModel.multi.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val imagePicker = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
@@ -319,8 +321,21 @@ private fun EditorContent(
                         },
                         onElementRepeat = { viewModel.duplicateSelected() },
                         designSystem = effectiveDesign,
-                        snap = SnapSettings(project.snapObjects, project.gridSize)
+                        snap = SnapSettings(project.snapObjects, project.gridSize),
+                        multiMode = multiMode,
+                        multiIds = multiSet,
+                        onToggleMulti = viewModel::toggleMulti
                     )
+                    if (multiMode) {
+                        AssistChip(
+                            onClick = { viewModel.setMultiMode(false) },
+                            label = { Text(stringResource(R.string.multi_canvas_chip, multiSet.size)) },
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(8.dp)
+                                .testTag("multi_canvas_chip")
+                        )
+                    }
                     // شريحة حجم المعاينة: نقرة تنتقل إلى الحجم التالي (حجم التصميم ثم الأحجام الجاهزة).
                     AssistChip(
                         onClick = {
@@ -487,7 +502,14 @@ private fun EditorContent(
                                     elements = screen.elements,
                                     selectedId = selectedId,
                                     onSelect = { viewModel.selectElement(it) },
-                                    modifier = Modifier.fillMaxSize()
+                                    modifier = Modifier.fillMaxSize(),
+                                    multiMode = multiMode,
+                                    multi = multiSet,
+                                    onMultiMode = viewModel::setMultiMode,
+                                    onToggle = viewModel::toggleMulti,
+                                    onAlignMulti = viewModel::alignMulti,
+                                    onDistributeMulti = viewModel::distributeMulti,
+                                    onDeleteMulti = viewModel::deleteMulti
                                 )
 
                                 BottomTab.SCREEN -> ScreenPanel(

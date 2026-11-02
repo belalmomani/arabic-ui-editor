@@ -1,6 +1,8 @@
 package com.arabicuieditor.data.export
 
 import com.arabicuieditor.data.model.Aligns
+import com.arabicuieditor.data.model.IconCatalog
+import com.arabicuieditor.data.model.ImageFits
 import com.arabicuieditor.data.model.ImageNames
 import com.arabicuieditor.data.model.Arrangements
 import com.arabicuieditor.data.model.ChildLayout
@@ -188,6 +190,13 @@ object ComposeExporter {
             if (usesImages) {
                 line("// يستعمل صورًا: انسخ ملفاتها إلى res/drawable في مشروعك (الأسماء في التعليقات أدناه).")
                 line("import androidx.compose.ui.res.painterResource")
+            }
+            val usesIcons = project.screens.any { sc ->
+                ElementTree.flatten(sc.elements).any { IconCatalog.isValid(it.prop(PropertyKeys.ICON)) }
+            }
+            if (usesIcons) {
+                line("import androidx.compose.material.icons.Icons")
+                line("import androidx.compose.material.icons.filled.*")
             }
             if (usesCustomFont || usesImages) line("import $pkg.R")
             for (p in listOf(
@@ -444,14 +453,31 @@ object ComposeExporter {
                 ElementTypes.INPUT -> inputBox(e, place)
                 ElementTypes.IMAGE -> {
                     val src = e.prop(PropertyKeys.IMAGE_SRC)
-                    if (src.isNotEmpty() && ImageNames.isValid(src)) {
+                    val icon = e.prop(PropertyKeys.ICON)
+                    if (IconCatalog.isValid(icon)) {
+                        call(
+                            "Box",
+                            emptyList(),
+                            place + visual(e)
+                        ) {
+                            call(
+                                "Icon",
+                                listOf(
+                                    "imageVector = Icons.Filled.$icon",
+                                    "contentDescription = null",
+                                    "tint = ${colorExpr(e.prop(PropertyKeys.ICON_COLOR))}"
+                                ),
+                                listOf(".fillMaxSize(0.75f)", ".align(Alignment.Center)")
+                            )
+                        }
+                    } else if (src.isNotEmpty() && ImageNames.isValid(src)) {
                         line("// انسخ الملف $src من resources إلى app/src/main/res/drawable/ (الاسم: ${ImageNames.drawableName(src)})")
                         call(
                             "Image",
                             listOf(
                                 "painter = painterResource(R.drawable.${ImageNames.drawableName(src)})",
                                 "contentDescription = null",
-                                "contentScale = ContentScale.Crop"
+                                "contentScale = ContentScale.${when (e.prop(PropertyKeys.IMAGE_FIT)) { ImageFits.FIT -> "Fit"; ImageFits.FILL -> "FillBounds"; else -> "Crop" }}"
                             ),
                             place + visual(e)
                         )

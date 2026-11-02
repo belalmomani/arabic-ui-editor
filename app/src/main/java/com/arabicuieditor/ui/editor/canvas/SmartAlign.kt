@@ -222,6 +222,22 @@ object SmartAlign {
         AlignEdge.BOTTOM -> frame.copy(y = container.bottom - frame.h)
     }
 
+    /** يحاذي مجموعة إطارات إلى الصندوق المحيط بها. يعيد الإطارات التي تغيّرت فقط (يحتاج عنصرين). */
+    fun alignGroup(frames: List<Pair<String, DesignRect>>, edge: AlignEdge): Map<String, DesignRect> {
+        if (frames.size < 2) return emptyMap()
+        val left = frames.minOf { it.second.x }
+        val top = frames.minOf { it.second.y }
+        val right = frames.maxOf { it.second.right }
+        val bottom = frames.maxOf { it.second.bottom }
+        val bounds = DesignRect(left, top, right - left, bottom - top)
+        val out = LinkedHashMap<String, DesignRect>()
+        for ((id, r) in frames) {
+            val moved = alignIn(r, bounds, edge)
+            if (moved != r) out[id] = moved
+        }
+        return out
+    }
+
     /**
      * يوزّع الإطارات بفجوات متساوية على محور واحد، مع بقاء الأول والأخير في مكانيهما.
      * يحتاج 3 عناصر على الأقل؛ وإلا يعيد خريطة فارغة. يعيد الإطارات التي تغيّرت فقط.

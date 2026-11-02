@@ -50,6 +50,19 @@ class EditHistory<T>(
         return next
     }
 
+    /** نسخة من آخر [maxUndo] خطوة تراجع و[maxRedo] خطوة إعادة (الأقدم أولًا) للحفظ على القرص. */
+    fun export(maxUndo: Int, maxRedo: Int): Pair<List<T>, List<T>> =
+        undoStack.toList().takeLast(maxUndo) to redoStack.toList().takeLast(maxRedo)
+
+    /** يستبدل المحتوى بما حُفظ سابقًا (يُستدعى مرة عند فتح المحرر). */
+    fun restore(undo: List<T>, redo: List<T>) {
+        undoStack.clear()
+        redoStack.clear()
+        undo.takeLast(limit).forEach { undoStack.addLast(it) }
+        redo.takeLast(limit).forEach { redoStack.addLast(it) }
+        lastKey = null
+    }
+
     fun clear() {
         undoStack.clear()
         redoStack.clear()

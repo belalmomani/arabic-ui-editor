@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,8 @@ fun ProjectsScreen(
     var renameTarget by remember { mutableStateOf<Project?>(null) }
     var deleteTarget by remember { mutableStateOf<Project?>(null) }
 
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val errorText = error?.let { stringResource(it) }
 
@@ -71,8 +74,14 @@ fun ProjectsScreen(
         topBar = { AppTopBar(title = stringResource(R.string.projects_title), onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = { showCreate = true }) {
-                Text(stringResource(R.string.home_new_project))
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExtendedFloatingActionButton(
+                    onClick = { viewModel.importText(clipboard.getText()?.text.orEmpty()) },
+                    modifier = Modifier.testTag("import_project")
+                ) { Text(stringResource(R.string.import_project)) }
+                ExtendedFloatingActionButton(onClick = { showCreate = true }) {
+                    Text(stringResource(R.string.home_new_project))
+                }
             }
         }
     ) { padding ->
@@ -96,6 +105,16 @@ fun ProjectsScreen(
                             onOpen = { onOpenProject(project.id) },
                             onRename = { renameTarget = project },
                             onDuplicate = { viewModel.duplicate(project) },
+                            onBackup = {
+                                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, com.arabicuieditor.data.storage.ProjectJsonCodec.encode(project))
+                                }
+                                try {
+                                    context.startActivity(android.content.Intent.createChooser(send, null))
+                                } catch (_: Exception) {
+                                }
+                            },
                             onDelete = { deleteTarget = project }
                         )
                     }
@@ -148,6 +167,7 @@ private fun ProjectCard(
     onOpen: () -> Unit,
     onRename: () -> Unit,
     onDuplicate: () -> Unit,
+    onBackup: () -> Unit,
     onDelete: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -191,6 +211,10 @@ private fun ProjectCard(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_duplicate)) },
                         onClick = { menuOpen = false; onDuplicate() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_backup)) },
+                        onClick = { menuOpen = false; onBackup() }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_delete)) },

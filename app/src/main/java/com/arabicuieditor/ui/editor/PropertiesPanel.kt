@@ -152,6 +152,12 @@ fun PropertiesPanel(
             }
         }
 
+        if (defs.any { it.key == PropertyKeys.ICON }) {
+            item(key = "icon") {
+                IconSection(element) { onSetProperty(PropertyKeys.ICON, it) }
+            }
+        }
+
         if (defs.any { it.key == PropertyKeys.IMAGE_SRC }) {
             item(key = "image") {
                 ImageSection(element, onPickImage) { onSetProperty(PropertyKeys.IMAGE_SRC, "") }
@@ -221,7 +227,7 @@ fun PropertiesPanel(
         }
 
         PropertyGroup.entries.forEach { group ->
-            val groupDefs = defs.filter { it.group == group && it.key != PropertyKeys.FONT_FAMILY && it.key != PropertyKeys.IMAGE_SRC }
+            val groupDefs = defs.filter { it.group == group && it.key != PropertyKeys.FONT_FAMILY && it.key != PropertyKeys.IMAGE_SRC && it.key != PropertyKeys.ICON }
             val hasKindChooser = group == PropertyGroup.LAYOUT && isContainer
             if (groupDefs.isNotEmpty() || hasKindChooser) {
                 item(key = "group_${group.name}") {
@@ -916,6 +922,36 @@ private fun ImageSection(element: UiElement, onPick: () -> Unit, onClear: () -> 
                 androidx.compose.material3.OutlinedButton(onClick = onClear, modifier = Modifier.testTag("image_clear")) {
                     Text(stringResource(R.string.image_remove))
                 }
+            }
+        }
+    }
+}
+
+/** «الأيقونة»: شبكة أيقونات جاهزة؛ الاختيار يتقدّم على الصورة، و«بلا» يلغيه. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun IconSection(element: UiElement, onPick: (String) -> Unit) {
+    val current = element.prop(PropertyKeys.ICON)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("icon_section")) {
+        SectionHeader(stringResource(R.string.prop_icon))
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            androidx.compose.material3.FilterChip(
+                selected = current.isEmpty(),
+                onClick = { onPick("") },
+                label = { Text(stringResource(R.string.icon_none)) },
+                modifier = Modifier.testTag("icon_none")
+            )
+            com.arabicuieditor.data.model.IconCatalog.ids.forEach { id ->
+                val vec = com.arabicuieditor.ui.editor.canvas.iconVector(id) ?: return@forEach
+                androidx.compose.material3.FilterChip(
+                    selected = id == current,
+                    onClick = { onPick(id) },
+                    label = { androidx.compose.material3.Icon(vec, contentDescription = id, modifier = Modifier.size(20.dp)) },
+                    modifier = Modifier.testTag("icon_$id")
+                )
             }
         }
     }

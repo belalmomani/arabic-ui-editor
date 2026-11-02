@@ -88,10 +88,41 @@ class ProjectRepository(private val root: File) {
         return copy
     }
 
+    /** يستورد مشروعًا من نص JSON (نسخة احتياطية) كمشروع جديد بمعرّف جديد. يعيد null إن كان النص غير صالح. */
+    @Synchronized
+    fun importJson(text: String): Project? {
+        val decoded = try {
+            ProjectJsonCodec.decode(text.trim())
+        } catch (_: Exception) {
+            return null
+        }
+        val now = System.currentTimeMillis()
+        val project = decoded.copy(id = newId(), name = cleanName(decoded.name), createdAt = now, updatedAt = now)
+        write(project)
+        return project
+    }
+
     @Synchronized
     fun delete(id: String): Boolean {
         if (!isValidId(id)) return false
         return projectDir(id).deleteRecursively()
+    }
+
+    private fun historyFile(id: String) = File(projectDir(id), "history.json")
+
+    /** نص سجل التراجع المحفوظ أو null. */
+    fun readHistory(id: String): String? {
+        if (!isValidId(id)) return null
+        val f = historyFile(id)
+        return try { if (f.exists()) f.readText(Charsets.UTF_8) else null } catch (_: Exception) { null }
+    }
+
+    fun writeHistory(id: String, text: String) {
+        if (!isValidId(id) || !projectDir(id).exists()) return
+        val f = historyFile(id)
+        val tmp = File(f.path + ".tmp")
+        tmp.writeText(text, Charsets.UTF_8)
+        if (!tmp.renameTo(f)) { f.writeText(text, Charsets.UTF_8); tmp.delete() }
     }
 
     fun resourcesDir(id: String): File = File(projectDir(id), "resources")

@@ -94,11 +94,23 @@ fun ElementView(element: UiElement, modifier: Modifier) {
 
         ElementTypes.IMAGE -> Box(base.boxStyle()) {
             val bitmap = rememberProjectImage(element.prop(PropertyKeys.IMAGE_SRC))
-            if (bitmap != null) {
+            val icon = iconVector(element.prop(PropertyKeys.ICON))
+            if (icon != null) {
+                androidx.compose.material3.Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = argb(element.colorProp(PropertyKeys.ICON_COLOR)),
+                    modifier = Modifier.fillMaxSize(0.75f).align(Alignment.Center)
+                )
+            } else if (bitmap != null) {
                 androidx.compose.foundation.Image(
                     bitmap = bitmap,
                     contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    contentScale = when (element.prop(PropertyKeys.IMAGE_FIT)) {
+                        com.arabicuieditor.data.model.ImageFits.FIT -> androidx.compose.ui.layout.ContentScale.Fit
+                        com.arabicuieditor.data.model.ImageFits.FILL -> androidx.compose.ui.layout.ContentScale.FillBounds
+                        else -> androidx.compose.ui.layout.ContentScale.Crop
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             } else Canvas(Modifier.fillMaxSize()) {

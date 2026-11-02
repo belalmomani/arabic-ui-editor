@@ -59,6 +59,7 @@ private const val TOOL_TOUCH_DP = 24f
 
 private val CanvasBackground = Color(0xFF9AA3AD)
 private val SelectionColor = Color(0xFF1B8CFF)
+private val ConstraintColor = Color(0xFFFF8A00)
 
 /** ماذا يفعل اللمس الحالي. يُحدَّد لحظة وضع الإصبع. */
 private sealed interface GestureTarget {
@@ -102,8 +103,13 @@ fun DesignCanvas(
     onElementRotate: ((String, Int) -> Unit)? = null,
     onElementRepeat: ((String) -> Unit)? = null,
     designSystem: DesignSystem = DesignSystem.DEFAULT,
-    snap: SnapSettings = SnapSettings()
+    snap: SnapSettings = SnapSettings(),
+    multiMode: Boolean = false,
+    multiIds: Set<String> = emptySet(),
+    onToggleMulti: ((String) -> Unit)? = null
 ) {
+    val latestMultiMode by rememberUpdatedState(multiMode)
+    val latestToggle by rememberUpdatedState(onToggleMulti)
     val latestLayout by rememberUpdatedState(layout)
     val latestEditable by rememberUpdatedState(editable)
     val latestOnDrop by rememberUpdatedState(onElementDrop)
@@ -138,7 +144,9 @@ fun DesignCanvas(
                         val lay = latestLayout
                         val frameW = lay.width
                         val frameH = lay.height
-                        val selectedBefore = latestSelected
+                        val multiOn = latestMultiMode && latestToggle != null
+                        // في التحديد المتعدد لا مقابض ولا سحب عناصر: النقر يبدّل التحديد والسحب يحرّك مساحة العمل.
+                        val selectedBefore = if (multiOn) null else latestSelected
 
                         val rects = lay.paintOrder.mapNotNull { id -> lay.frames[id]?.let { id to it } }
                         val target = decideTarget(
@@ -152,7 +160,8 @@ fun DesignCanvas(
                             px = down.position.x,
                             py = down.position.y
                         )
-                        if (target is GestureTarget.Move && target.id != selectedBefore) {
+                        val multiHit = if (multiOn) (target as? GestureTarget.Move)?.id else null
+                        if (!multiOn && target is GestureTarget.Move && target.id != selectedBefore) {
                             latestOnSelect(target.id)
                         }
 
@@ -174,7 +183,7 @@ fun DesignCanvas(
                         var lastX = down.position.x
                         var lastY = down.position.y
                         // بلا تعديل (معاينة بحجم مختلف): كل سحب يحرّك مساحة العمل، والنقر يحدد فقط.
-                        val dragTarget = if (latestEditable) target else GestureTarget.Pan
+                        val dragTarget = if (latestEditable && !multiOn) target else GestureTarget.Pan
 
                         do {
                             val event = awaitPointerEvent()
@@ -265,8 +274,11 @@ fun DesignCanvas(
                         if (!moved && !multiTouch && target is GestureTarget.Repeat && latestEditable) {
                             latestOnRepeat?.invoke(target.id)
                         }
+                        if (multiOn && !moved && !multiTouch && multiHit != null) {
+                            latestToggle?.invoke(multiHit)
+                        }
                         // نقرة على فراغ بلا سحب ولا إصبعين: إلغاء التحديد.
-                        if (!moved && !multiTouch && target is GestureTarget.Pan) {
+                        if (!multiOn && !moved && !multiTouch && target is GestureTarget.Pan) {
                             latestOnSelect(null)
                         }
                         // رفع عنصر بعد سحبه: المحرر يقرر نقله إلى حاوية أو إعادة ترتيبه.
@@ -323,7 +335,15 @@ fun DesignCanvas(
                 ghost = ghost,
                 guides = guides,
                 grid = snap.grid,
-                viewport = viewport
+                viewport = viewport,
+                constraintLines = if (!multiMode && selectedId != null &&
+                    layout.parentLayoutOf(selectedId) == com.arabicuieditor.data.model.ChildLayout.CONSTRAINT
+                ) {
+                    elementsById[selectedId]?.let {
+                        ConstraintLines.compute(it, layout.frames, layout.parentContentOf(selectedId))
+                    }.orEmpty()
+                } else emptyList(),
+                multi = if (multiMode) multiIds.mapNotNull { layout.frames[it] } else emptyList()
             )
         }
     }
@@ -388,10 +408,27 @@ private fun SelectionOverlay(
     ghost: DesignRect?,
     guides: List<Guide>,
     grid: Int,
-    viewport: Viewport
+    viewport: Viewport,
+    multi: List<DesignRect> = emptyList(),
+    constraintLines: List<ConstraintLine> = emptyList()
 ) {
     val density = LocalDensity.current.density
     Canvas(Modifier.fillMaxSize()) {
+        for (l in constraintLines) {
+            val a = CanvasMath.toScreenRect(viewport, density, DesignRect(l.x1, l.y1, 0f, 0f))
+            val b = CanvasMath.toScreenRect(viewport, density, DesignRect(l.x2, l.y2, 0f, 0f))
+            drawLine(ConstraintColor, Offset(a.left, a.top), Offset(b.left, b.top), 2.dp.toPx())
+            drawCircle(ConstraintColor, 3.dp.toPx(), Offset(b.left, b.top))
+        }
+        for (m in multi) {
+            val r = CanvasMath.toScreenRect(viewport, density, m)
+            drawRect(
+                color = SelectionColor,
+                topLeft = Offset(r.left, r.top),
+                size = Size(r.width, r.height),
+                style = Stroke(2.dp.toPx())
+            )
+        }
         val frame = CanvasMath.toScreenRect(viewport, density, DesignRect(0f, 0f, frameW, frameH))
         drawRect(
             color = Color(0x33000000),

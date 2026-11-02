@@ -70,4 +70,47 @@ class ImageNamesTest {
         assertTrue(src.contains("import androidx.compose.ui.res.painterResource"))
         assertTrue(src.contains("contentScale = ContentScale.Crop"))
     }
+
+    @Test
+    fun iconsValidateAndExport() {
+        assertTrue(com.arabicuieditor.data.model.IconCatalog.isValid("Home"))
+        assertFalse(com.arabicuieditor.data.model.IconCatalog.isValid("home"))
+        assertEquals("Home", PropertyRegistry.normalize(PropertyKeys.ICON, "Home"))
+        assertNull(PropertyRegistry.normalize(PropertyKeys.ICON, "Evil.run()"))
+        val image = UiElement(
+            id = "i2", type = ElementTypes.IMAGE,
+            layout = ElementLayout(0f, 0f, SizeSpec(SizeMode.FIXED, 48f), SizeSpec(SizeMode.FIXED, 48f)),
+            properties = mapOf(PropertyKeys.ICON to "Star")
+        )
+        val base = newProject("ت", "أ")
+        val screen = base.screens.first().copy(elements = listOf(image))
+        val src = ComposeExporter.export(base.copy(screens = listOf(screen), startScreenId = screen.id), null)
+        assertTrue(src.contains("Icons.Filled.Star"))
+        assertTrue(src.contains("import androidx.compose.material.icons.Icons"))
+    }
+
+    @Test
+    fun presetIconsAreAllValid() {
+        val ids = com.arabicuieditor.data.model.ComponentLibrary.presets
+            .flatMap { it.build { _ -> "x" } }
+            .flatMap { com.arabicuieditor.data.model.ElementTree.flatten(listOf(it)) }
+            .mapNotNull { it.properties[PropertyKeys.ICON] }
+        assertTrue(ids.isNotEmpty())
+        ids.forEach { assertTrue(it, com.arabicuieditor.data.model.IconCatalog.isValid(it)) }
+    }
+
+    @Test
+    fun imageFitExportsAndValidates() {
+        assertEquals("fit", PropertyRegistry.normalize(PropertyKeys.IMAGE_FIT, "fit"))
+        assertNull(PropertyRegistry.normalize(PropertyKeys.IMAGE_FIT, "zoom"))
+        val image = UiElement(
+            id = "i3", type = ElementTypes.IMAGE,
+            layout = ElementLayout(0f, 0f, SizeSpec(SizeMode.FIXED, 100f), SizeSpec(SizeMode.FIXED, 80f)),
+            properties = mapOf(PropertyKeys.IMAGE_SRC to "img_2.jpg", PropertyKeys.IMAGE_FIT to "fill")
+        )
+        val base = newProject("ت", "أ")
+        val screen = base.screens.first().copy(elements = listOf(image))
+        val src = ComposeExporter.export(base.copy(screens = listOf(screen), startScreenId = screen.id), null)
+        assertTrue(src.contains("ContentScale.FillBounds"))
+    }
 }

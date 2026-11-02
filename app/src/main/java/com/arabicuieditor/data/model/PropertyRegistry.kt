@@ -44,6 +44,11 @@ object PropertyKeys {
     const val TEXT_ALIGN = "textAlign"
     /** اسم ملف الصورة داخل مجلد موارد المشروع (انظر [ImageNames]). */
     const val IMAGE_SRC = "imageSrc"
+    /** معرّف أيقونة (انظر [IconCatalog]) لعنصر «صورة»؛ تتقدّم على الصورة. */
+    const val ICON = "icon"
+    /** طريقة ملء الصورة للإطار: crop | fit | fill (انظر [ImageFits]). */
+    const val IMAGE_FIT = "imageFit"
+    const val ICON_COLOR = "iconColor"
     const val BG_COLOR = "bgColor"
     const val BORDER_WIDTH = "borderWidth"
     const val BORDER_COLOR = "borderColor"
@@ -116,6 +121,12 @@ object FontWeights {
     const val NORMAL = "normal"
     const val MEDIUM = "medium"
     const val BOLD = "bold"
+}
+
+object ImageFits {
+    const val CROP = "crop"
+    const val FIT = "fit"
+    const val FILL = "fill"
 }
 
 object TextAligns {
@@ -298,6 +309,19 @@ object PropertyRegistry {
         ),
         PropertyDef(PropertyKeys.FONT_SIZE, R.string.prop_font_size, PropertyGroup.TEXT, PropertyKind.Integer(8, 72), TEXTUAL, fallback = Tokens.text(Tokens.BODY)),
         PropertyDef(PropertyKeys.IMAGE_SRC, R.string.prop_image_src, PropertyGroup.APPEARANCE, PropertyKind.Text(), setOf(ElementTypes.IMAGE), fallback = ""),
+        PropertyDef(
+            PropertyKeys.IMAGE_FIT, R.string.prop_image_fit, PropertyGroup.APPEARANCE,
+            PropertyKind.Choice(
+                listOf(
+                    ImageFits.CROP to R.string.fit_crop,
+                    ImageFits.FIT to R.string.fit_fit,
+                    ImageFits.FILL to R.string.fit_fill
+                )
+            ),
+            setOf(ElementTypes.IMAGE), fallback = ImageFits.CROP
+        ),
+        PropertyDef(PropertyKeys.ICON, R.string.prop_icon, PropertyGroup.APPEARANCE, PropertyKind.Text(), setOf(ElementTypes.IMAGE), fallback = ""),
+        PropertyDef(PropertyKeys.ICON_COLOR, R.string.prop_icon_color, PropertyGroup.APPEARANCE, PropertyKind.ColorValue, setOf(ElementTypes.IMAGE), fallback = Tokens.color(Tokens.TEXT_COLOR)),
         PropertyDef(PropertyKeys.FONT_FAMILY, R.string.prop_font_family, PropertyGroup.TEXT, PropertyKind.Text(), TEXTUAL, fallback = FontCatalog.DEFAULT),
         PropertyDef(
             PropertyKeys.FONT_WEIGHT, R.string.prop_font_weight, PropertyGroup.TEXT,
@@ -387,6 +411,7 @@ object PropertyRegistry {
             is PropertyKind.Text ->
                 when (key) {
                     PropertyKeys.FONT_FAMILY -> raw.trim().takeIf { FontCatalog.isValid(it) }
+                    PropertyKeys.ICON -> raw.trim().takeIf { it.isEmpty() || IconCatalog.isValid(it) }
                     PropertyKeys.IMAGE_SRC -> raw.trim().takeIf { it.isEmpty() || ImageNames.isValid(it) }
                     else -> raw.take(MAX_TEXT_LENGTH)
                 }
