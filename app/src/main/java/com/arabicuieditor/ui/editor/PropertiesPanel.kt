@@ -107,6 +107,14 @@ fun PropertiesPanel(
     onAlign: (AlignEdge) -> Unit = {},
     onDistribute: (horizontal: Boolean) -> Unit = {},
     onPickImage: () -> Unit = {},
+    canPaste: Boolean = false,
+    onCopy: () -> Unit = {},
+    onPaste: () -> Unit = {},
+    linkedName: String? = null,
+    linkedCount: Int = 0,
+    onLibraryPull: () -> Unit = {},
+    onLibraryPush: () -> Unit = {},
+    onUnlink: () -> Unit = {},
     screens: List<UiScreen> = emptyList(),
     onSetClick: (ClickAction) -> Unit = {},
     onSetLongPress: (ClickAction) -> Unit = {},
@@ -115,10 +123,13 @@ fun PropertiesPanel(
 ) {
     if (element == null || rect == null) {
         Box(modifier, contentAlignment = Alignment.Center) {
-            Text(
-                text = stringResource(R.string.props_select_hint),
-                style = MaterialTheme.typography.bodySmall
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(R.string.props_select_hint),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (canPaste) ActionChip(stringResource(R.string.action_paste), "act_paste_empty", onPaste)
+            }
         }
         return
     }
@@ -129,7 +140,8 @@ fun PropertiesPanel(
 
     LazyColumn(modifier = modifier.testTag("props_list"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item(key = "actions") {
-            ActionsRow(onDuplicate, onDelete, onReorder, onWrap, onUnwrap, canUnwrap = element.children.isNotEmpty())
+            ActionsRow(onDuplicate, onDelete, onReorder, onWrap, onUnwrap, canUnwrap = element.children.isNotEmpty(),
+                canPaste = canPaste, onCopy = onCopy, onPaste = onPaste)
         }
 
         if (isFree) {
@@ -148,6 +160,29 @@ fun PropertiesPanel(
                         ActionChip(stringResource(R.string.align_to_bottom), "align_bottom") { onAlign(AlignEdge.BOTTOM) }
                         ActionChip(stringResource(R.string.distribute_h), "distribute_h") { onDistribute(true) }
                         ActionChip(stringResource(R.string.distribute_v), "distribute_v") { onDistribute(false) }
+                    }
+                }
+            }
+        }
+
+        if (com.arabicuieditor.data.model.LibraryLink.linkedId(element) != null) {
+            item(key = "linked") {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("linked_section")) {
+                    SectionHeader(stringResource(R.string.link_title))
+                    Text(
+                        if (linkedName != null) stringResource(R.string.link_to, linkedName, linkedCount)
+                        else stringResource(R.string.link_missing),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (linkedName != null) {
+                            ActionChip(stringResource(R.string.link_pull), "link_pull", onLibraryPull)
+                            ActionChip(stringResource(R.string.link_push), "link_push", onLibraryPush)
+                        }
+                        ActionChip(stringResource(R.string.link_unlink), "link_unlink", onUnlink)
                     }
                 }
             }
@@ -286,13 +321,18 @@ private fun ActionsRow(
     onReorder: (ReorderOp) -> Unit,
     onWrap: (ChildLayout) -> Unit,
     onUnwrap: () -> Unit,
-    canUnwrap: Boolean
+    canUnwrap: Boolean,
+    canPaste: Boolean = false,
+    onCopy: () -> Unit = {},
+    onPaste: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         ActionChip(stringResource(R.string.action_duplicate_element), "act_duplicate", onDuplicate)
+        ActionChip(stringResource(R.string.action_copy), "act_copy", onCopy)
+        if (canPaste) ActionChip(stringResource(R.string.action_paste), "act_paste", onPaste)
         ActionChip(stringResource(R.string.action_delete), "act_delete", onDelete)
         ActionChip(stringResource(R.string.action_forward), "act_forward") { onReorder(ReorderOp.FORWARD) }
         ActionChip(stringResource(R.string.action_backward), "act_backward") { onReorder(ReorderOp.BACKWARD) }

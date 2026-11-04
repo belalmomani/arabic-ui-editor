@@ -222,6 +222,19 @@ object SmartAlign {
         AlignEdge.BOTTOM -> frame.copy(y = container.bottom - frame.h)
     }
 
+    /** يزيح مجموعة إطارات بـ ([dx],[dy]) مع إبقائها داخل الشاشة [bounds]، محافظًا على أبعادها وعلى المسافات بينها. */
+    fun shiftGroup(frames: List<Pair<String, DesignRect>>, dx: Float, dy: Float, bounds: DesignRect): Map<String, DesignRect> {
+        if (frames.isEmpty()) return emptyMap()
+        val minX = frames.minOf { it.second.x }
+        val minY = frames.minOf { it.second.y }
+        val maxR = frames.maxOf { it.second.right }
+        val maxB = frames.maxOf { it.second.bottom }
+        val sx = dx.coerceIn(bounds.x - minX, bounds.right - maxR)
+        val sy = dy.coerceIn(bounds.y - minY, bounds.bottom - maxB)
+        if (sx == 0f && sy == 0f) return emptyMap()
+        return frames.associate { (id, r) -> id to r.copy(x = r.x + sx, y = r.y + sy) }
+    }
+
     /** يحاذي مجموعة إطارات إلى الصندوق المحيط بها. يعيد الإطارات التي تغيّرت فقط (يحتاج عنصرين). */
     fun alignGroup(frames: List<Pair<String, DesignRect>>, edge: AlignEdge): Map<String, DesignRect> {
         if (frames.size < 2) return emptyMap()

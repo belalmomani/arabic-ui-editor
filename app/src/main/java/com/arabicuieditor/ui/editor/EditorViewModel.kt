@@ -18,6 +18,7 @@ import com.arabicuieditor.data.model.ClickAction
 import com.arabicuieditor.data.model.Constraints
 import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Interactions
+import com.arabicuieditor.data.model.LibraryLink
 import com.arabicuieditor.data.model.LayoutEditing
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.PropertyKeys
@@ -178,6 +179,16 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val frames = _multi.value.filter { it in layout.freeIds }
             .mapNotNull { id -> layout.frames[id]?.let { id to it } }
         applyMoved(screen, layout, SmartAlign.alignGroup(frames, edge))
+    }
+
+    /** يزيح العناصر الحرة المحددة معًا بـ ([dx],[dy]) dp داخل حدود الشاشة (خطوة تراجع واحدة لكل ضغطة). */
+    fun nudgeMulti(dx: Float, dy: Float) {
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val frames = _multi.value.filter { it in layout.freeIds }
+            .mapNotNull { id -> layout.frames[id]?.let { id to it } }
+        applyMoved(screen, layout, SmartAlign.shiftGroup(frames, dx, dy, DesignRect(0f, 0f, layout.width, layout.height)))
     }
 
     /** يوزّع العناصر الحرة المحددة (3 فأكثر) بفجوات متساوية. */
@@ -403,6 +414,23 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         insertElements(built, centerX, centerY, atPoint)
     }
 
+    // ---- نسخ ولصق بين الشاشات ----
+
+    private val _clipboard = MutableStateFlow<UiElement?>(null)
+    /** العنصر المنسوخ (بأبنائه) في ذاكرة المحرر؛ يبقى عند تبديل الشاشات. */
+    val clipboard: StateFlow<UiElement?> = _clipboard.asStateFlow()
+
+    fun copySelected() {
+        val screen = currentScreen() ?: return
+        _clipboard.value = _selectedId.value?.let { ElementTree.find(screen.elements, it) }
+    }
+
+    /** يلصق نسخة بمعرّفات جديدة في الشاشة الحالية (مثل إضافة عنصر). */
+    fun pasteElement(centerX: Float, centerY: Float) {
+        val e = _clipboard.value ?: return
+        insertElements(listOf(ElementTree.reId(e)), centerX, centerY, atPoint = false)
+    }
+
     // ---- المكتبة الشخصية ----
 
     /** يحفظ العنصر المحدد (بأبنائه) في المكتبة الشخصية باسم [name]. لا يغيّر المشروع ولا التراجع. */
@@ -412,7 +440,7 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         if (name.isBlank()) return
         viewModelScope.launch {
             try {
-                _userComponents.value = withContext(Dispatchers.IO) { libraryRepo.add(name, element) }
+                _userComponents.value = withContext(Dispatchers.IO) { libraryRepo.add(name, LibraryLink.untag(element)) }
             } catch (_: Exception) {
                 // فشل الحفظ لا يمسّ التصميم؛ تبقى القائمة كما هي.
             }
@@ -421,7 +449,41 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
 
     /** يدرج نسخة بمعرّفات جديدة من مكوّن شخصي في الشاشة الحالية (مثل [addPreset]). */
     fun addUserComponent(component: UserComponent, centerX: Float, centerY: Float, atPoint: Boolean = false) {
-        insertElements(listOf(ElementTree.reId(component.root)), centerX, centerY, atPoint)
+        insertElements(listOf(LibraryLink.tag(ElementTree.reId(component.root), component.id)), centerX, centerY, atPoint)
+    }
+
+    /** يحدّث كل نسخ المكوّن [componentId] في كل شاشات المشروع من نسخته الحالية في المكتبة (خطوة تراجع واحدة). */
+    fun updateInstancesFromLibrary(componentId: String) {
+        val source = _userComponents.value.firstOrNull { it.id == componentId }?.root ?: return
+        edit { p ->
+            p.copy(screens = p.screens.map { s ->
+                s.copy(elements = LibraryLink.refresh(s.elements, componentId, source))
+            })
+        }
+    }
+
+    /** يحفظ تعديلات العنصر المحدد (نسخة مرتبطة) داخل مكوّنها في المكتبة. */
+    fun updateLibraryFromSelected() {
+        val screen = currentScreen() ?: return
+        val element = _selectedId.value?.let { ElementTree.find(screen.elements, it) } ?: return
+        val componentId = LibraryLink.linkedId(element) ?: return
+        viewModelScope.launch {
+            try {
+                _userComponents.value = withContext(Dispatchers.IO) {
+                    libraryRepo.replaceRoot(componentId, LibraryLink.untag(element))
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /** يفك ارتباط العنصر المحدد بالمكتبة (يبقى كما هو). */
+    fun unlinkSelected() {
+        val screen = currentScreen() ?: return
+        val id = _selectedId.value ?: return
+        editScreen(screen.id) { s ->
+            s.copy(elements = ElementTree.update(s.elements, id) { LibraryLink.untag(it) })
+        }
     }
 
     fun renameUserComponent(id: String, name: String) {

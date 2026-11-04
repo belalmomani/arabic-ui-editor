@@ -45,6 +45,7 @@ import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.intProp
+import com.arabicuieditor.data.model.prop
 import com.arabicuieditor.data.model.UiScreen
 import kotlin.math.hypot
 
@@ -183,7 +184,13 @@ fun DesignCanvas(
                         var lastX = down.position.x
                         var lastY = down.position.y
                         // بلا تعديل (معاينة بحجم مختلف): كل سحب يحرّك مساحة العمل، والنقر يحدد فقط.
-                        val dragTarget = if (latestEditable && !multiOn) target else GestureTarget.Pan
+                        val lockedHit = when (target) {
+                            is GestureTarget.Move -> latestElements[target.id]?.prop(PropertyKeys.LOCKED) == "true"
+                            is GestureTarget.Resize -> latestElements[target.id]?.prop(PropertyKeys.LOCKED) == "true"
+                            is GestureTarget.Rotate -> latestElements[target.id]?.prop(PropertyKeys.LOCKED) == "true"
+                            else -> false
+                        }
+                        val dragTarget = if (latestEditable && !multiOn && !lockedHit) target else GestureTarget.Pan
 
                         do {
                             val event = awaitPointerEvent()

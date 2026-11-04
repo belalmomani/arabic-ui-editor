@@ -88,6 +88,72 @@ class ProjectRepository(private val root: File) {
         return copy
     }
 
+    /** يكتب نسخة كاملة (project.json + صور resources) كملف ZIP إلى [out]. يعيد false إن لم يوجد المشروع. */
+    @Synchronized
+    fun exportZip(id: String, out: java.io.OutputStream): Boolean {
+        val project = load(id) ?: return false
+        java.util.zip.ZipOutputStream(out).use { zip ->
+            zip.putNextEntry(java.util.zip.ZipEntry(ZIP_PROJECT))
+            zip.write(ProjectJsonCodec.encode(project).toByteArray(Charsets.UTF_8))
+            zip.closeEntry()
+            resourcesDir(id).listFiles().orEmpty()
+                .filter { it.isFile && com.arabicuieditor.data.model.ImageNames.isValid(it.name) }
+                .forEach { f ->
+                    zip.putNextEntry(java.util.zip.ZipEntry(ZIP_RES + f.name))
+                    f.inputStream().use { it.copyTo(zip) }
+                    zip.closeEntry()
+                }
+        }
+        return true
+    }
+
+    /**
+     * يستورد نسخة ZIP كاملة كمشروع جديد. يقبل فقط project.json وresources/<اسم صورة صالح>
+     * (لا مسارات أخرى، فلا خطر اختراق المسارات) مع سقف للأحجام. يعيد null عند الفشل.
+     */
+    @Synchronized
+    fun importZip(input: java.io.InputStream): Project? {
+        var json: String? = null
+        val images = LinkedHashMap<String, ByteArray>()
+        var total = 0L
+        try {
+            java.util.zip.ZipInputStream(input).use { zip ->
+                while (true) {
+                    val entry = zip.nextEntry ?: break
+                    val name = entry.name
+                    val accept = !entry.isDirectory && (name == ZIP_PROJECT ||
+                        (name.startsWith(ZIP_RES) && com.arabicuieditor.data.model.ImageNames.isValid(name.removePrefix(ZIP_RES))))
+                    if (!accept) { zip.closeEntry(); continue }
+                    val bytes = readLimited(zip, MAX_ZIP_ENTRY) ?: return null
+                    total += bytes.size
+                    if (total > MAX_ZIP_TOTAL) return null
+                    if (name == ZIP_PROJECT) json = String(bytes, Charsets.UTF_8)
+                    else images[name.removePrefix(ZIP_RES)] = bytes
+                    zip.closeEntry()
+                }
+            }
+        } catch (_: Exception) {
+            return null
+        }
+        val project = importJson(json ?: return null) ?: return null
+        val dir = resourcesDir(project.id)
+        dir.mkdirs()
+        images.forEach { (n, b) -> File(dir, n).writeBytes(b) }
+        return project
+    }
+
+    private fun readLimited(s: java.io.InputStream, max: Int): ByteArray? {
+        val buf = java.io.ByteArrayOutputStream()
+        val chunk = ByteArray(8192)
+        while (true) {
+            val n = s.read(chunk)
+            if (n < 0) break
+            buf.write(chunk, 0, n)
+            if (buf.size() > max) return null
+        }
+        return buf.toByteArray()
+    }
+
     /** يستورد مشروعًا من نص JSON (نسخة احتياطية) كمشروع جديد بمعرّف جديد. يعيد null إن كان النص غير صالح. */
     @Synchronized
     fun importJson(text: String): Project? {
@@ -126,6 +192,13 @@ class ProjectRepository(private val root: File) {
     }
 
     fun resourcesDir(id: String): File = File(projectDir(id), "resources")
+
+    private companion object {
+        const val ZIP_PROJECT = "project.json"
+        const val ZIP_RES = "resources/"
+        const val MAX_ZIP_ENTRY = 30 * 1024 * 1024
+        const val MAX_ZIP_TOTAL = 200L * 1024 * 1024
+    }
 
     // ---- داخلي ----
 

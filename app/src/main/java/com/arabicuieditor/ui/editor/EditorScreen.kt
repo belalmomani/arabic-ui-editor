@@ -218,6 +218,7 @@ private fun EditorContent(
         ?: project.screens.firstOrNull()
         ?: return
     val userComponents by viewModel.userComponents.collectAsState()
+    val clipboard by viewModel.clipboard.collectAsState()
     val multiMode by viewModel.multiMode.collectAsState()
     val multiSet by viewModel.multi.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -456,6 +457,29 @@ private fun EditorContent(
                                 BottomTab.PROPERTIES -> PropertiesPanel(
                                     element = selectedElement,
                                     onPickImage = { imagePicker.launch("image/*") },
+                                    canPaste = clipboard != null,
+                                    onCopy = viewModel::copySelected,
+                                    onPaste = {
+                                        val (cx, cy) = newElementCenter() ?: return@PropertiesPanel
+                                        viewModel.pasteElement(cx, cy)
+                                    },
+                                    linkedName = selectedElement?.let { el ->
+                                        com.arabicuieditor.data.model.LibraryLink.linkedId(el)?.let { cid ->
+                                            userComponents.firstOrNull { it.id == cid }?.name
+                                        }
+                                    },
+                                    linkedCount = selectedElement?.let { el ->
+                                        com.arabicuieditor.data.model.LibraryLink.linkedId(el)?.let { cid ->
+                                            project.screens.sumOf { com.arabicuieditor.data.model.LibraryLink.count(it.elements, cid) }
+                                        }
+                                    } ?: 0,
+                                    onLibraryPull = {
+                                        selectedElement?.let { el ->
+                                            com.arabicuieditor.data.model.LibraryLink.linkedId(el)?.let { viewModel.updateInstancesFromLibrary(it) }
+                                        }
+                                    },
+                                    onLibraryPush = viewModel::updateLibraryFromSelected,
+                                    onUnlink = viewModel::unlinkSelected,
                                     rect = selectedRect,
                                     onSetProperty = { key, value ->
                                         selectedElement?.let { viewModel.setProperty(it.id, key, value) }
@@ -517,7 +541,8 @@ private fun EditorContent(
                                     onToggle = viewModel::toggleMulti,
                                     onAlignMulti = viewModel::alignMulti,
                                     onDistributeMulti = viewModel::distributeMulti,
-                                    onDeleteMulti = viewModel::deleteMulti
+                                    onDeleteMulti = viewModel::deleteMulti,
+                                    onNudgeMulti = viewModel::nudgeMulti
                                 )
 
                                 BottomTab.SCREEN -> ScreenPanel(

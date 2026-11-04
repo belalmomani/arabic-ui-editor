@@ -51,6 +51,11 @@ class UserLibraryRepository(private val file: File) {
         return write(list().map { if (it.id == id) it.copy(name = clean) else it })
     }
 
+    /** يستبدل محتوى مكوّن موجود بعنصر جديد (يبقى اسمه ومعرّفه). */
+    @Synchronized
+    fun replaceRoot(id: String, root: UiElement): List<UserComponent> =
+        write(list().map { if (it.id == id) it.copy(root = root, savedAt = System.currentTimeMillis()) else it })
+
     @Synchronized
     fun delete(id: String): List<UserComponent> = write(list().filterNot { it.id == id })
 

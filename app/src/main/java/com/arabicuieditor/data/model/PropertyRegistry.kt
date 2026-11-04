@@ -61,6 +61,8 @@ object PropertyKeys {
     /** دوران العنصر بالدرجات (0..359) باتجاه عقارب الساعة حول مركزه. */
     const val ROTATION = "rotation"
     const val VISIBLE = "visible"
+    /** عنصر مقفل: يُحدَّد لكن لا يتحرك ولا يتغيّر حجمه بالسحب على اللوحة. */
+    const val LOCKED = "locked"
     const val PADDING_START = "paddingStart"
     const val PADDING_TOP = "paddingTop"
     const val PADDING_END = "paddingEnd"
@@ -225,6 +227,7 @@ object PropertyRegistry {
     val all: List<PropertyDef> = listOf(
         // عام
         PropertyDef(PropertyKeys.NAME, R.string.prop_name, PropertyGroup.GENERAL, PropertyKind.Text(), ALL),
+        PropertyDef(PropertyKeys.LOCKED, R.string.prop_locked, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "false"),
         PropertyDef(PropertyKeys.VISIBLE, R.string.prop_visible, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "true"),
         PropertyDef(PropertyKeys.OPACITY, R.string.prop_opacity, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "100"),
         PropertyDef(PropertyKeys.ROTATION, R.string.prop_rotation, PropertyGroup.GENERAL, PropertyKind.Integer(0, 359), ALL, fallback = "0"),

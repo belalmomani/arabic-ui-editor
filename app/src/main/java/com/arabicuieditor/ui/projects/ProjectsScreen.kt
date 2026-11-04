@@ -57,6 +57,17 @@ fun ProjectsScreen(
     var renameTarget by remember { mutableStateOf<Project?>(null) }
     var deleteTarget by remember { mutableStateOf<Project?>(null) }
 
+    var zipTarget by remember { mutableStateOf<Project?>(null) }
+    val zipSaver = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        val t = zipTarget
+        if (uri != null && t != null) viewModel.exportZip(t.id, uri)
+        zipTarget = null
+    }
+    val zipPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) viewModel.importZip(uri) }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -75,6 +86,10 @@ fun ProjectsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExtendedFloatingActionButton(
+                    onClick = { zipPicker.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
+                    modifier = Modifier.testTag("import_zip")
+                ) { Text(stringResource(R.string.import_zip)) }
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.importText(clipboard.getText()?.text.orEmpty()) },
                     modifier = Modifier.testTag("import_project")
@@ -105,6 +120,10 @@ fun ProjectsScreen(
                             onOpen = { onOpenProject(project.id) },
                             onRename = { renameTarget = project },
                             onDuplicate = { viewModel.duplicate(project) },
+                            onZip = {
+                                zipTarget = project
+                                zipSaver.launch(project.name.replace(Regex("[^\\p{L}\\p{N}_ -]"), "_").ifBlank { "project" } + ".zip")
+                            },
                             onBackup = {
                                 val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                     type = "text/plain"
@@ -168,6 +187,7 @@ private fun ProjectCard(
     onRename: () -> Unit,
     onDuplicate: () -> Unit,
     onBackup: () -> Unit,
+    onZip: () -> Unit,
     onDelete: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -215,6 +235,10 @@ private fun ProjectCard(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_backup)) },
                         onClick = { menuOpen = false; onBackup() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_zip)) },
+                        onClick = { menuOpen = false; onZip() }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_delete)) },

@@ -67,6 +67,34 @@ class ProjectsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** يكتب نسخة ZIP كاملة للمشروع إلى [uri] (يختاره المستخدم). */
+    fun exportZip(id: String, uri: android.net.Uri) {
+        viewModelScope.launch {
+            val ok = try {
+                withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openOutputStream(uri)?.use { repository.exportZip(id, it) } ?: false
+                }
+            } catch (e: Exception) {
+                false
+            }
+            if (!ok) _error.value = R.string.error_action_failed
+        }
+    }
+
+    fun importZip(uri: android.net.Uri) {
+        viewModelScope.launch {
+            val imported = try {
+                withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openInputStream(uri)?.use { repository.importZip(it) }
+                }
+            } catch (e: Exception) {
+                null
+            }
+            if (imported == null) _error.value = R.string.import_zip_failed
+            reload()
+        }
+    }
+
     fun delete(id: String) = runAndReload { repository.delete(id) }
 
     private fun runAndReload(block: () -> Unit) {

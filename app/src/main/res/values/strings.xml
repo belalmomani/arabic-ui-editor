@@ -40,6 +40,7 @@
     <string name="editor_not_found">تعذّر فتح المشروع. قد يكون حُذف أو تلف ملفه.</string>
     <string name="editor_delete_element">حذف العنصر المحدد</string>
     <string name="layers_title">الطبقات (%1$d) — الأعلى في القائمة هو الأعلى في الشاشة</string>
+    <string name="layers_search">بحث بالاسم أو النوع</string>
     <string name="layers_empty">لا عناصر بعد. اضغط عنصرًا من القائمة أو اسحبه إلى الشاشة.</string>
 
     <string name="element_text">نص</string>
@@ -152,6 +153,8 @@
     <string name="geo_height">الارتفاع</string>
 
     <string name="prop_name">الاسم الداخلي</string>
+    <string name="prop_locked">مقفل (لا يتحرك بالسحب)</string>
+    <string name="layer_locked">مقفل</string>
     <string name="prop_visible">ظاهر</string>
     <string name="prop_opacity">الشفافية (%)</string>
     <string name="contrast_title">تباين النص (WCAG)</string>
@@ -182,6 +185,20 @@
     <string name="prop_image_zoom">تكبير الصورة %</string>
     <string name="prop_image_pan_x">إزاحة أفقية %</string>
     <string name="prop_image_pan_y">إزاحة رأسية %</string>
+    <string name="link_title">ربط بالمكتبة</string>
+    <string name="link_to">نسخة من مكوّن «%1$s» في مكتبتك (%2$d نسخة في المشروع)</string>
+    <string name="link_missing">المكوّن الأصلي لم يعد في المكتبة</string>
+    <string name="link_pull">تحديث كل النسخ من المكتبة</string>
+    <string name="link_push">حفظ تعديلاتي في المكتبة</string>
+    <string name="link_unlink">فك الارتباط</string>
+    <string name="import_zip">استيراد ZIP كامل</string>
+    <string name="import_zip_failed">الملف ليس نسخة ZIP صالحة لمشروع</string>
+    <string name="action_zip">نسخة كاملة مع الصور (ZIP)</string>
+    <string name="export_fmt_compose">Compose</string>
+    <string name="export_fmt_flutter">Flutter</string>
+    <string name="export_fmt_xml">Android XML</string>
+    <string name="action_copy">نسخ</string>
+    <string name="action_paste">لصق</string>
     <string name="icon_none">بلا</string>
     <string name="image_choose">اختيار صورة</string>
     <string name="image_change">تغيير الصورة</string>

@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -39,5 +40,40 @@ class ProjectImportTest {
         assertNull(repo.importJson("ليس JSON"))
         assertNull(repo.importJson("{\"x\":1}"))
         assertEquals(0, repo.list().size)
+    }
+
+    @Test
+    fun zipRoundTripKeepsImages() {
+        val original = repo.create("بصور", "الأولى")
+        val res = repo.resourcesDir(original.id)
+        res.mkdirs()
+        java.io.File(res, "img_1.png").writeBytes(byteArrayOf(1, 2, 3, 4))
+        java.io.File(res, "evil.txt").writeBytes(byteArrayOf(9))
+        val bytes = java.io.ByteArrayOutputStream().also { assertTrue(repo.exportZip(original.id, it)) }.toByteArray()
+
+        val imported = repo.importZip(bytes.inputStream())
+        assertNotNull(imported)
+        assertNotEquals(original.id, imported!!.id)
+        val copy = java.io.File(repo.resourcesDir(imported.id), "img_1.png")
+        assertTrue(copy.exists())
+        assertEquals(listOf<Byte>(1, 2, 3, 4), copy.readBytes().toList())
+        assertTrue(!java.io.File(repo.resourcesDir(imported.id), "evil.txt").exists())
+    }
+
+    @Test
+    fun zipRejectsPathTraversalAndGarbage() {
+        val out = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(out).use { z ->
+            z.putNextEntry(java.util.zip.ZipEntry("project.json"))
+            z.write(com.arabicuieditor.data.storage.ProjectJsonCodec.encode(repo.create("x", "y")).toByteArray())
+            z.closeEntry()
+            z.putNextEntry(java.util.zip.ZipEntry("resources/../../escape.png"))
+            z.write(byteArrayOf(7))
+            z.closeEntry()
+        }
+        val imported = repo.importZip(out.toByteArray().inputStream())
+        assertNotNull(imported)
+        assertTrue(!java.io.File(root, "escape.png").exists())
+        assertNull(repo.importZip("not a zip".byteInputStream()))
     }
 }

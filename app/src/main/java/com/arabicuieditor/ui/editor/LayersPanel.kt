@@ -57,7 +57,8 @@ fun LayersPanel(
     onToggle: (String) -> Unit = {},
     onAlignMulti: (AlignEdge) -> Unit = {},
     onDistributeMulti: (Boolean) -> Unit = {},
-    onDeleteMulti: () -> Unit = {}
+    onDeleteMulti: () -> Unit = {},
+    onNudgeMulti: (Float, Float) -> Unit = { _, _ -> }
 ) {
     if (elements.isEmpty()) {
         Box(modifier, contentAlignment = Alignment.Center) {
@@ -68,8 +69,22 @@ fun LayersPanel(
         }
         return
     }
-    val rows = ArrayList<LayerRow>().also { layerRows(elements, 0, it) }
+    val allRows = ArrayList<LayerRow>().also { layerRows(elements, 0, it) }
+    var query by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
+    val q = query.trim()
+    val labels = allRows.map { stringResource(elementLabelRes(it.element.type)) }
+    val rows = if (q.isEmpty()) allRows else allRows.filterIndexed { i, r ->
+        val name = r.element.properties[PropertyKeys.NAME].orEmpty()
+        name.contains(q, ignoreCase = true) || labels[i].contains(q, ignoreCase = true)
+    }
     Column(modifier) {
+    androidx.compose.material3.OutlinedTextField(
+        value = query,
+        onValueChange = { query = it.take(40) },
+        singleLine = true,
+        placeholder = { Text(stringResource(R.string.layers_search)) },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).testTag("layers_search")
+    )
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -94,6 +109,12 @@ fun LayersPanel(
                 AssistChip(onClick = { onAlignMulti(AlignEdge.CENTER_V) }, label = { Text(stringResource(R.string.align_to_center_v)) }, modifier = Modifier.testTag("multi_align_center_v"))
                 AssistChip(onClick = { onAlignMulti(AlignEdge.BOTTOM) }, label = { Text(stringResource(R.string.align_to_bottom)) }, modifier = Modifier.testTag("multi_align_bottom"))
             }
+            if (multi.isNotEmpty()) {
+                AssistChip(onClick = { onNudgeMulti(-8f, 0f) }, label = { Text("◀ 8") }, modifier = Modifier.testTag("multi_nudge_left"))
+                AssistChip(onClick = { onNudgeMulti(8f, 0f) }, label = { Text("8 ▶") }, modifier = Modifier.testTag("multi_nudge_right"))
+                AssistChip(onClick = { onNudgeMulti(0f, -8f) }, label = { Text("▲ 8") }, modifier = Modifier.testTag("multi_nudge_up"))
+                AssistChip(onClick = { onNudgeMulti(0f, 8f) }, label = { Text("▼ 8") }, modifier = Modifier.testTag("multi_nudge_down"))
+            }
             if (multi.size >= 3) {
                 AssistChip(onClick = { onDistributeMulti(true) }, label = { Text(stringResource(R.string.distribute_h)) }, modifier = Modifier.testTag("multi_dist_h"))
                 AssistChip(onClick = { onDistributeMulti(false) }, label = { Text(stringResource(R.string.distribute_v)) }, modifier = Modifier.testTag("multi_dist_v"))
@@ -107,7 +128,8 @@ fun LayersPanel(
             val selected = if (multiMode) checked else element.id == selectedId
             val typeLabel = stringResource(elementLabelRes(element.type))
             val name = element.properties[PropertyKeys.NAME]?.takeIf { it.isNotBlank() } ?: typeLabel
-            val hiddenMark = if (element.boolProp(PropertyKeys.VISIBLE)) "" else " · " + stringResource(R.string.layer_hidden)
+            val hiddenMark = (if (element.boolProp(PropertyKeys.VISIBLE)) "" else " · " + stringResource(R.string.layer_hidden)) +
+                (if (element.properties[PropertyKeys.LOCKED] == "true") " · 🔒 " + stringResource(R.string.layer_locked) else "")
             val layoutMark = if (ElementTree.canContain(element.type)) {
                 " · " + stringResource(layoutLabelRes(element.childLayout))
             } else ""

@@ -48,8 +48,14 @@ import com.arabicuieditor.data.model.Project
 fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -> Unit) {
     var wholeProject by rememberSaveable { mutableStateOf(true) }
     var copied by remember { mutableStateOf(false) }
-    val code = remember(project, wholeProject, currentScreenId) {
-        ComposeExporter.export(project, if (wholeProject) null else currentScreenId)
+    var format by rememberSaveable { mutableStateOf(0) } // 0 Compose، 1 XML، 2 Flutter
+    val code = remember(project, wholeProject, currentScreenId, format) {
+        val only = if (wholeProject) null else currentScreenId
+        when (format) {
+            1 -> com.arabicuieditor.data.export.XmlExporter.export(project, only)
+            2 -> com.arabicuieditor.data.export.FlutterExporter.export(project, only)
+            else -> ComposeExporter.export(project, only)
+        }
     }
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
@@ -62,6 +68,26 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
                     TextButton(onClick = onDismiss, modifier = Modifier.testTag("export_close")) {
                         Text(stringResource(R.string.export_close))
                     }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = format == 0,
+                        onClick = { format = 0; copied = false },
+                        label = { Text(stringResource(R.string.export_fmt_compose)) },
+                        modifier = Modifier.testTag("export_fmt_compose")
+                    )
+                    FilterChip(
+                        selected = format == 1,
+                        onClick = { format = 1; copied = false },
+                        label = { Text(stringResource(R.string.export_fmt_xml)) },
+                        modifier = Modifier.testTag("export_fmt_xml")
+                    )
+                    FilterChip(
+                        selected = format == 2,
+                        onClick = { format = 2; copied = false },
+                        label = { Text(stringResource(R.string.export_fmt_flutter)) },
+                        modifier = Modifier.testTag("export_fmt_flutter")
+                    )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(

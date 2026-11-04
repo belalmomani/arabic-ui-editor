@@ -37,4 +37,18 @@ class GroupAlignTest {
     fun singleElementDoesNothing() {
         assertTrue(SmartAlign.alignGroup(frames.take(1), AlignEdge.LEFT).isEmpty())
     }
+
+    @Test
+    fun shiftKeepsGroupInsideBounds() {
+        val bounds = DesignRect(0f, 0f, 200f, 100f)
+        val moved = SmartAlign.shiftGroup(frames, 500f, 0f, bounds)
+        // الصندوق المحيط يمتد حتى x=160 فأقصى إزاحة 40
+        assertEquals(50f, moved.getValue("a").x, 0.001f)
+        assertEquals(140f, moved.getValue("b").x, 0.001f)
+        assertEquals(20f, moved.getValue("a").y, 0.001f)
+        assertTrue(SmartAlign.shiftGroup(frames, 0f, 0f, bounds).isEmpty())
+        val up = SmartAlign.shiftGroup(frames, 0f, -500f, bounds)
+        assertEquals(0f, up.getValue("a").y, 0.001f)
+        assertEquals(30f, up.getValue("b").y, 0.001f)
+    }
 }
