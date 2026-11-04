@@ -14,7 +14,7 @@ android {
         targetSdk = 35
         // يزيد رقم الإصدار تلقائيًا مع كل بناء على GitHub Actions.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.31.2"
+        versionName = "0.32.0"
     }
 
     // مفتاح توقيع ثابت للنسخة التجريبية (debug) كي يُثبَّت كل APK جديد فوق السابق
@@ -73,6 +73,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation("org.mozilla:rhino:1.7.15")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

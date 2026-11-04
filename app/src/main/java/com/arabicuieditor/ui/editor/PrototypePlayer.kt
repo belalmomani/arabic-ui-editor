@@ -46,6 +46,8 @@ import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.boolProp
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.resolved
+import com.arabicuieditor.data.script.ScriptEngine
+import com.arabicuieditor.data.script.ScriptOverrides
 import com.arabicuieditor.ui.editor.canvas.ElementView
 import com.arabicuieditor.ui.editor.canvas.LayoutEngine
 import com.arabicuieditor.ui.editor.canvas.Prototype
@@ -65,6 +67,10 @@ fun PrototypePlayer(
     modifier: Modifier = Modifier
 ) {
     var nav by remember { mutableStateOf(PrototypeState(startScreenId)) }
+    // حالة السكربتات: المتغيرات وتعديلات الخصائص بأسماء العناصر، والرسالة المؤقتة.
+    var vars by remember { mutableStateOf<Map<String, Any>>(emptyMap()) }
+    var overrides by remember { mutableStateOf<Map<String, Map<String, String>>>(emptyMap()) }
+    var toast by remember { mutableStateOf<String?>(null) }
     BackHandler(onBack = { if (nav.history.isEmpty()) onClose() else nav = nav.apply(ClickAction.Back, project.screens) })
 
     val screen = project.screens.firstOrNull { it.id == nav.current } ?: project.screens.firstOrNull()
@@ -72,9 +78,30 @@ fun PrototypePlayer(
         LaunchedEffect(Unit) { onClose() }
         return
     }
-    val layout = remember(screen) { LayoutEngine.layout(screen) }
-    val elements = remember(screen, designSystem) {
-        ElementTree.flatten(screen.elements).map { it.resolved(designSystem) }.associateBy { it.id }
+    val effective = remember(screen, overrides, vars) {
+        screen.copy(elements = ScriptOverrides.apply(screen.elements, overrides, vars))
+    }
+    val layout = remember(effective) { LayoutEngine.layout(effective) }
+    val elements = remember(effective, designSystem) {
+        ElementTree.flatten(effective.elements).map { it.resolved(designSystem) }.associateBy { it.id }
+    }
+    // يطبّق إجراءً: السكربت يُشغَّل ثم تُطبَّق نتيجته (متغيرات، خصائص، انتقال، رجوع، رسالة).
+    fun perform(action: ClickAction) {
+        if (action is ClickAction.Script) {
+            val out = ScriptEngine.run(action.code, vars, ScriptOverrides.baseProps(screen.elements), overrides)
+            vars = out.vars
+            overrides = out.overrides
+            toast = out.error?.let { "خطأ في السكربت: $it" } ?: out.toast
+            if (out.back) nav = nav.apply(ClickAction.Back, project.screens)
+            out.navigateTo?.let { target ->
+                val dest = project.screens.firstOrNull { it.name == target || it.id == target }
+                if (dest != null) nav = nav.apply(ClickAction.Navigate(dest.id), project.screens)
+                else toast = "الشاشة غير موجودة: $target"
+            }
+        } else nav = nav.apply(action, project.screens)
+    }
+    LaunchedEffect(toast) {
+        if (toast != null) { kotlinx.coroutines.delay(2500); toast = null }
     }
     val density = LocalDensity.current.density
 
@@ -102,20 +129,17 @@ fun PrototypePlayer(
                 Modifier
                     .size((screen.width * scale).dp, (screen.height * scale).dp)
                     .clipToBounds()
-                    .pointerInput(screen.id, scale) {
+                    .pointerInput(effective, layout, scale, vars, overrides) {
                         detectTapGestures(
                             onLongPress = { offset ->
                                 val x = offset.x / density / scale
                                 val y = offset.y / density / scale
-                                nav = nav.apply(
-                                    Prototype.actionAt(screen, layout, x, y, com.arabicuieditor.data.model.Interactions.TRIGGER_LONG_PRESS),
-                                    project.screens
-                                )
+                                perform(Prototype.actionAt(effective, layout, x, y, com.arabicuieditor.data.model.Interactions.TRIGGER_LONG_PRESS))
                             }
                         ) { offset ->
                             val x = offset.x / density / scale
                             val y = offset.y / density / scale
-                            nav = nav.apply(Prototype.actionAt(screen, layout, x, y), project.screens)
+                            perform(Prototype.actionAt(effective, layout, x, y))
                         }
                     }
             ) {
@@ -149,6 +173,13 @@ fun PrototypePlayer(
                 }
             }
         }
+        }
+        toast?.let {
+            Text(
+                it,
+                color = Color.White,
+                modifier = Modifier.fillMaxWidth().background(Color(0xFF333840)).padding(10.dp).testTag("proto_toast")
+            )
         }
     }
 }

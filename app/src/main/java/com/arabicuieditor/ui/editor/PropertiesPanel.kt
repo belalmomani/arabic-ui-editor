@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -843,6 +844,28 @@ private fun InteractionSection(
                 label = { Text(stringResource(R.string.ia_back)) },
                 modifier = Modifier.testTag("${pre}_back")
             )
+            FilterChip(
+                selected = action is ClickAction.Script,
+                onClick = { if (action !is ClickAction.Script) onSetClick(ClickAction.Script("")) },
+                label = { Text(stringResource(R.string.ia_script)) },
+                modifier = Modifier.testTag("${pre}_script")
+            )
+        }
+        if (action is ClickAction.Script) {
+            var draft by remember(element.id, action.code) { mutableStateOf(action.code) }
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it.take(com.arabicuieditor.data.script.ScriptEngine.MAX_CODE) },
+                label = { Text(stringResource(R.string.ia_script_code)) },
+                minLines = 3,
+                modifier = Modifier.fillMaxWidth().testTag("${pre}_script_code")
+            )
+            Text(stringResource(R.string.ia_script_hint), style = MaterialTheme.typography.bodySmall)
+            TextButton(
+                onClick = { onSetClick(ClickAction.Script(draft)) },
+                enabled = draft != action.code,
+                modifier = Modifier.testTag("${pre}_script_save")
+            ) { Text(stringResource(R.string.ia_script_save)) }
         }
         if (action is ClickAction.Navigate) {
             Row(

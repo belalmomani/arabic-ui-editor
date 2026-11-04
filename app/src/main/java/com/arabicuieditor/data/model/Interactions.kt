@@ -5,6 +5,8 @@ sealed interface ClickAction {
     data object None : ClickAction
     data class Navigate(val screenId: String) : ClickAction
     data object Back : ClickAction
+    /** يشغّل سكربت جافا سكريبت داخل المعاينة (انظر ScriptEngine). */
+    data class Script(val code: String) : ClickAction
 }
 
 /** قراءة وكتابة إجراء النقر (دوال نقية فوق [EventBinding] الموجود في النموذج). */
@@ -13,7 +15,9 @@ object Interactions {
     const val TRIGGER_LONG_PRESS = "longpress"
     const val ACTION_NAVIGATE = "navigate"
     const val ACTION_BACK = "back"
+    const val ACTION_SCRIPT = "script"
     const val PARAM_SCREEN = "screen"
+    const val PARAM_CODE = "code"
 
     fun clickAction(e: UiElement): ClickAction = actionFor(e, TRIGGER_CLICK)
 
@@ -25,6 +29,7 @@ object Interactions {
         return when (ev.action) {
             ACTION_NAVIGATE -> ClickAction.Navigate(ev.params[PARAM_SCREEN].orEmpty())
             ACTION_BACK -> ClickAction.Back
+            ACTION_SCRIPT -> ClickAction.Script(ev.params[PARAM_CODE].orEmpty())
             else -> ClickAction.None
         }
     }
@@ -37,6 +42,9 @@ object Interactions {
             ClickAction.Back -> listOf(EventBinding(newId(), trigger, ACTION_BACK))
             is ClickAction.Navigate -> listOf(
                 EventBinding(newId(), trigger, ACTION_NAVIGATE, mapOf(PARAM_SCREEN to action.screenId))
+            )
+            is ClickAction.Script -> listOf(
+                EventBinding(newId(), trigger, ACTION_SCRIPT, mapOf(PARAM_CODE to action.code))
             )
         }
         return e.copy(events = others + added)

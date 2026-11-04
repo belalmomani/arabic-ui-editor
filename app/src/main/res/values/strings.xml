@@ -71,6 +71,10 @@
     <string name="ia_none">بلا إجراء</string>
     <string name="ia_navigate">انتقال إلى شاشة</string>
     <string name="ia_back">رجوع</string>
+    <string name="ia_script">سكربت JS</string>
+    <string name="ia_script_code">كود جافا سكريبت</string>
+    <string name="ia_script_hint">يعمل في المعاينة فقط. المتغيرات: vars.count = (vars.count || 0) + 1 — اعرضها في أي نص بـ {{count}}. العناصر بأسمائها: $(\'زر\').text = \'تم\'، .visible، .color، .bg. الأوامر: navigate(\'اسم الشاشة\')، back()، toast(\'نص\').</string>
+    <string name="ia_script_save">حفظ السكربت</string>
     <string name="ia_target_missing">الشاشة المستهدفة محذوفة؛ اختر شاشة أخرى</string>
     <string name="proto_play">تشغيل</string>
     <string name="proto_close">إغلاق المعاينة</string>

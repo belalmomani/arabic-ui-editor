@@ -427,6 +427,7 @@ object ComposeExporter {
 
         private fun clickMod(e: UiElement): String? = when (val a = Interactions.clickAction(e)) {
             ClickAction.None -> null
+            is ClickAction.Script -> ".clickable { /* TODO: سكربت JS في المحرر لا يُصدَّر؛ اكتب المنطق هنا */ }"
             ClickAction.Back -> ".clickable { onBack() }"
             is ClickAction.Navigate -> {
                 val i = screenIndex[a.screenId]
