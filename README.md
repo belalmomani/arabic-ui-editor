@@ -403,3 +403,6 @@ AGP 8.7.3 · Kotlin 2.0.21 · Compose BOM 2024.12.01 · Gradle 8.10.2 (يُثب�
 
 ### 0.31.1 — إصلاح ترجمة
 - `ProjectRepository.kt`: كان فيه companion object ثانٍ (ثوابت ZIP) فدُمج في الأول. `LayersPanel.kt`: استيرادا `getValue`/`setValue` لحقل البحث. لا تغيير وظيفي.
+
+### 0.31.2 — إصلاح اختبارين
+- الترجمة نجحت و238 من 240 اختبار منطق. `XmlExporterTest`: سمة `android:gravity` مكررة في عناصر القائمة (XML لا يقبل التكرار) — أُزيلت، وصار `tag()` يحذف أي سمة مكررة. `PropertiesPanelTest.actionsAreForwarded`: زرّا نسخ/لصق دفعا أزرارًا خارج الشاشة في صف يتمرر أفقيًا؛ الاختبار يمرّر إليها أولًا. لا تغيير بصري.

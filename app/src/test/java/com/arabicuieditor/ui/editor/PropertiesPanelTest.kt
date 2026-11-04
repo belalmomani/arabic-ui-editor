@@ -150,10 +150,11 @@ class PropertiesPanelTest {
     @Test
     fun actionsAreForwarded() {
         show(button())
-        rule.onNodeWithTag("act_duplicate").performClick()
-        rule.onNodeWithTag("act_delete").performClick()
-        rule.onNodeWithTag("act_front").performClick()
-        rule.onNodeWithTag("act_back").performClick()
+        // صف الإجراءات يتمرر أفقيًا؛ نسخ/لصق دفعت بعض الأزرار خارج الشاشة فنمرّر إليها أولًا.
+        rule.onNodeWithTag("act_duplicate").performScrollTo().performClick()
+        rule.onNodeWithTag("act_delete").performScrollTo().performClick()
+        rule.onNodeWithTag("act_front").performScrollTo().performClick()
+        rule.onNodeWithTag("act_back").performScrollTo().performClick()
         assertEquals(1, duplicated)
         assertEquals(1, deleted)
         assertEquals(listOf(ReorderOp.TO_FRONT, ReorderOp.TO_BACK), reorders)

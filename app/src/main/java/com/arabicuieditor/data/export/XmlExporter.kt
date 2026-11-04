@@ -284,7 +284,10 @@ object XmlExporter {
 
         // ---- الأنواع ----
 
-        fun tag(name: String, attrs: List<String>, body: (() -> Unit)?) {
+        fun tag(name: String, rawAttrs: List<String>, body: (() -> Unit)?) {
+            // XML لا يقبل سمة مكررة: تُحذف التكرارات (الأولى تغلب) حسب اسم أول سمة في كل سطر.
+            val seen = HashSet<String>()
+            val attrs = rawAttrs.filter { a -> seen.add(a.substringBefore('=')) }
             w("<$name")
             depth++
             attrs.forEachIndexed { i, a -> w(if (body == null && i == attrs.lastIndex) "$a />" else a) }
@@ -349,8 +352,7 @@ object XmlExporter {
                 items.forEach { item ->
                     val a = arrayListOf(
                         "android:layout_width=\"match_parent\"",
-                        "android:layout_height=\"${h}dp\"",
-                        "android:gravity=\"center_vertical\""
+                        "android:layout_height=\"${h}dp\""
                     )
                     textAttrs(e, a, item, true)
                     tag("TextView", a, null)
