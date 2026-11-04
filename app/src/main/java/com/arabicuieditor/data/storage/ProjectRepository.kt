@@ -193,13 +193,6 @@ class ProjectRepository(private val root: File) {
 
     fun resourcesDir(id: String): File = File(projectDir(id), "resources")
 
-    private companion object {
-        const val ZIP_PROJECT = "project.json"
-        const val ZIP_RES = "resources/"
-        const val MAX_ZIP_ENTRY = 30 * 1024 * 1024
-        const val MAX_ZIP_TOTAL = 200L * 1024 * 1024
-    }
-
     // ---- داخلي ----
 
     private fun projectDir(id: String) = File(root, id)
@@ -242,5 +235,9 @@ class ProjectRepository(private val root: File) {
     companion object {
         const val MAX_NAME_LENGTH = 60
         private val ID_REGEX = Regex("^[A-Za-z0-9-]{8,64}$")
+        private const val ZIP_PROJECT = "project.json"
+        private const val ZIP_RES = "resources/"
+        private const val MAX_ZIP_ENTRY = 30 * 1024 * 1024
+        private const val MAX_ZIP_TOTAL = 200L * 1024 * 1024
     }
 }
