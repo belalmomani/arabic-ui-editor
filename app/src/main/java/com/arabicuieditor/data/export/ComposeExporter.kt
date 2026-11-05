@@ -303,7 +303,7 @@ object ComposeExporter {
             }
             if (usesCustomFont || usesImages) line("import $pkg.R")
             for (p in listOf(
-                "foundation", "foundation.layout", "foundation.text", "material3", "runtime", "ui",
+                "foundation", "foundation.layout", "foundation.shape", "foundation.text", "material3", "runtime", "ui",
                 "ui.draw", "ui.graphics", "ui.layout", "ui.platform", "ui.text", "ui.text.font", "ui.text.style", "ui.unit"
             )) line("import androidx.compose.$p.*")
             line()
