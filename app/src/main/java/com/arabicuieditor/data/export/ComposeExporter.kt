@@ -23,6 +23,8 @@ import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.UiElement
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.prop
+import com.arabicuieditor.data.script.Step
+import com.arabicuieditor.data.script.Steps
 import com.arabicuieditor.ui.editor.canvas.LayoutEngine
 import com.arabicuieditor.ui.editor.canvas.LayoutResult
 
@@ -65,6 +67,103 @@ object ComposeExporter {
 
         private val screenIndex: Map<String, Int> =
             project.screens.mapIndexed { i, s -> s.id to i }.toMap()
+
+        // ---- المنطق (منطق الأزرار) ----
+        private fun nameOf(e: UiElement) = e.properties[PropertyKeys.NAME].orEmpty()
+        private val allElements: List<UiElement> by lazy { project.screens.flatMap { ElementTree.flatten(it.elements) } }
+        private val clickBlocks: List<List<Step>> by lazy {
+            allElements.mapNotNull { (Interactions.clickAction(it) as? ClickAction.Blocks)?.steps }.filter { it.isNotEmpty() }
+        }
+        private val usesLogic get() = clickBlocks.isNotEmpty()
+        /** أسماء العناصر التي تغيّرها خطوات المنطق؛ هذه وحدها تُرسم بقيم ديناميكية. */
+        private val targets: Set<String> by lazy {
+            clickBlocks.flatten().filter { Steps.usesElement(it.kind) && it.a.isNotBlank() }.map { it.a }.toSet()
+        }
+        private val usesToast: Boolean by lazy { clickBlocks.flatten().any { it.kind == Steps.TOAST } }
+        private val usesInterp: Boolean by lazy {
+            allElements.any { (it.type == ElementTypes.TEXT || it.type == ElementTypes.BUTTON) && it.prop(PropertyKeys.TEXT).contains("{{") }
+        }
+        private fun isTarget(e: UiElement) = nameOf(e).let { it.isNotEmpty() && it in targets }
+        private fun initialVisible(name: String) =
+            allElements.firstOrNull { nameOf(it) == name }?.let { it.prop(PropertyKeys.VISIBLE) != "false" } ?: true
+
+        private fun dbl(raw: String, fallback: Double): String =
+            (raw.trim().toDoubleOrNull()?.takeIf { it.isFinite() } ?: fallback).toString()
+
+        private fun cond(s: Step): String {
+            val parts = s.b.split("|", limit = 2)
+            val opRaw = parts.getOrElse(0) { "==" }
+            val value = parts.getOrElse(1) { "" }
+            val op = if (opRaw in Steps.ops) opRaw else "=="
+            val n = value.trim().toDoubleOrNull()?.takeIf { it.isFinite() }
+            return if (n != null) "AppLogic.num(\"${esc(s.a)}\") $op $n"
+            else "AppLogic.str(\"${esc(s.a)}\") ${if (op == "!=") "!=" else "=="} \"${esc(value)}\""
+        }
+
+        private fun stepStatement(s: Step): String? {
+            val a = esc(s.a)
+            return when (s.kind) {
+                Steps.INC -> "AppLogic.add(\"$a\", ${dbl(s.b, 1.0)})"
+                Steps.DEC -> "AppLogic.add(\"$a\", -${dbl(s.b, 1.0)})"
+                Steps.SET_VAR -> {
+                    val n = s.b.trim().toDoubleOrNull()?.takeIf { it.isFinite() }
+                    val v = when {
+                        n != null -> n.toString()
+                        s.b == "true" || s.b == "false" -> s.b
+                        else -> "\"${esc(s.b)}\""
+                    }
+                    "AppLogic.vars[\"$a\"] = $v"
+                }
+                Steps.TEXT -> "AppLogic.props[\"$a|text\"] = \"${esc(s.b)}\""
+                Steps.SHOW -> "AppLogic.props[\"$a|visible\"] = \"true\""
+                Steps.HIDE -> "AppLogic.props[\"$a|visible\"] = \"false\""
+                Steps.TOGGLE ->
+                    "AppLogic.props[\"$a|visible\"] = if (AppLogic.visible(\"$a\", ${initialVisible(s.a)})) \"false\" else \"true\""
+                Steps.COLOR -> "AppLogic.props[\"$a|textColor\"] = \"${esc(s.b)}\""
+                Steps.BG -> "AppLogic.props[\"$a|bgColor\"] = \"${esc(s.b)}\""
+                Steps.TOAST -> "Toast.makeText(ctx, \"${esc(s.b)}\", Toast.LENGTH_SHORT).show()"
+                Steps.NAV -> project.screens.indexOfFirst { it.name == s.a || it.id == s.a }.takeIf { it >= 0 }
+                    ?.let { "onNavigate(\"${screenRoute(it)}\")" } ?: "/* الشاشة غير موجودة */ Unit"
+                Steps.BACK -> "onBack()"
+                else -> null
+            }
+        }
+
+        /** تعليمات Kotlin لخطوات المنطق؛ «إذا» تحكم الخطوة التالية فقط (كما في المعاينة). */
+        private fun blocksBody(steps: List<Step>): String {
+            val out = ArrayList<String>()
+            var pending: String? = null
+            for (st in steps.take(Steps.MAX_STEPS)) {
+                if (st.kind == Steps.IF) { if (st.a.isNotBlank()) pending = cond(st); continue }
+                val code = stepStatement(st) ?: continue
+                out += if (pending != null) "if ($pending) { $code }" else code
+                pending = null
+            }
+            return out.joinToString("; ")
+        }
+
+        private fun appLogic() {
+            line("// ---- حالة المنطق (متغيرات وخصائص العناصر المتغيّرة، بمفاتيح أسماء العناصر) ----")
+            line("object AppLogic {")
+            depth++
+            line("val vars = mutableStateMapOf<String, Any>()")
+            line("val props = mutableStateMapOf<String, String>()")
+            line("private val template = Regex(\"\"\"\\{\\{\\s*(?:vars\\.)?([\\p{L}_][\\p{L}\\p{N}_]*)\\s*\\}\\}\"\"\")")
+            line("fun fmt(d: Double): String = if (d == Math.floor(d) && !d.isInfinite() && Math.abs(d) < 1e15) d.toLong().toString() else d.toString()")
+            line("fun num(n: String): Double = when (val v = vars[n]) { is Number -> v.toDouble(); is String -> v.toDoubleOrNull() ?: 0.0; else -> 0.0 }")
+            line("fun str(n: String): String = when (val v = vars[n]) { null -> \"\"; is Double -> fmt(v); else -> v.toString() }")
+            line("fun add(n: String, delta: Double) { vars[n] = num(n) + delta }")
+            line("fun interp(s: String): String = template.replace(s) { m -> vars[m.groupValues[1]]?.let { v -> if (v is Double) fmt(v) else v.toString() } ?: m.value }")
+            line("fun prop(el: String, key: String, def: String): String = props[el + \"|\" + key] ?: def")
+            line("fun visible(el: String, def: Boolean): Boolean = props[el + \"|visible\"]?.let { it != \"false\" } ?: def")
+            line("fun color(el: String, key: String, def: Color): Color =")
+            depth++
+            line("props[el + \"|\" + key]?.let { try { Color(android.graphics.Color.parseColor(it)) } catch (e: IllegalArgumentException) { null } } ?: def")
+            depth--
+            depth--
+            line("}")
+            line()
+        }
 
         // ---- كتابة ----
 
@@ -179,6 +278,7 @@ object ComposeExporter {
             line("package $pkg")
             line()
             line("import androidx.activity.compose.BackHandler")
+            if (usesToast) line("import android.widget.Toast")
             val usesCustomFont = project.screens.any { sc ->
                 ElementTree.flatten(sc.elements).any { fontExpr(it)?.startsWith("FontFamily(Font(") == true }
             }
@@ -208,6 +308,7 @@ object ComposeExporter {
             )) line("import androidx.compose.$p.*")
             line()
             designObjects()
+            if (usesLogic || usesInterp) appLogic()
             for (s in screens) {
                 screen(s)
                 line()
@@ -268,6 +369,7 @@ object ComposeExporter {
             line("@Composable")
             line("fun ${screenFunction(idx)}(onNavigate: (String) -> Unit = {}, onBack: () -> Unit = {}) {")
             depth++
+            if (usesToast) line("val ctx = LocalContext.current")
             line("// التصميم يسار-يمين كما في المحرر؛ احذف هذا الغلاف ليتبع اتجاه لغة الجهاز.")
             call("CompositionLocalProvider", listOf("LocalLayoutDirection provides LayoutDirection.Ltr"), null) {
                 val read: (String) -> String = { key -> s.prop(key) }
@@ -418,7 +520,10 @@ object ComposeExporter {
             if (shadowed) out += ".shadow(3.dp${shape?.let { ", $it" } ?: ""})"
             else if (shape != null) out += ".clip($shape)"
             val bg = e.prop(PropertyKeys.BG_COLOR)
-            if (bg.isNotEmpty() && !isTransparent(bg)) out += ".background(${colorExpr(bg)})"
+            if (isTarget(e)) {
+                val def = if (bg.isNotEmpty()) colorExpr(bg) else "Color.Transparent"
+                out += ".background(AppLogic.color(\"${esc(nameOf(e))}\", \"bgColor\", $def))"
+            } else if (bg.isNotEmpty() && !isTransparent(bg)) out += ".background(${colorExpr(bg)})"
             val bw = intOf(e, PropertyKeys.BORDER_WIDTH)
             if (bw > 0) {
                 val bc = colorExpr(e.prop(PropertyKeys.BORDER_COLOR))
@@ -430,7 +535,9 @@ object ComposeExporter {
 
         private fun clickMod(e: UiElement): String? = when (val a = Interactions.clickAction(e)) {
             ClickAction.None -> null
-            is ClickAction.Blocks -> ".clickable { /* TODO: منطق المحرر (متغيرات/إظهار/إخفاء) لا يُصدَّر؛ اكتبه هنا */ }"
+            is ClickAction.Blocks -> blocksBody(a.steps).let { b ->
+                if (b.isEmpty()) ".clickable { }" else ".clickable { $b }"
+            }
             is ClickAction.Script -> ".clickable { /* TODO: سكربت JS في المحرر لا يُصدَّر؛ اكتب المنطق هنا */ }"
             ClickAction.Back -> ".clickable { onBack() }"
             is ClickAction.Navigate -> {
@@ -447,12 +554,18 @@ object ComposeExporter {
 
         private fun child(e: UiElement, parent: ChildLayout, parentAh: String, parentAv: String, owner: String? = null) {
             val label = e.prop(PropertyKeys.NAME).replace('\n', ' ').trim()
-            if (e.prop(PropertyKeys.VISIBLE) == "false") {
+            val hiddenAtStart = e.prop(PropertyKeys.VISIBLE) == "false"
+            val dynamic = isTarget(e)
+            if (hiddenAtStart && !dynamic) {
                 line("// ${label.ifEmpty { e.type }} (مخفي في التصميم، لم يُصدَّر)")
                 return
             }
             if (label.isNotEmpty()) line("// $label")
             val place = placement(e, parent, parentAh, parentAv, owner)
+            if (dynamic) {
+                line("if (AppLogic.visible(\"${esc(nameOf(e))}\", ${!hiddenAtStart})) {")
+                depth++
+            }
             when (e.type) {
                 ElementTypes.TEXT, ElementTypes.BUTTON -> textBox(e, place, e.prop(PropertyKeys.TEXT), singleLine = e.type == ElementTypes.BUTTON)
                 ElementTypes.INPUT -> inputBox(e, place)
@@ -527,6 +640,10 @@ object ComposeExporter {
                 ElementTypes.LIST -> listBox(e, place)
                 else -> line("// عنصر غير مدعوم: ${e.type}")
             }
+            if (dynamic) {
+                depth--
+                line("}")
+            }
         }
 
         /** تعبير الخط، أو null للافتراضي. المخصص يفترض وجود الملف نفسه في res/font في مشروع الوجهة. */
@@ -542,7 +659,10 @@ object ComposeExporter {
         private fun textStyleArgs(e: UiElement, singleLine: Boolean): List<String> {
             val args = ArrayList<String>()
             fontExpr(e)?.let { args += "fontFamily = $it" }
-            args += "color = ${colorExpr(e.prop(PropertyKeys.TEXT_COLOR))}"
+            val baseColor = colorExpr(e.prop(PropertyKeys.TEXT_COLOR))
+            args += if (isTarget(e) && (e.type == ElementTypes.TEXT || e.type == ElementTypes.BUTTON))
+                "color = AppLogic.color(\"${esc(nameOf(e))}\", \"textColor\", $baseColor)"
+            else "color = $baseColor"
             args += "fontSize = ${textSizeExpr(e.prop(PropertyKeys.FONT_SIZE))}"
             when (e.prop(PropertyKeys.FONT_WEIGHT)) {
                 FontWeights.BOLD -> args += "fontWeight = FontWeight.Bold"
@@ -572,7 +692,13 @@ object ComposeExporter {
 
         private fun textBox(e: UiElement, place: List<String>, text: String, singleLine: Boolean) {
             call("Box", listOf("contentAlignment = ${boxContentAlignment(e)}"), place + visual(e)) {
-                call("Text", listOf("text = \"${esc(text)}\"") + textStyleArgs(e, singleLine), innerPadMods(e).ifEmpty { null })
+                val literal = "\"${esc(text)}\""
+                val expr = when {
+                    isTarget(e) -> "AppLogic.interp(AppLogic.prop(\"${esc(nameOf(e))}\", \"text\", $literal))"
+                    text.contains("{{") -> "AppLogic.interp($literal)"
+                    else -> literal
+                }
+                call("Text", listOf("text = $expr") + textStyleArgs(e, singleLine), innerPadMods(e).ifEmpty { null })
             }
         }
 

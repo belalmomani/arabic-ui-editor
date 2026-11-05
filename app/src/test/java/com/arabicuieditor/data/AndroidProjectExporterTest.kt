@@ -103,7 +103,41 @@ class AndroidProjectExporterTest {
     @Test
     fun writeSampleForCi() {
         val base = newProject("عينة", "أولى")
-        val screens = Templates.all.flatMap { Templates.build(it, emptyList(), text) }
+        val templateScreens = Templates.all.flatMap { Templates.build(it, emptyList(), text) }
+        // شاشة منطق: تغطي كل أنواع الخطوات ليُترجم كودها المُصدَّر فعليًا في CI.
+        fun el(id: String, type: String, y: Float, props: Map<String, String>) = UiElement(
+            id = id, type = type,
+            layout = ElementLayout(0f, y, SizeSpec.fixed(160f), SizeSpec.fixed(40f)), properties = props
+        )
+        val logicButton = com.arabicuieditor.data.model.Interactions.withClickAction(
+            el("lb", ElementTypes.BUTTON, 120f, mapOf(PropertyKeys.NAME to "زر", PropertyKeys.TEXT to "اضغط")),
+            com.arabicuieditor.data.model.ClickAction.Blocks(listOf(
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.INC, "n", "1"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.DEC, "n", "1"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.SET_VAR, "m", "مرحبا"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.SET_VAR, "k", "5"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.IF, "n", ">=|1"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.SHOW, "سر"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.IF, "m", "!=|x"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.HIDE, "سر"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.TOGGLE, "سر"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.TEXT, "عداد", "تم \$x \"q\""),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.COLOR, "عداد", "#E53935"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.BG, "عداد", "#43A047"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.TOAST, "", "أهلا"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.NAV, "عينة"),
+                com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.BACK)
+            ))
+        )
+        val logicScreen = base.screens[0].copy(
+            id = "logic", name = "منطق",
+            elements = listOf(
+                el("c", ElementTypes.TEXT, 0f, mapOf(PropertyKeys.NAME to "عداد", PropertyKeys.TEXT to "العدد {{n}}", PropertyKeys.BG_COLOR to "#EEEEEE")),
+                el("s", ElementTypes.TEXT, 60f, mapOf(PropertyKeys.NAME to "سر", PropertyKeys.TEXT to "سر", PropertyKeys.VISIBLE to "false")),
+                logicButton
+            )
+        )
+        val screens = templateScreens + base.screens[0].copy(name = "عينة") + logicScreen
         val project = base.copy(screens = screens, startScreenId = screens.first().id)
         val files = AndroidProjectExporter.files(project, "com.example.sample", emptyMap())
         val dir = File("build/exported-sample")
