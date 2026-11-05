@@ -245,6 +245,7 @@ object FlutterExporter {
         fun withActions(e: UiElement, w: String, d: Int): String {
             fun code(a: ClickAction): String? = when (a) {
                 ClickAction.None -> null
+                is ClickAction.Blocks -> "() {} /* TODO: منطق المحرر لا يُصدَّر */"
                 is ClickAction.Script -> "() {} /* TODO: سكربت JS في المحرر لا يُصدَّر */"
                 ClickAction.Back -> "() => Navigator.pop(context)"
                 is ClickAction.Navigate -> screenIndex[a.screenId]?.let { "() => Navigator.pushNamed(context, '${routeName(it)}')" }

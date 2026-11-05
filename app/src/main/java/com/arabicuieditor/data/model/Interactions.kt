@@ -7,6 +7,8 @@ sealed interface ClickAction {
     data object Back : ClickAction
     /** يشغّل سكربت جافا سكريبت داخل المعاينة (انظر ScriptEngine). */
     data class Script(val code: String) : ClickAction
+    /** منطق بالأزرار (بلا كتابة): خطوات تُترجم إلى سكربت وتعمل في المعاينة. */
+    data class Blocks(val steps: List<com.arabicuieditor.data.script.Step>) : ClickAction
 }
 
 /** قراءة وكتابة إجراء النقر (دوال نقية فوق [EventBinding] الموجود في النموذج). */
@@ -18,6 +20,8 @@ object Interactions {
     const val ACTION_SCRIPT = "script"
     const val PARAM_SCREEN = "screen"
     const val PARAM_CODE = "code"
+    const val ACTION_BLOCKS = "blocks"
+    const val PARAM_STEPS = "steps"
 
     fun clickAction(e: UiElement): ClickAction = actionFor(e, TRIGGER_CLICK)
 
@@ -29,6 +33,7 @@ object Interactions {
         return when (ev.action) {
             ACTION_NAVIGATE -> ClickAction.Navigate(ev.params[PARAM_SCREEN].orEmpty())
             ACTION_BACK -> ClickAction.Back
+            ACTION_BLOCKS -> ClickAction.Blocks(com.arabicuieditor.data.script.Steps.decode(ev.params[PARAM_STEPS].orEmpty()))
             ACTION_SCRIPT -> ClickAction.Script(ev.params[PARAM_CODE].orEmpty())
             else -> ClickAction.None
         }
@@ -42,6 +47,9 @@ object Interactions {
             ClickAction.Back -> listOf(EventBinding(newId(), trigger, ACTION_BACK))
             is ClickAction.Navigate -> listOf(
                 EventBinding(newId(), trigger, ACTION_NAVIGATE, mapOf(PARAM_SCREEN to action.screenId))
+            )
+            is ClickAction.Blocks -> listOf(
+                EventBinding(newId(), trigger, ACTION_BLOCKS, mapOf(PARAM_STEPS to com.arabicuieditor.data.script.Steps.encode(action.steps)))
             )
             is ClickAction.Script -> listOf(
                 EventBinding(newId(), trigger, ACTION_SCRIPT, mapOf(PARAM_CODE to action.code))

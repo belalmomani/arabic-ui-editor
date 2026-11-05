@@ -117,6 +117,7 @@ fun PropertiesPanel(
     onLibraryPush: () -> Unit = {},
     onUnlink: () -> Unit = {},
     screens: List<UiScreen> = emptyList(),
+    elementNames: List<String> = emptyList(),
     onSetClick: (ClickAction) -> Unit = {},
     onSetLongPress: (ClickAction) -> Unit = {},
     siblings: List<UiElement> = emptyList(),
@@ -221,8 +222,8 @@ fun PropertiesPanel(
 
         item(key = "interaction") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                InteractionSection(element, screens, onSetClick)
-                InteractionSection(element, screens, onSetLongPress, longPress = true)
+                InteractionSection(element, screens, onSetClick, elementNames)
+                InteractionSection(element, screens, onSetLongPress, elementNames, longPress = true)
             }
         }
 
@@ -811,6 +812,7 @@ private fun InteractionSection(
     element: UiElement,
     screens: List<UiScreen>,
     onSetClick: (ClickAction) -> Unit,
+    elementNames: List<String> = emptyList(),
     longPress: Boolean = false
 ) {
     val pre = if (longPress) "long" else "click"
@@ -845,10 +847,23 @@ private fun InteractionSection(
                 modifier = Modifier.testTag("${pre}_back")
             )
             FilterChip(
+                selected = action is ClickAction.Blocks,
+                onClick = { if (action !is ClickAction.Blocks) onSetClick(ClickAction.Blocks(emptyList())) },
+                label = { Text(stringResource(R.string.ia_blocks)) },
+                modifier = Modifier.testTag("${pre}_blocks")
+            )
+            FilterChip(
                 selected = action is ClickAction.Script,
                 onClick = { if (action !is ClickAction.Script) onSetClick(ClickAction.Script("")) },
                 label = { Text(stringResource(R.string.ia_script)) },
                 modifier = Modifier.testTag("${pre}_script")
+            )
+        }
+        if (action is ClickAction.Blocks) {
+            BlocksEditor(
+                steps = action.steps, elementNames = elementNames,
+                screenNames = screens.map { it.name }, onCommit = { onSetClick(ClickAction.Blocks(it)) },
+                tagPrefix = pre
             )
         }
         if (action is ClickAction.Script) {

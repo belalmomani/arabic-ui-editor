@@ -190,6 +190,7 @@ object XmlExporter {
         fun actionComment(e: UiElement) {
             fun describe(a: ClickAction): String? = when (a) {
                 ClickAction.None -> null
+                is ClickAction.Blocks -> "منطق المحرر (لا يُصدَّر؛ اكتبه في الكود)"
                 is ClickAction.Script -> "سكربت JS (لا يُصدَّر؛ اكتب المنطق في الكود)"
                 ClickAction.Back -> "رجوع"
                 is ClickAction.Navigate -> screenIndex[a.screenId]?.let { "انتقال إلى ${layoutName(it)}" } ?: "انتقال إلى شاشة محذوفة"

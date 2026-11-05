@@ -7,6 +7,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -82,6 +89,14 @@ private enum class BottomTab(val labelRes: Int) {
     DESIGN(R.string.tab_design)
 }
 
+/** فئات شريط الأدوات السفلي (المستوى الأول)؛ لكل فئة لوحات فرعية (المستوى الثاني). */
+private enum class Tool(val glyph: String, val labelRes: Int, val subs: List<BottomTab>) {
+    ADD("＋", R.string.tool_add, listOf(BottomTab.ELEMENTS, BottomTab.LIBRARY)),
+    EDIT("✎", R.string.tab_properties, listOf(BottomTab.PROPERTIES)),
+    LAYERS("☰", R.string.tab_layers, listOf(BottomTab.LAYERS)),
+    PAGE("▭", R.string.tool_page, listOf(BottomTab.SCREEN, BottomTab.DESIGN))
+}
+
 /** عنصر يُسحب الآن من القائمة (للعرض الشبحي ولتحديد مكان الإفلات). */
 private data class PaletteDrag(val type: String, val windowPos: Offset)
 
@@ -127,18 +142,22 @@ fun EditorScreen(
                         onClick = { playing = true },
                         enabled = ready != null,
                         modifier = Modifier.testTag("btn_play")
-                    ) { Text(stringResource(R.string.proto_play)) }
+                    ) { Text("▶ " + stringResource(R.string.proto_play)) }
+                    val undoLabel = stringResource(R.string.action_undo)
+                    val redoLabel = stringResource(R.string.action_redo)
+                    TextButton(
+                        onClick = viewModel::undo, enabled = canUndo,
+                        modifier = Modifier.testTag("btn_undo").semantics { contentDescription = undoLabel }
+                    ) { Text("↶", style = MaterialTheme.typography.titleLarge) }
+                    TextButton(
+                        onClick = viewModel::redo, enabled = canRedo,
+                        modifier = Modifier.testTag("btn_redo").semantics { contentDescription = redoLabel }
+                    ) { Text("↷", style = MaterialTheme.typography.titleLarge) }
                     TextButton(
                         onClick = { exporting = true },
                         enabled = ready != null,
                         modifier = Modifier.testTag("btn_export")
                     ) { Text(stringResource(R.string.export_btn)) }
-                    TextButton(onClick = viewModel::undo, enabled = canUndo, modifier = Modifier.testTag("btn_undo")) {
-                        Text(stringResource(R.string.action_undo))
-                    }
-                    TextButton(onClick = viewModel::redo, enabled = canRedo, modifier = Modifier.testTag("btn_redo")) {
-                        Text(stringResource(R.string.action_redo))
-                    }
                     if (selectedId != null) {
                         IconButton(onClick = { viewModel.deleteSelected() }) {
                             Icon(
@@ -177,11 +196,15 @@ fun EditorScreen(
         }
     }
     if (exporting && ready != null) {
-        ExportCodeDialog(
-            project = ready.project,
-            currentScreenId = currentScreenId,
-            onDismiss = { exporting = false }
-        )
+        CompositionLocalProvider(
+            com.arabicuieditor.ui.editor.canvas.LocalImageDir provides viewModel.imagesDir
+        ) {
+            ExportCodeDialog(
+                project = ready.project,
+                currentScreenId = currentScreenId,
+                onDismiss = { exporting = false }
+            )
+        }
     }
     if (playing && ready != null) {
         val startId = currentScreenId?.takeIf { id -> ready.project.screens.any { it.id == id } }
@@ -244,7 +267,12 @@ private fun EditorContent(
     // العرض (تكبير/إزاحة) لكل شاشة على حدة؛ null يعني «لم يُضبط بعد، ضعه بالملاءمة».
     var viewport by remember(screen.id, previewW, previewH) { mutableStateOf<Viewport?>(null) }
     var drag by remember { mutableStateOf<PaletteDrag?>(null) }
-    var openTab by rememberSaveable { mutableStateOf<BottomTab?>(BottomTab.ELEMENTS) }
+    // اللوحات مطوية افتراضيًا لتكبير مساحة التصميم؛ الفئة ثم اللوحة الفرعية.
+    var openTool by rememberSaveable { mutableStateOf<Tool?>(null) }
+    var subTab by rememberSaveable { mutableStateOf(BottomTab.ELEMENTS) }
+    val openTab: BottomTab? = openTool?.let { if (subTab in it.subs) subTab else it.subs.first() }
+    var showScreens by rememberSaveable { mutableStateOf(true) }
+    var quickOpen by rememberSaveable { mutableStateOf(false) }
     // معاينة الوضع الليلي: تغيّر الرسم فقط (ألوان الرموز)، ولا تُخزَّن ولا تُسجَّل في التراجع.
     val effectiveDesign = remember(project.designSystem, darkPreview) {
         if (darkPreview) com.arabicuieditor.data.model.DarkMode.apply(project.designSystem) else project.designSystem
@@ -287,12 +315,14 @@ private fun EditorContent(
             .onGloballyPositioned { rootWindowPos = it.positionInWindow() }
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            ScreenTabs(
-                project = project,
-                currentId = screen.id,
-                onSelect = viewModel::selectScreen,
-                onAdd = viewModel::addScreen
-            )
+            if (showScreens) {
+                ScreenTabs(
+                    project = project,
+                    currentId = screen.id,
+                    onSelect = viewModel::selectScreen,
+                    onAdd = viewModel::addScreen
+                )
+            }
             if (saveFailed) {
                 Text(
                     text = stringResource(R.string.editor_save_failed),
@@ -342,36 +372,41 @@ private fun EditorContent(
                                 .testTag("multi_canvas_chip")
                         )
                     }
-                    // شريحة حجم المعاينة: نقرة تنتقل إلى الحجم التالي (حجم التصميم ثم الأحجام الجاهزة).
-                    AssistChip(
-                        onClick = {
-                            val (nw, nh) = PreviewSizes.next(screen.width, screen.height, previewW, previewH)
-                            val toBase = nw == screen.width && nh == screen.height
-                            viewModel.setPreviewSize(if (toBase) 0f else nw, if (toBase) 0f else nh)
-                        },
-                        label = {
-                            Text(
-                                "${previewW.toInt()}×${previewH.toInt()}" +
-                                    if (editable) "" else " · " + stringResource(R.string.preview_label)
+                    FloatingTools(
+                        expanded = quickOpen,
+                        onToggle = { quickOpen = !quickOpen },
+                        items = buildList {
+                            add(QuickItem("⤢", stringResource(R.string.fq_fit), "fq_fit") {
+                                if (canvasSize.width > 0 && canvasSize.height > 0) {
+                                    viewport = CanvasMath.fit(
+                                        viewW = canvasSize.width.toFloat(), viewH = canvasSize.height.toFloat(),
+                                        frameW = previewW, frameH = previewH, density = density,
+                                        marginPx = FIT_MARGIN_DP * density
+                                    )
+                                }
+                            })
+                            add(QuickItem("▭", stringResource(R.string.fq_screens) + if (showScreens) " ✓" else "", "fq_screens") {
+                                showScreens = !showScreens
+                            })
+                            add(QuickItem("◐", stringResource(if (darkPreview) R.string.mode_dark else R.string.mode_light), "dark_toggle") {
+                                onDarkPreview(!darkPreview)
+                            })
+                            add(
+                                QuickItem(
+                                    "⬚",
+                                    "${previewW.toInt()}×${previewH.toInt()}" +
+                                        if (editable) "" else " · " + stringResource(R.string.preview_label),
+                                    "preview_pill"
+                                ) {
+                                    val (nw, nh) = PreviewSizes.next(screen.width, screen.height, previewW, previewH)
+                                    val toBase = nw == screen.width && nh == screen.height
+                                    viewModel.setPreviewSize(if (toBase) 0f else nw, if (toBase) 0f else nh)
+                                }
                             )
-                        },
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(8.dp)
-                            .testTag("preview_pill")
-                    )
-                    androidx.compose.material3.FilterChip(
-                        selected = darkPreview,
-                        onClick = { onDarkPreview(!darkPreview) },
-                        label = {
-                            Text(
-                                stringResource(if (darkPreview) R.string.mode_dark else R.string.mode_light)
-                            )
-                        },
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .testTag("dark_toggle")
+                            if (selectedId != null) {
+                                add(QuickItem("⧉", stringResource(R.string.fq_duplicate), "fq_duplicate") { viewModel.duplicateSelected() })
+                            }
+                        }
                     )
                 } else {
                     // نقيس الحجم أولًا ثم نرسم المساحة بعد حساب الملاءمة.
@@ -391,18 +426,26 @@ private fun EditorContent(
                         .navigationBarsPadding()
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    // تبويبات اللوحة. الضغط على التبويب المفتوح يطويها لتكبير مساحة التصميم.
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        BottomTab.entries.forEach { t ->
-                            FilterChip(
-                                selected = openTab == t,
-                                onClick = { openTab = if (openTab == t) null else t },
-                                label = { Text(stringResource(t.labelRes), maxLines = 1) },
-                                modifier = Modifier.testTag("tab_${t.name}")
-                            )
+                    // رأس اللوحة المفتوحة: اللوحات الفرعية للفئة + زر الطيّ.
+                    if (openTool != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                openTool!!.subs.forEach { t ->
+                                    FilterChip(
+                                        selected = openTab == t,
+                                        onClick = { subTab = t },
+                                        label = { Text(stringResource(t.labelRes), maxLines = 1) },
+                                        modifier = Modifier.testTag("tab_${t.name}")
+                                    )
+                                }
+                            }
+                            TextButton(onClick = { openTool = null }, modifier = Modifier.testTag("panel_close")) { Text("▾") }
                         }
                     }
                     if (openTab != null) {
@@ -513,6 +556,9 @@ private fun EditorContent(
                                     onAlign = viewModel::alignSelected,
                                     onDistribute = viewModel::distributeSelected,
                                     screens = project.screens,
+                                    elementNames = ElementTree.flatten(screen.elements)
+                                        .map { it.properties[com.arabicuieditor.data.model.PropertyKeys.NAME].orEmpty() }
+                                        .filter { it.isNotEmpty() }.distinct(),
                                     siblings = selectedElement?.let { sel ->
                                         val pid = layout.parentOf[sel.id]
                                         val list = if (pid == null) screen.elements
@@ -581,6 +627,14 @@ private fun EditorContent(
                             }
                         }
                     }
+                    BottomToolBar(
+                        openTool = openTool,
+                        hasSelection = selectedId != null,
+                        onToggle = { t ->
+                            if (openTool == t) openTool = null
+                            else { openTool = t; if (subTab !in t.subs) subTab = t.subs.first() }
+                        }
+                    )
                 }
             }
         }
@@ -600,6 +654,91 @@ private fun EditorContent(
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                 )
+            }
+        }
+    }
+}
+
+private data class QuickItem(val glyph: String, val label: String, val tag: String, val onClick: () -> Unit)
+
+/** شريط الأدوات السفلي المنزلق (على طريقة كانفا): أيقونة فوق اسم؛ الضغط يفتح لوحة الفئة أو يطويها. */
+@Composable
+private fun BottomToolBar(openTool: Tool?, hasSelection: Boolean, onToggle: (Tool) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Tool.entries.forEach { t ->
+            val selected = openTool == t
+            val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            Column(
+                modifier = Modifier
+                    .width(76.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                    .clickable { onToggle(t) }
+                    .padding(vertical = 6.dp)
+                    .testTag("tool_${t.name}"),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    t.glyph + if (t == Tool.EDIT && hasSelection) "•" else "",
+                    color = color, fontSize = 22.sp
+                )
+                Text(stringResource(t.labelRes), color = color, fontSize = 11.sp, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** زر عائم بنصف دائرة في زاوية اللوحة؛ ينقر فتظهر الأدوات السريعة وينقر فتختفي. */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.FloatingTools(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    items: List<QuickItem>
+) {
+    Column(
+        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp),
+        horizontalAlignment = Alignment.End
+    ) {
+        androidx.compose.animation.AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier.padding(bottom = 8.dp).testTag("quick_tools"),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                items.forEach { it0 ->
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { it0.onClick() }.testTag(it0.tag)
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(it0.glyph, fontSize = 16.sp)
+                            Text(it0.label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        }
+        Surface(
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            color = MaterialTheme.colorScheme.primary,
+            shadowElevation = 4.dp,
+            modifier = Modifier
+                .size(width = 56.dp, height = 28.dp)
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .clickable(onClick = onToggle)
+                .testTag("quick_handle")
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(if (expanded) "▾" else "▴", color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }

@@ -48,6 +48,7 @@ import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.script.ScriptEngine
 import com.arabicuieditor.data.script.ScriptOverrides
+import com.arabicuieditor.data.script.Steps
 import com.arabicuieditor.ui.editor.canvas.ElementView
 import com.arabicuieditor.ui.editor.canvas.LayoutEngine
 import com.arabicuieditor.ui.editor.canvas.Prototype
@@ -87,8 +88,9 @@ fun PrototypePlayer(
     }
     // يطبّق إجراءً: السكربت يُشغَّل ثم تُطبَّق نتيجته (متغيرات، خصائص، انتقال، رجوع، رسالة).
     fun perform(action: ClickAction) {
-        if (action is ClickAction.Script) {
-            val out = ScriptEngine.run(action.code, vars, ScriptOverrides.baseProps(screen.elements), overrides)
+        if (action is ClickAction.Script || action is ClickAction.Blocks) {
+            val code = if (action is ClickAction.Script) action.code else Steps.toJs((action as ClickAction.Blocks).steps)
+            val out = ScriptEngine.run(code, vars, ScriptOverrides.baseProps(screen.elements), overrides)
             vars = out.vars
             overrides = out.overrides
             toast = out.error?.let { "خطأ في السكربت: $it" } ?: out.toast

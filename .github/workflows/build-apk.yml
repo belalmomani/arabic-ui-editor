@@ -39,7 +39,7 @@ jobs:
 
       # اختبارات المنطق (الهندسة، الخصائص، التراجع، JSON، الحفظ). فشلها يجعل التشغيل أحمر.
       - name: Run logic tests
-        run: gradle :app:testDebugUnitTest --tests "*CanvasMathTest" --tests "*ProjectStorageTest" --tests "*EditHistoryTest" --tests "*PropertyRegistryTest" --tests "*ElementOpsTest" --tests "*ComponentLibraryTest" --tests "*PropertyPersistenceTest" --tests "*LayoutEngineTest" --tests "*ElementTreeTest" --tests "*ScreenOpsTest" --tests "*ScreensPersistenceTest" --tests "*PreviewSizesTest" --tests "*DesignSystemTest" --tests "*SmartAlignTest" --tests "*ContrastTest" --tests "*DarkModeTest" --tests "*UserLibraryTest" --tests "*InteractionsTest" --tests "*ComposeExporterTest" --tests "*TemplatesTest" --tests "*ConstraintsTest" --tests "*FontCatalogTest" --tests "*ThumbnailMathTest" --tests "*ImageNamesTest" --tests "*GroupAlignTest" --tests "*ProjectImportTest" --tests "*MultiSelectCanvasTest" --tests "*HistoryCodecTest" --tests "*ConstraintLinesTest" --tests "*LongPressTest" --tests "*LibraryLinkTest" --tests "*XmlExporterTest" --tests "*FlutterExporterTest" --tests "*LockedElementTest" --tests "*ScriptEngineTest" --stacktrace
+        run: gradle :app:testDebugUnitTest --tests "*CanvasMathTest" --tests "*ProjectStorageTest" --tests "*EditHistoryTest" --tests "*PropertyRegistryTest" --tests "*ElementOpsTest" --tests "*ComponentLibraryTest" --tests "*PropertyPersistenceTest" --tests "*LayoutEngineTest" --tests "*ElementTreeTest" --tests "*ScreenOpsTest" --tests "*ScreensPersistenceTest" --tests "*PreviewSizesTest" --tests "*DesignSystemTest" --tests "*SmartAlignTest" --tests "*ContrastTest" --tests "*DarkModeTest" --tests "*UserLibraryTest" --tests "*InteractionsTest" --tests "*ComposeExporterTest" --tests "*TemplatesTest" --tests "*ConstraintsTest" --tests "*FontCatalogTest" --tests "*ThumbnailMathTest" --tests "*ImageNamesTest" --tests "*GroupAlignTest" --tests "*ProjectImportTest" --tests "*MultiSelectCanvasTest" --tests "*HistoryCodecTest" --tests "*ConstraintLinesTest" --tests "*LongPressTest" --tests "*LibraryLinkTest" --tests "*XmlExporterTest" --tests "*FlutterExporterTest" --tests "*LockedElementTest" --tests "*ScriptEngineTest" --tests "*StepsTest" --tests "*AndroidProjectExporterTest" --stacktrace
 
       # اختبارات واجهة حقيقية عبر Robolectric: إيماءات مساحة التصميم، ولوحة الخصائص،
       # تُشغَّل حتى لو فشلت اختبارات المنطق.
@@ -54,3 +54,28 @@ jobs:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
+
+  # يبني فعليًا مشروعًا مُصدَّرًا من كل القوالب، لاكتشاف أخطاء ترجمة الكود المُولَّد قبل أن تصل للمستخدم.
+  verify-export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Generate sample exported project
+        run: gradle :app:testDebugUnitTest --tests "*AndroidProjectExporterTest.writeSampleForCi" --stacktrace
+
+      - name: Build the exported project
+        working-directory: app/build/exported-sample
+        run: gradle :app:assembleDebug --stacktrace

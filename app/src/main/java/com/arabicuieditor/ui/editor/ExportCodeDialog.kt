@@ -40,7 +40,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.arabicuieditor.R
+import com.arabicuieditor.data.export.AndroidProjectExporter
 import com.arabicuieditor.data.export.ComposeExporter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.arabicuieditor.data.model.Project
 
 /** نافذة «كود Compose»: تعرض الكود المولَّد من المشروع (أو الشاشة الحالية) للنسخ أو المشاركة. */
@@ -59,6 +63,30 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
     }
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
+    // تصدير مشروع Android كامل كملف ZIP عبر منتقي الملفات (CreateDocument).
+    var pkg by rememberSaveable { mutableStateOf(AndroidProjectExporter.DEFAULT_PACKAGE) }
+    val pkgValid = AndroidProjectExporter.isValidPackage(pkg)
+    val imagesDir = com.arabicuieditor.ui.editor.canvas.LocalImageDir.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val zipLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                val ok = try {
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        AndroidProjectExporter.writeZip(project, pkg, imagesDir, out)
+                    } != null
+                } catch (_: Exception) { false }
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        context, context.getString(if (ok) R.string.export_zip_ok else R.string.export_zip_failed),
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize().testTag("export_dialog")) {
@@ -105,6 +133,20 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
                     )
                 }
                 Text(stringResource(R.string.export_note), style = MaterialTheme.typography.bodySmall)
+                // مشروع كامل قابل للبناء (Gradle + workflow) بدل لصق الكود يدويًا.
+                androidx.compose.material3.OutlinedTextField(
+                    value = pkg,
+                    onValueChange = { pkg = it.trim().take(80) },
+                    label = { Text(stringResource(R.string.export_pkg)) },
+                    isError = !pkgValid,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("export_pkg")
+                )
+                Button(
+                    onClick = { zipLauncher.launch(pkg.substringAfterLast('.') + "-android-project.zip") },
+                    enabled = pkgValid,
+                    modifier = Modifier.fillMaxWidth().testTag("export_project_zip")
+                ) { Text(stringResource(R.string.export_zip_btn)) }
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.weight(1f).fillMaxWidth()

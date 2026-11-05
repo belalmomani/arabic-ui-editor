@@ -42,9 +42,12 @@ object ComposeExporter {
     const val DEFAULT_PACKAGE = "com.example.app"
 
     /** @param onlyScreenId إن حُدّد يُصدَّر هذه الشاشة وحدها (مع كائنات التصميم) بلا جذر التنقل. */
-    fun export(project: Project, onlyScreenId: String? = null, packageName: String = DEFAULT_PACKAGE): String {
+    fun export(
+        project: Project, onlyScreenId: String? = null, packageName: String = DEFAULT_PACKAGE,
+        customFonts: Boolean = true
+    ): String {
         val screens = if (onlyScreenId == null) project.screens else project.screens.filter { it.id == onlyScreenId }
-        return Generator(project, packageName, onlyScreenId == null).generate(screens)
+        return Generator(project, packageName, onlyScreenId == null, customFonts).generate(screens)
     }
 
     /** اسم دالة الشاشة رقم [index] (من 0): Screen1، Screen2... (الأسماء العربية لا تصلح معرّفات). */
@@ -53,7 +56,7 @@ object ComposeExporter {
 
     // ---------------------------------------------------------------------------------------
 
-    private class Generator(val project: Project, val pkg: String, val withRoot: Boolean) {
+    private class Generator(val project: Project, val pkg: String, val withRoot: Boolean, val customFonts: Boolean = true) {
         private val ds: DesignSystem = project.designSystem
         private val sb = StringBuilder()
         private var depth = 0
@@ -427,6 +430,7 @@ object ComposeExporter {
 
         private fun clickMod(e: UiElement): String? = when (val a = Interactions.clickAction(e)) {
             ClickAction.None -> null
+            is ClickAction.Blocks -> ".clickable { /* TODO: منطق المحرر (متغيرات/إظهار/إخفاء) لا يُصدَّر؛ اكتبه هنا */ }"
             is ClickAction.Script -> ".clickable { /* TODO: سكربت JS في المحرر لا يُصدَّر؛ اكتب المنطق هنا */ }"
             ClickAction.Back -> ".clickable { onBack() }"
             is ClickAction.Navigate -> {
@@ -532,7 +536,7 @@ object ComposeExporter {
             FontCatalog.MONO -> "FontFamily.Monospace"
             FontCatalog.CURSIVE -> "FontFamily.Cursive"
             FontCatalog.DEFAULT, "" -> null
-            else -> if (FontCatalog.isValid(id)) "FontFamily(Font(R.font.$id))" else null
+            else -> if (customFonts && FontCatalog.isValid(id)) "FontFamily(Font(R.font.$id))" else null
         }
 
         private fun textStyleArgs(e: UiElement, singleLine: Boolean): List<String> {
