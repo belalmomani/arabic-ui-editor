@@ -168,6 +168,36 @@ class DesignCanvasGestureTest {
         assertTrue("scale was ${viewport.scale}", viewport.scale > 1.5f)
     }
 
+    @Test
+    fun pinchOnSelectedElementResizesItNotTheViewport() {
+        selected = buttonId
+        setContent()
+        rule.onNodeWithTag("host").performTouchInput {
+            pinch(
+                start0 = Offset(70f, 72f), start1 = Offset(130f, 72f),
+                end0 = Offset(40f, 72f), end1 = Offset(160f, 72f)
+            )
+        }
+        rule.waitForIdle()
+        assertTrue("width was ${rectOfButton().w}", rectOfButton().w > 150f)
+        assertEquals(1f, viewport.scale, 0.001f)
+    }
+
+    @Test
+    fun pinchAwayFromSelectedElementStillZoomsTheViewport() {
+        selected = buttonId
+        setContent()
+        rule.onNodeWithTag("host").performTouchInput {
+            pinch(
+                start0 = Offset(140f, 300f), start1 = Offset(180f, 300f),
+                end0 = Offset(100f, 300f), end1 = Offset(220f, 300f)
+            )
+        }
+        rule.waitForIdle()
+        assertTrue("scale was ${viewport.scale}", viewport.scale > 1.5f)
+        assertEquals(100f, rectOfButton().w, 0.5f)
+    }
+
     private fun container(layout: ChildLayout, child: UiElement) = UiElement(
         id = "box",
         type = ElementTypes.CONTAINER,

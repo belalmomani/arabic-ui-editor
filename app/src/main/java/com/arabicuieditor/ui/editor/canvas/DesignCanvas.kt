@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
@@ -49,6 +50,7 @@ import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.prop
 import com.arabicuieditor.data.model.UiScreen
 import kotlin.math.hypot
+import kotlin.math.max
 
 private const val HANDLE_OUTER_TOUCH_DP = 24f
 private const val HANDLE_INNER_TOUCH_DP = 12f
@@ -82,7 +84,7 @@ private sealed interface GestureTarget {
  * - إصبع على عنصر: تحديده وتحريكه.
  * - إصبع على مقبض العنصر المحدد: تغيير الحجم.
  * - إصبع على فراغ: تحريك مساحة العمل (والنقر يلغي التحديد).
- * - إصبعان: تكبير/تصغير وتحريك.
+ * - إصبعان على العنصر المحدد: تكبير/تصغير + تدوير + إزاحة العنصر نفسه؛ وإصبعان في أي مكان آخر: تكبير/تحريك مساحة العمل.
  *
  * كل الإحداثيات تُقرأ من [layout] (إطارات محسوبة لكل العناصر بما فيها المتداخلة) ولا تُخزَّن هنا؛
  * التعديلات تُرسل للأعلى عبر [onElementRectChange] فتنتقل إلى نموذج المشروع والحفظ التلقائي.
@@ -184,6 +186,16 @@ fun DesignCanvas(
                         var appliedPanY = 0f
                         var moved = false
                         var multiTouch = false
+                        // إصبعان: 0 لم يُحسم، 1 تكبير/تحريك مساحة العمل، 2 تحويل العنصر المحدد (حجم + دوران + إزاحة).
+                        var pinchMode = 0
+                        var pinchId: String? = null
+                        var pinchBase = DesignRect(0f, 0f, 0f, 0f)
+                        var pinchRot0 = 0
+                        var pinchFree = false
+                        var cumZoom = 1f
+                        var cumRot = 0f
+                        var cumPanX = 0f
+                        var cumPanY = 0f
                         var lastX = down.position.x
                         var lastY = down.position.y
                         // بلا تعديل (معاينة بحجم مختلف): كل سحب يحرّك مساحة العمل، والنقر يحدد فقط.
@@ -203,7 +215,43 @@ fun DesignCanvas(
                                 val zoom = event.calculateZoom()
                                 val pan = event.calculatePan()
                                 val centroid = event.calculateCentroid()
-                                if (zoom != 1f || pan != Offset.Zero) {
+                                if (pinchMode == 0) {
+                                    // يُحسم مرة واحدة: إن كان مركز الإصبعين على العنصر المحدد (وهو غير مقفل) فالإيماءة له.
+                                    pinchMode = 1
+                                    val selId = if (!multiOn && latestEditable) latestSelected else null
+                                    val selRect = selId?.let { lay.frames[it] }
+                                    val unlocked = selId != null && latestElements[selId]?.prop(PropertyKeys.LOCKED) != "true"
+                                    if (selId != null && selRect != null && unlocked) {
+                                        val sr = CanvasMath.toScreenRect(vp, dens, selRect)
+                                        val m = 28f * dens
+                                        if (centroid.x in (sr.left - m)..(sr.right + m) && centroid.y in (sr.top - m)..(sr.bottom + m)) {
+                                            pinchMode = 2
+                                            pinchId = selId
+                                            pinchBase = selRect
+                                            pinchRot0 = latestElements[selId]?.intProp(PropertyKeys.ROTATION) ?: 0
+                                            pinchFree = selId in lay.freeIds
+                                        }
+                                    }
+                                }
+                                if (pinchMode == 2) {
+                                    cumZoom *= zoom
+                                    cumRot += event.calculateRotation()
+                                    cumPanX += pan.x
+                                    cumPanY += pan.y
+                                    val pxPerDp = dens * vp.scale
+                                    val maxSide = max(frameW, frameH) * 2f
+                                    val nw = (pinchBase.w * cumZoom).coerceIn(CanvasMath.MIN_ELEMENT_SIZE, maxSide)
+                                    val nh = (pinchBase.h * cumZoom).coerceIn(CanvasMath.MIN_ELEMENT_SIZE, maxSide)
+                                    val cx = pinchBase.x + pinchBase.w / 2f + if (pinchFree) cumPanX / pxPerDp else 0f
+                                    val cy = pinchBase.y + pinchBase.h / 2f + if (pinchFree) cumPanY / pxPerDp else 0f
+                                    pinchId?.let { id ->
+                                        latestOnRect(id, DesignRect(cx - nw / 2f, cy - nh / 2f, nw, nh))
+                                        latestOnRotate?.invoke(
+                                            id, CanvasMath.snapAngle(CanvasMath.normalizeDegrees(pinchRot0 + cumRot))
+                                        )
+                                    }
+                                    moved = true
+                                } else if (zoom != 1f || pan != Offset.Zero) {
                                     vp = CanvasMath.transform(vp, zoom, pan.x, pan.y, centroid.x, centroid.y)
                                     latestOnViewport(vp)
                                 }
