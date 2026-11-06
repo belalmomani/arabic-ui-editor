@@ -126,6 +126,23 @@ object AppIcons {
         moveTo(14f, 5f); lineTo(10f, 19f)
     }
 
+    /** المكتبة: شبكة 2×2 من المربعات المستديرة. */
+    val Library = icon("library") {
+        roundRect(3.5f, 3.5f, 10.5f, 10.5f, 1.8f)
+        roundRect(13.5f, 3.5f, 20.5f, 10.5f, 1.8f)
+        roundRect(3.5f, 13.5f, 10.5f, 20.5f, 1.8f)
+        roundRect(13.5f, 13.5f, 20.5f, 20.5f, 1.8f)
+    }
+
+    /** التصميم: لوحة ألوان (دائرة بثلاث نقاط). */
+    val Design = icon("design") {
+        circle(12f, 12f, 9f)
+        moveTo(8f, 10.5f); lineTo(8.01f, 10.5f)
+        moveTo(12f, 7.5f); lineTo(12.01f, 7.5f)
+        moveTo(16f, 10.5f); lineTo(16.01f, 10.5f)
+        moveTo(9f, 15f); lineTo(9.01f, 15f)
+    }
+
     /** سهم رجوع يتجه يمينًا (يُستعمل في RTL فيعني «رجوع»). */
     val Back = icon("back") {
         moveTo(5f, 12f); horizontalLineTo(19f)

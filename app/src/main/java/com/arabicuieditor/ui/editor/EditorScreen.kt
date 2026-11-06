@@ -94,10 +94,12 @@ private enum class BottomTab(val labelRes: Int) {
 
 /** فئات شريط الأدوات السفلي (المستوى الأول)؛ لكل فئة لوحات فرعية (المستوى الثاني). */
 private enum class Tool(val icon: ImageVector, val labelRes: Int, val subs: List<BottomTab>) {
-    ADD(AppIcons.Plus, R.string.tool_add, listOf(BottomTab.ELEMENTS, BottomTab.LIBRARY)),
+    ADD(AppIcons.Plus, R.string.tool_add, listOf(BottomTab.ELEMENTS)),
+    LIBRARY(AppIcons.Library, R.string.tab_library, listOf(BottomTab.LIBRARY)),
     EDIT(AppIcons.Edit, R.string.tab_properties, listOf(BottomTab.PROPERTIES)),
     LAYERS(AppIcons.Layers, R.string.tab_layers, listOf(BottomTab.LAYERS)),
-    PAGE(AppIcons.Page, R.string.tool_page, listOf(BottomTab.SCREEN, BottomTab.DESIGN))
+    PAGE(AppIcons.Page, R.string.tool_page, listOf(BottomTab.SCREEN)),
+    DESIGN(AppIcons.Design, R.string.tab_design, listOf(BottomTab.DESIGN))
 }
 
 /** عنصر يُسحب الآن من القائمة (للعرض الشبحي ولتحديد مكان الإفلات). */
@@ -282,6 +284,13 @@ private fun EditorContent(
     var openTool by rememberSaveable { mutableStateOf<Tool?>(null) }
     var subTab by rememberSaveable { mutableStateOf(BottomTab.ELEMENTS) }
     val openTab: BottomTab? = openTool?.let { if (subTab in it.subs) subTab else it.subs.first() }
+    // آخر فئة/لوحة معروضة: تبقى ظاهرة أثناء حركة الطيّ حتى لا يفرغ المحتوى فجأة.
+    val lastTool = remember { arrayOfNulls<Tool>(1) }
+    val lastTab = remember { arrayOfNulls<BottomTab>(1) }
+    if (openTool != null) lastTool[0] = openTool
+    if (openTab != null) lastTab[0] = openTab
+    val shownTool = lastTool[0]
+    val shownTab = lastTab[0]
     var showScreens by rememberSaveable { mutableStateOf(true) }
     var quickOpen by rememberSaveable { mutableStateOf(false) }
     // معاينة الوضع الليلي: تغيّر الرسم فقط (ألوان الرموز)، ولا تُخزَّن ولا تُسجَّل في التراجع.
@@ -438,7 +447,15 @@ private fun EditorContent(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     // رأس اللوحة المفتوحة: اللوحات الفرعية للفئة + زر الطيّ.
-                    if (openTool != null) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = openTool != null,
+                        enter = androidx.compose.animation.expandVertically(androidx.compose.animation.core.tween(220)) +
+                            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220)),
+                        exit = androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(180)) +
+                            androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150))
+                    ) {
+                    Column {
+                    if (shownTool != null) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -447,12 +464,20 @@ private fun EditorContent(
                                 modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                openTool!!.subs.forEach { t ->
-                                    FilterChip(
-                                        selected = openTab == t,
-                                        onClick = { subTab = t },
-                                        label = { Text(stringResource(t.labelRes), maxLines = 1) },
-                                        modifier = Modifier.testTag("tab_${t.name}")
+                                if (shownTool.subs.size > 1) {
+                                    shownTool.subs.forEach { t ->
+                                        FilterChip(
+                                            selected = shownTab == t,
+                                            onClick = { subTab = t },
+                                            label = { Text(stringResource(t.labelRes), maxLines = 1) },
+                                            modifier = Modifier.testTag("tab_${t.name}")
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        stringResource(shownTool.labelRes),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(horizontal = 8.dp).testTag("tab_${shownTool.subs.first().name}")
                                     )
                                 }
                             }
@@ -461,11 +486,15 @@ private fun EditorContent(
                             }
                         }
                     }
-                    if (openTab != null) {
+                    if (shownTab != null) {
                         Spacer(Modifier.height(8.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(PANEL_HEIGHT_DP.dp)) {
                             CompositionLocalProvider(LocalDesignSystem provides effectiveDesign) {
-                            when (openTab) {
+                            androidx.compose.animation.Crossfade(
+                                targetState = shownTab,
+                                animationSpec = androidx.compose.animation.core.tween(160)
+                            ) { tab ->
+                            when (tab) {
                                 BottomTab.ELEMENTS -> ElementPalette(
                                     onTapAdd = { type ->
                                         val (cx, cy) = newElementCenter() ?: return@ElementPalette
@@ -638,7 +667,10 @@ private fun EditorContent(
                                 null -> Unit
                             }
                             }
+                            }
                         }
+                    }
+                    }
                     }
                     BottomToolBar(
                         openTool = openTool,
@@ -677,35 +709,48 @@ private data class QuickItem(val icon: ImageVector, val label: String, val tag: 
 /** شريط الأدوات السفلي المنزلق (على طريقة كانفا): أيقونة فوق اسم؛ الضغط يفتح لوحة الفئة أو يطويها. */
 @Composable
 private fun BottomToolBar(openTool: Tool?, hasSelection: Boolean, onToggle: (Tool) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Tool.entries.forEach { t ->
-            val selected = openTool == t
-            val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-            Column(
-                modifier = Modifier
-                    .width(76.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                    .clickable { onToggle(t) }
-                    .padding(vertical = 6.dp)
-                    .testTag("tool_${t.name}"),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box {
-                    Icon(t.icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-                    if (t == Tool.EDIT && hasSelection) {
-                        Box(
-                            Modifier
-                                .align(Alignment.TopEnd)
-                                .size(7.dp)
-                                .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
-                        )
+    val inactive = Color(0xFF4A5560) // رمادي داكن للعناصر غير النشطة
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // ست فئات تتوزع بالتساوي إن اتسع العرض، وإلا يُنزلق الشريط.
+        val itemWidth = maxOf(60.dp, maxWidth / Tool.entries.size)
+        Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            Tool.entries.forEach { t ->
+                val selected = openTool == t
+                val bg by androidx.compose.animation.animateColorAsState(
+                    if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                    androidx.compose.animation.core.tween(180), label = "toolBg"
+                )
+                val color by androidx.compose.animation.animateColorAsState(
+                    if (selected) MaterialTheme.colorScheme.primary else inactive,
+                    androidx.compose.animation.core.tween(180), label = "toolFg"
+                )
+                // علامة + خضراء دائمًا لأداة الإضافة.
+                val iconTint = if (t == Tool.ADD) MaterialTheme.colorScheme.primary else color
+                Column(
+                    modifier = Modifier
+                        .width(itemWidth)
+                        .padding(horizontal = 3.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(bg)
+                        .clickable { onToggle(t) }
+                        .padding(vertical = 6.dp)
+                        .testTag("tool_${t.name}"),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box {
+                        Icon(t.icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
+                        if (t == Tool.EDIT && hasSelection) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(7.dp)
+                                    .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
+                            )
+                        }
                     }
+                    Text(stringResource(t.labelRes), color = color, fontSize = 12.sp, maxLines = 1)
                 }
-                Text(stringResource(t.labelRes), color = color, fontSize = 11.sp, maxLines = 1)
             }
         }
     }
