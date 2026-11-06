@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import com.arabicuieditor.ui.theme.Palette
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -58,9 +59,11 @@ private const val TOOL_OFFSET_DP = 34f
 private const val TOOL_RADIUS_DP = 13f
 private const val TOOL_TOUCH_DP = 24f
 
-private val CanvasBackground = Color(0xFF9AA3AD)
-private val SelectionColor = Color(0xFF1B8CFF)
-private val ConstraintColor = Color(0xFFFF8A00)
+// مساحة عمل رمادية فاتحة، وتحديد أخضر رفيع، وخطوط محاذاة خضراء فاتحة متقطعة (ألوان المحرر الموحدة).
+private val CanvasBackground = Color(0xFFE4E8EB)
+private val SelectionColor = Palette.Primary
+private val ConstraintColor = Palette.Warning
+private val GuideDash = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(14f, 10f))
 
 /** ماذا يفعل اللمس الحالي. يُحدَّد لحظة وضع الإصبع. */
 private sealed interface GestureTarget {
@@ -477,17 +480,17 @@ private fun SelectionOverlay(
 
         // الخطوط الإرشادية: وردي للالتقاط، وبنفسجي للتباعد المتساوي.
         for (gd in guides) {
-            val color = if (gd.spacing) Color(0xFF9C27B0) else Color(0xFFE91E63)
+            val color = if (gd.spacing) Palette.Primary else Palette.GuideGreen
             if (gd.vertical) {
                 val x = CanvasMath.toScreenX(viewport, density, gd.pos)
                 val y1 = CanvasMath.toScreenY(viewport, density, gd.start)
                 val y2 = CanvasMath.toScreenY(viewport, density, gd.end)
-                drawLine(color, Offset(x, y1), Offset(x, y2), 1.5.dp.toPx())
+                drawLine(color, Offset(x, y1), Offset(x, y2), 1.5.dp.toPx(), pathEffect = GuideDash)
             } else {
                 val y = CanvasMath.toScreenY(viewport, density, gd.pos)
                 val x1 = CanvasMath.toScreenX(viewport, density, gd.start)
                 val x2 = CanvasMath.toScreenX(viewport, density, gd.end)
-                drawLine(color, Offset(x1, y), Offset(x2, y), 1.5.dp.toPx())
+                drawLine(color, Offset(x1, y), Offset(x2, y), 1.5.dp.toPx(), pathEffect = GuideDash)
             }
         }
 
@@ -498,13 +501,13 @@ private fun SelectionOverlay(
                 color = SelectionColor,
                 topLeft = Offset(rect.left, rect.top),
                 size = Size(rect.width, rect.height),
-                style = Stroke(2.dp.toPx())
+                style = Stroke(1.5.dp.toPx())
             )
             val radius = HANDLE_VISUAL_DP.dp.toPx()
             CanvasMath.handlePositions(rect, EDGE_HANDLE_MIN_SIDE_DP * density).forEach { h ->
                 val center = Offset(h.x, h.y)
                 drawCircle(Color.White, radius, center)
-                drawCircle(SelectionColor, radius, center, style = Stroke(2.dp.toPx()))
+                drawCircle(SelectionColor, radius, center, style = Stroke(1.5.dp.toPx()))
             }
             if (showTools) {
                 val off = TOOL_OFFSET_DP.dp.toPx()

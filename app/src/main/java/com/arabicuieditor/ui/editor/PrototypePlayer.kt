@@ -49,6 +49,9 @@ import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.script.ScriptEngine
 import com.arabicuieditor.data.script.ScriptOverrides
 import com.arabicuieditor.data.script.Steps
+import com.arabicuieditor.ui.theme.Palette
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import com.arabicuieditor.ui.editor.canvas.ElementView
 import com.arabicuieditor.ui.editor.canvas.LayoutEngine
 import com.arabicuieditor.ui.editor.canvas.Prototype
@@ -107,19 +110,20 @@ fun PrototypePlayer(
     }
     val density = LocalDensity.current.density
 
-    Column(modifier.background(Color(0xFF15171A)).testTag("proto_player")) {
+    // خلفية فاتحة موحّدة؛ شريطا الحالة والتنقل خارج المحتوى فيبقى «إغلاق» قابلًا للضغط.
+    Column(modifier.background(Palette.Background).statusBarsPadding().navigationBarsPadding().testTag("proto_player")) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onClose, modifier = Modifier.testTag("proto_close")) {
-                Text(stringResource(R.string.proto_close), color = Color.White)
+                Text(stringResource(R.string.proto_close), color = Palette.Primary)
             }
             TextButton(
                 onClick = { nav = nav.apply(ClickAction.Back, project.screens) },
                 enabled = nav.history.isNotEmpty(),
                 modifier = Modifier.testTag("proto_back")
-            ) { Text(stringResource(R.string.proto_back), color = if (nav.history.isNotEmpty()) Color.White else Color.Gray) }
+            ) { Text(stringResource(R.string.proto_back), color = if (nav.history.isNotEmpty()) Palette.Primary else Palette.TextSecondary) }
             Text(
                 screen.name,
-                color = Color.White,
+                color = Palette.TextPrimary,
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp).testTag("proto_screen")
             )
         }

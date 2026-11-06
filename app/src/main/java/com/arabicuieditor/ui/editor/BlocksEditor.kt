@@ -17,6 +17,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import com.arabicuieditor.ui.theme.AppIcons
+import com.arabicuieditor.ui.theme.Palette
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -83,15 +86,15 @@ fun BlocksEditor(
                         TextButton(
                             onClick = { draft = draft.toMutableList().also { l -> val t = l.removeAt(i); l.add(i - 1, t) } },
                             enabled = i > 0, modifier = Modifier.testTag("${tagPrefix}_step_up_$i")
-                        ) { Text("▲") }
+                        ) { Icon(AppIcons.ChevronUp, contentDescription = null, modifier = Modifier.size(20.dp)) }
                         TextButton(
                             onClick = { draft = draft.toMutableList().also { l -> val t = l.removeAt(i); l.add(i + 1, t) } },
                             enabled = i < draft.size - 1, modifier = Modifier.testTag("${tagPrefix}_step_down_$i")
-                        ) { Text("▼") }
+                        ) { Icon(AppIcons.ChevronDown, contentDescription = null, modifier = Modifier.size(20.dp)) }
                         TextButton(
                             onClick = { draft = draft.toMutableList().also { it.removeAt(i) } },
                             modifier = Modifier.testTag("${tagPrefix}_step_del_$i")
-                        ) { Text("✕", color = Color(0xFFC62828)) }
+                        ) { Icon(AppIcons.Trash, contentDescription = null, tint = Palette.Error, modifier = Modifier.size(20.dp)) }
                     }
                     if (Steps.usesVar(s.kind)) {
                         OutlinedTextField(
@@ -110,7 +113,7 @@ fun BlocksEditor(
                     }
                     if (Steps.usesElement(s.kind)) {
                         if (elementNames.isEmpty()) {
-                            Text(stringResource(R.string.st_no_names), style = MaterialTheme.typography.bodySmall, color = Color(0xFFC62828))
+                            Text(stringResource(R.string.st_no_names), style = MaterialTheme.typography.bodySmall, color = Palette.Error)
                         } else ChipRow {
                             elementNames.forEach { n ->
                                 FilterChip(

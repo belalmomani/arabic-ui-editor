@@ -87,14 +87,16 @@ fun ProjectsScreen(
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ExtendedFloatingActionButton(
+                    elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp),
                     onClick = { zipPicker.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
                     modifier = Modifier.testTag("import_zip")
                 ) { Text(stringResource(R.string.import_zip)) }
                 ExtendedFloatingActionButton(
+                    elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp),
                     onClick = { viewModel.importText(clipboard.getText()?.text.orEmpty()) },
                     modifier = Modifier.testTag("import_project")
                 ) { Text(stringResource(R.string.import_project)) }
-                ExtendedFloatingActionButton(onClick = { showCreate = true }) {
+                ExtendedFloatingActionButton(onClick = { showCreate = true }, elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp)) {
                     Text(stringResource(R.string.home_new_project))
                 }
             }

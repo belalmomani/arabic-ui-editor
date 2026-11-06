@@ -1,5 +1,7 @@
 package com.arabicuieditor.ui.editor
 
+import com.arabicuieditor.ui.theme.AppOutlinedButton
+import com.arabicuieditor.ui.theme.AppButton
 import android.content.Intent
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +10,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -65,6 +69,7 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
     val context = LocalContext.current
     // تصدير مشروع Android كامل كملف ZIP عبر منتقي الملفات (CreateDocument).
     var pkg by rememberSaveable { mutableStateOf(AndroidProjectExporter.DEFAULT_PACKAGE) }
+    val highlighted = remember(code) { CodeHighlight.highlight(code) }
     val pkgValid = AndroidProjectExporter.isValidPackage(pkg)
     val imagesDir = com.arabicuieditor.ui.editor.canvas.LocalImageDir.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -90,7 +95,8 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize().testTag("export_dialog")) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // شريطا الحالة والتنقل لا يغطيان الأزرار (النافذة بحجم الشاشة كلها).
+            Column(Modifier.statusBarsPadding().navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.export_title), style = MaterialTheme.typography.titleMedium)
                     TextButton(onClick = onDismiss, modifier = Modifier.testTag("export_close")) {
@@ -142,7 +148,7 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().testTag("export_pkg")
                 )
-                Button(
+                AppButton(
                     onClick = { zipLauncher.launch(pkg.substringAfterLast('.') + "-android-project.zip") },
                     enabled = pkgValid,
                     modifier = Modifier.fillMaxWidth().testTag("export_project_zip")
@@ -156,7 +162,7 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
                         Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState())) {
                             SelectionContainer {
                                 Text(
-                                    text = code,
+                                    text = highlighted,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 11.sp,
                                     lineHeight = 15.sp,
@@ -167,11 +173,11 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
+                    AppButton(
                         onClick = { clipboard.setText(AnnotatedString(code)); copied = true },
                         modifier = Modifier.testTag("export_copy")
                     ) { Text(stringResource(if (copied) R.string.export_copied else R.string.export_copy)) }
-                    OutlinedButton(
+                    AppOutlinedButton(
                         onClick = {
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"

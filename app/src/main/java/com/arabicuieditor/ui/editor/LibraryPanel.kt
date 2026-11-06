@@ -1,5 +1,6 @@
 package com.arabicuieditor.ui.editor
 
+import com.arabicuieditor.ui.theme.AppButton
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -175,7 +176,7 @@ private fun MineSection(
     onDelete: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(
+        AppButton(
             onClick = onSave,
             enabled = canSave,
             modifier = Modifier.testTag("lib_save_selected")
@@ -313,7 +314,7 @@ private fun TemplatesSection(onUse: (AppTemplate) -> Unit) {
                             }
                             Text(stringResource(t.labelRes), style = MaterialTheme.typography.titleSmall)
                             Text(stringResource(t.descRes), style = MaterialTheme.typography.bodySmall, maxLines = 3)
-                            Button(onClick = { onUse(t) }, modifier = Modifier.testTag("tpl_use_${t.id}")) {
+                            AppButton(onClick = { onUse(t) }, modifier = Modifier.testTag("tpl_use_${t.id}")) {
                                 Text(stringResource(R.string.tpl_use))
                             }
                         }

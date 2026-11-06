@@ -1,5 +1,7 @@
 package com.arabicuieditor.ui.screens
 
+import com.arabicuieditor.ui.theme.AppOutlinedButton
+import com.arabicuieditor.ui.theme.AppButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -59,15 +61,15 @@ fun HomeScreen(
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(40.dp))
-            Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth()) {
+            AppButton(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.home_new_project))
             }
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = onOpenProjects, modifier = Modifier.fillMaxWidth()) {
+            AppOutlinedButton(onClick = onOpenProjects, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.home_my_projects))
             }
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = onOpenAbout, modifier = Modifier.fillMaxWidth()) {
+            AppOutlinedButton(onClick = onOpenAbout, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.home_about))
             }
         }

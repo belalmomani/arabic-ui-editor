@@ -1003,11 +1003,11 @@ private fun ImageSection(element: UiElement, onPick: () -> Unit, onClear: () -> 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("image_section")) {
         SectionHeader(stringResource(R.string.prop_image_src))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            androidx.compose.material3.Button(onClick = onPick, modifier = Modifier.testTag("image_pick")) {
+            com.arabicuieditor.ui.theme.AppButton(onClick = onPick, modifier = Modifier.testTag("image_pick")) {
                 Text(stringResource(if (has) R.string.image_change else R.string.image_choose))
             }
             if (has) {
-                androidx.compose.material3.OutlinedButton(onClick = onClear, modifier = Modifier.testTag("image_clear")) {
+                com.arabicuieditor.ui.theme.AppOutlinedButton(onClick = onClear, modifier = Modifier.testTag("image_clear")) {
                     Text(stringResource(R.string.image_remove))
                 }
             }

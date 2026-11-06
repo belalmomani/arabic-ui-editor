@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import com.arabicuieditor.ui.theme.AppIcons
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -91,11 +93,11 @@ private enum class BottomTab(val labelRes: Int) {
 }
 
 /** فئات شريط الأدوات السفلي (المستوى الأول)؛ لكل فئة لوحات فرعية (المستوى الثاني). */
-private enum class Tool(val glyph: String, val labelRes: Int, val subs: List<BottomTab>) {
-    ADD("＋", R.string.tool_add, listOf(BottomTab.ELEMENTS, BottomTab.LIBRARY)),
-    EDIT("✎", R.string.tab_properties, listOf(BottomTab.PROPERTIES)),
-    LAYERS("☰", R.string.tab_layers, listOf(BottomTab.LAYERS)),
-    PAGE("▭", R.string.tool_page, listOf(BottomTab.SCREEN, BottomTab.DESIGN))
+private enum class Tool(val icon: ImageVector, val labelRes: Int, val subs: List<BottomTab>) {
+    ADD(AppIcons.Plus, R.string.tool_add, listOf(BottomTab.ELEMENTS, BottomTab.LIBRARY)),
+    EDIT(AppIcons.Edit, R.string.tab_properties, listOf(BottomTab.PROPERTIES)),
+    LAYERS(AppIcons.Layers, R.string.tab_layers, listOf(BottomTab.LAYERS)),
+    PAGE(AppIcons.Page, R.string.tool_page, listOf(BottomTab.SCREEN, BottomTab.DESIGN))
 }
 
 /** عنصر يُسحب الآن من القائمة (للعرض الشبحي ولتحديد مكان الإفلات). */
@@ -143,26 +145,34 @@ fun EditorScreen(
                         onClick = { playing = true },
                         enabled = ready != null,
                         modifier = Modifier.testTag("btn_play")
-                    ) { Text("▶ " + stringResource(R.string.proto_play)) }
+                    ) {
+                        Icon(AppIcons.Play, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.proto_play))
+                    }
                     val undoLabel = stringResource(R.string.action_undo)
                     val redoLabel = stringResource(R.string.action_redo)
                     TextButton(
                         onClick = viewModel::undo, enabled = canUndo,
                         modifier = Modifier.testTag("btn_undo").semantics { contentDescription = undoLabel }
-                    ) { Text("↶", style = MaterialTheme.typography.titleLarge) }
+                    ) { Icon(AppIcons.Undo, contentDescription = null, modifier = Modifier.size(22.dp)) }
                     TextButton(
                         onClick = viewModel::redo, enabled = canRedo,
                         modifier = Modifier.testTag("btn_redo").semantics { contentDescription = redoLabel }
-                    ) { Text("↷", style = MaterialTheme.typography.titleLarge) }
+                    ) { Icon(AppIcons.Redo, contentDescription = null, modifier = Modifier.size(22.dp)) }
                     TextButton(
                         onClick = { exporting = true },
                         enabled = ready != null,
                         modifier = Modifier.testTag("btn_export")
-                    ) { Text(stringResource(R.string.export_btn)) }
+                    ) {
+                        Icon(AppIcons.Code, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.export_btn))
+                    }
                     if (selectedId != null) {
                         IconButton(onClick = { viewModel.deleteSelected() }) {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = AppIcons.Trash,
                                 contentDescription = stringResource(R.string.editor_delete_element)
                             )
                         }
@@ -377,7 +387,7 @@ private fun EditorContent(
                         expanded = quickOpen,
                         onToggle = { quickOpen = !quickOpen },
                         items = buildList {
-                            add(QuickItem("⤢", stringResource(R.string.fq_fit), "fq_fit") {
+                            add(QuickItem(AppIcons.Fit, stringResource(R.string.fq_fit), "fq_fit") {
                                 if (canvasSize.width > 0 && canvasSize.height > 0) {
                                     viewport = CanvasMath.fit(
                                         viewW = canvasSize.width.toFloat(), viewH = canvasSize.height.toFloat(),
@@ -386,15 +396,15 @@ private fun EditorContent(
                                     )
                                 }
                             })
-                            add(QuickItem("▭", stringResource(R.string.fq_screens) + if (showScreens) " ✓" else "", "fq_screens") {
+                            add(QuickItem(AppIcons.Page, stringResource(R.string.fq_screens) + if (showScreens) " ✓" else "", "fq_screens") {
                                 showScreens = !showScreens
                             })
-                            add(QuickItem("◐", stringResource(if (darkPreview) R.string.mode_dark else R.string.mode_light), "dark_toggle") {
+                            add(QuickItem(AppIcons.Contrast, stringResource(if (darkPreview) R.string.mode_dark else R.string.mode_light), "dark_toggle") {
                                 onDarkPreview(!darkPreview)
                             })
                             add(
                                 QuickItem(
-                                    "⬚",
+                                    AppIcons.Device,
                                     "${previewW.toInt()}×${previewH.toInt()}" +
                                         if (editable) "" else " · " + stringResource(R.string.preview_label),
                                     "preview_pill"
@@ -405,7 +415,7 @@ private fun EditorContent(
                                 }
                             )
                             if (selectedId != null) {
-                                add(QuickItem("⧉", stringResource(R.string.fq_duplicate), "fq_duplicate") { viewModel.duplicateSelected() })
+                                add(QuickItem(AppIcons.Duplicate, stringResource(R.string.fq_duplicate), "fq_duplicate") { viewModel.duplicateSelected() })
                             }
                         }
                     )
@@ -446,7 +456,9 @@ private fun EditorContent(
                                     )
                                 }
                             }
-                            TextButton(onClick = { openTool = null }, modifier = Modifier.testTag("panel_close")) { Text("▾") }
+                            TextButton(onClick = { openTool = null }, modifier = Modifier.testTag("panel_close")) {
+                                Icon(AppIcons.ChevronDown, contentDescription = null, modifier = Modifier.size(22.dp))
+                            }
                         }
                     }
                     if (openTab != null) {
@@ -660,7 +672,7 @@ private fun EditorContent(
     }
 }
 
-private data class QuickItem(val glyph: String, val label: String, val tag: String, val onClick: () -> Unit)
+private data class QuickItem(val icon: ImageVector, val label: String, val tag: String, val onClick: () -> Unit)
 
 /** شريط الأدوات السفلي المنزلق (على طريقة كانفا): أيقونة فوق اسم؛ الضغط يفتح لوحة الفئة أو يطويها. */
 @Composable
@@ -671,21 +683,28 @@ private fun BottomToolBar(openTool: Tool?, hasSelection: Boolean, onToggle: (Too
     ) {
         Tool.entries.forEach { t ->
             val selected = openTool == t
-            val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             Column(
                 modifier = Modifier
                     .width(76.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                    .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                     .clickable { onToggle(t) }
                     .padding(vertical = 6.dp)
                     .testTag("tool_${t.name}"),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    t.glyph + if (t == Tool.EDIT && hasSelection) "•" else "",
-                    color = color, fontSize = 22.sp
-                )
+                Box {
+                    Icon(t.icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+                    if (t == Tool.EDIT && hasSelection) {
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .size(7.dp)
+                                .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
+                        )
+                    }
+                }
                 Text(stringResource(t.labelRes), color = color, fontSize = 11.sp, maxLines = 1)
             }
         }
@@ -713,7 +732,8 @@ private fun androidx.compose.foundation.layout.BoxScope.FloatingTools(
                     Surface(
                         shape = RoundedCornerShape(50),
                         color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 4.dp,
+                        shadowElevation = 1.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         modifier = Modifier.clip(RoundedCornerShape(50)).clickable { it0.onClick() }.testTag(it0.tag)
                     ) {
                         Row(
@@ -721,7 +741,7 @@ private fun androidx.compose.foundation.layout.BoxScope.FloatingTools(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(it0.glyph, fontSize = 16.sp)
+                            Icon(it0.icon, contentDescription = null, modifier = Modifier.size(18.dp))
                             Text(it0.label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                         }
                     }
@@ -731,7 +751,7 @@ private fun androidx.compose.foundation.layout.BoxScope.FloatingTools(
         Surface(
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             color = MaterialTheme.colorScheme.primary,
-            shadowElevation = 4.dp,
+            shadowElevation = 1.dp,
             modifier = Modifier
                 .size(width = 56.dp, height = 28.dp)
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
@@ -739,7 +759,10 @@ private fun androidx.compose.foundation.layout.BoxScope.FloatingTools(
                 .testTag("quick_handle")
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text(if (expanded) "▾" else "▴", color = MaterialTheme.colorScheme.onPrimary)
+                Icon(
+                    if (expanded) AppIcons.ChevronDown else AppIcons.ChevronUp, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

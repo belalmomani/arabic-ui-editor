@@ -43,7 +43,7 @@ import com.arabicuieditor.data.model.prop
 private const val HIDDEN_ALPHA = 0.18f
 
 private val GuideLine = Color(0xFFB0B7BF)
-private val ContainerGuide = Color(0xFF5B9BD5)
+private val ContainerGuide = com.arabicuieditor.ui.theme.Palette.GuideGreen
 private val ImageCross = Color(0xFFB0B7BF)
 
 private fun argb(value: Int) = Color(value)
