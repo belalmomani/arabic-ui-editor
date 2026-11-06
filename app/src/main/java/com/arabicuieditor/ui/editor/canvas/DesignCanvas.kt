@@ -373,7 +373,7 @@ fun DesignCanvas(
 }
 
 /** مركزا زرّي التدوير (يسارًا) والتحريك (يمينًا) بإحداثيات العنصر غير المدار؛ تحت العنصر وإن ضاق المكان فوقه. */
-private fun toolCenters(sr: DesignRect, density: Float, canvasH: Float): Pair<Offset, Offset> {
+private fun toolCenters(sr: ScreenRect, density: Float, canvasH: Float): Pair<Offset, Offset> {
     val off = TOOL_OFFSET_DP * density
     val r = TOOL_RADIUS_DP * density
     val cx = (sr.left + sr.right) / 2f
