@@ -514,6 +514,9 @@ object ComposeExporter {
             if (opacity in 0..99) out += ".alpha(${opacity / 100.0}f)"
             val rotation = intOf(e, PropertyKeys.ROTATION)
             if (rotation != 0) out += ".rotate(${rotation}f)"
+            val fx = e.prop(PropertyKeys.FLIP_X) == "true"
+            val fy = e.prop(PropertyKeys.FLIP_Y) == "true"
+            if (fx || fy) out += ".graphicsLayer(scaleX = ${if (fx) "-1f" else "1f"}, scaleY = ${if (fy) "-1f" else "1f"})"
             val radiusRaw = e.prop(PropertyKeys.CORNER_RADIUS)
             val shape = if (radiusRaw.isNotEmpty() && (Tokens.isRadiusRef(radiusRaw) || radiusValue(radiusRaw) > 0))
                 "RoundedCornerShape(${radiusExpr(radiusRaw)})" else null

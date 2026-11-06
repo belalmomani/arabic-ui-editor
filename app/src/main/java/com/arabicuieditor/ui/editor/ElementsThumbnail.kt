@@ -86,7 +86,12 @@ fun ScreenThumbnail(
                                 modifier = Modifier
                                     .absoluteOffset(rect.x.dp, rect.y.dp)
                                     .size(rect.w.dp, rect.h.dp)
-                                    .graphicsLayer { rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat() }
+                                    .graphicsLayer {
+                                        rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat()
+                                        // القلب حول المركز: لا يغيّر حدود العنصر فلا يتأثر اللمس ولا التحديد.
+                                        if (element.boolProp(PropertyKeys.FLIP_X)) scaleX = -1f
+                                        if (element.boolProp(PropertyKeys.FLIP_Y)) scaleY = -1f
+                                    }
                                     .clipToBounds()
                             )
                         }

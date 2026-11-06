@@ -59,6 +59,7 @@ import com.arabicuieditor.data.model.Contrast
 import com.arabicuieditor.data.model.FontCatalog
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.model.colorProp
+import com.arabicuieditor.data.model.boolProp
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.ElementTree
@@ -144,6 +145,40 @@ fun PropertiesPanel(
         item(key = "actions") {
             ActionsRow(onDuplicate, onDelete, onReorder, onWrap, onUnwrap, canUnwrap = element.children.isNotEmpty(),
                 canPaste = canPaste, onCopy = onCopy, onPaste = onPaste)
+        }
+
+        item(key = "transform") {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("transform_section")) {
+                SectionHeader(stringResource(R.string.transform_tools))
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val flippedX = element.boolProp(PropertyKeys.FLIP_X)
+                    val flippedY = element.boolProp(PropertyKeys.FLIP_Y)
+                    FilterChip(
+                        selected = flippedX,
+                        onClick = { onSetProperty(PropertyKeys.FLIP_X, (!flippedX).toString()) },
+                        label = { Text(stringResource(R.string.prop_flip_x)) },
+                        modifier = Modifier.testTag("flip_x")
+                    )
+                    FilterChip(
+                        selected = flippedY,
+                        onClick = { onSetProperty(PropertyKeys.FLIP_Y, (!flippedY).toString()) },
+                        label = { Text(stringResource(R.string.prop_flip_y)) },
+                        modifier = Modifier.testTag("flip_y")
+                    )
+                    val current = element.intProp(PropertyKeys.ROTATION)
+                    listOf(0, 45, 90, 135, 180, 270).forEach { deg ->
+                        FilterChip(
+                            selected = current == deg,
+                            onClick = { onSetProperty(PropertyKeys.ROTATION, deg.toString()) },
+                            label = { Text("$deg°") },
+                            modifier = Modifier.testTag("angle_$deg")
+                        )
+                    }
+                }
+            }
         }
 
         if (isFree) {

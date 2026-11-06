@@ -180,6 +180,12 @@ class PropertyRegistryTest {
     }
 
     @Test
+    fun flipPropertiesDefaultToOffAndAreRegistered() {
+        assertEquals("false", PropertyRegistry.defaultOf(ElementTypes.BUTTON, PropertyKeys.FLIP_X))
+        assertEquals("false", PropertyRegistry.defaultOf(ElementTypes.BUTTON, PropertyKeys.FLIP_Y))
+    }
+
+    @Test
     fun rotationIsClampedAndDefaultsToZero() {
         assertEquals("359", PropertyRegistry.normalize(PropertyKeys.ROTATION, "900"))
         assertEquals("0", PropertyRegistry.normalize(PropertyKeys.ROTATION, "-5"))

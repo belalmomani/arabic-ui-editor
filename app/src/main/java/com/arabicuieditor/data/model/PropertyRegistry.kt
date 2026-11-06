@@ -60,6 +60,8 @@ object PropertyKeys {
     const val OPACITY = "opacity"
     /** دوران العنصر بالدرجات (0..359) باتجاه عقارب الساعة حول مركزه. */
     const val ROTATION = "rotation"
+    const val FLIP_X = "flipX"
+    const val FLIP_Y = "flipY"
     const val VISIBLE = "visible"
     /** عنصر مقفل: يُحدَّد لكن لا يتحرك ولا يتغيّر حجمه بالسحب على اللوحة. */
     const val LOCKED = "locked"
@@ -231,6 +233,8 @@ object PropertyRegistry {
         PropertyDef(PropertyKeys.VISIBLE, R.string.prop_visible, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "true"),
         PropertyDef(PropertyKeys.OPACITY, R.string.prop_opacity, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "100"),
         PropertyDef(PropertyKeys.ROTATION, R.string.prop_rotation, PropertyGroup.GENERAL, PropertyKind.Integer(0, 359), ALL, fallback = "0"),
+        PropertyDef(PropertyKeys.FLIP_X, R.string.prop_flip_x, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "false"),
+        PropertyDef(PropertyKeys.FLIP_Y, R.string.prop_flip_y, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "false"),
 
         // تخطيط: ترتيب الأبناء (للحاوية أو الشاشة)
         PropertyDef(

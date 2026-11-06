@@ -6,7 +6,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
@@ -46,6 +45,7 @@ import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.model.PropertyKeys
+import com.arabicuieditor.data.model.boolProp
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.prop
 import com.arabicuieditor.data.model.UiScreen
@@ -57,9 +57,10 @@ private const val HANDLE_INNER_TOUCH_DP = 12f
 private const val HANDLE_VISUAL_DP = 7f
 private const val EDGE_HANDLE_MIN_SIDE_DP = 96f
 private const val ELEMENT_HIT_SLOP_DP = 6f
-private const val TOOL_OFFSET_DP = 34f
-private const val TOOL_RADIUS_DP = 13f
-private const val TOOL_TOUCH_DP = 24f
+private const val TOOL_OFFSET_DP = 38f
+private const val TOOL_RADIUS_DP = 16f
+private const val TOOL_TOUCH_DP = 22f
+private const val TOOL_GAP_DP = 5f
 
 // مساحة عمل رمادية فاتحة، وتحديد أخضر رفيع، وخطوط محاذاة خضراء فاتحة متقطعة (ألوان المحرر الموحدة).
 private val CanvasBackground = Color(0xFFE4E8EB)
@@ -84,7 +85,8 @@ private sealed interface GestureTarget {
  * - إصبع على عنصر: تحديده وتحريكه.
  * - إصبع على مقبض العنصر المحدد: تغيير الحجم.
  * - إصبع على فراغ: تحريك مساحة العمل (والنقر يلغي التحديد).
- * - إصبعان على العنصر المحدد: تكبير/تصغير + تدوير + إزاحة العنصر نفسه؛ وإصبعان في أي مكان آخر: تكبير/تحريك مساحة العمل.
+ * - إصبعان: تكبير/تصغير وتحريك مساحة العمل (دائمًا، حتى مع وجود عنصر محدد).
+ * - زرّا التدوير والتحريك الدائريان تحت العنصر المحدد: سحب الأول يدوّره بحرية، وسحب الثاني يحرّكه.
  *
  * كل الإحداثيات تُقرأ من [layout] (إطارات محسوبة لكل العناصر بما فيها المتداخلة) ولا تُخزَّن هنا؛
  * التعديلات تُرسل للأعلى عبر [onElementRectChange] فتنتقل إلى نموذج المشروع والحفظ التلقائي.
@@ -133,6 +135,8 @@ fun DesignCanvas(
     val latestOnRotate by rememberUpdatedState(onElementRotate)
     val latestOnRepeat by rememberUpdatedState(onElementRepeat)
     val latestElements by rememberUpdatedState(elementsById)
+    var canvasPx by remember { mutableStateOf(IntSize.Zero) }
+    val latestCanvasH by rememberUpdatedState(canvasPx.height)
 
     // مساحة التصميم يسار-يمين دائمًا (إحداثيات مطلقة)، بغض النظر عن اتجاه التطبيق RTL.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -140,7 +144,7 @@ fun DesignCanvas(
             modifier = modifier
                 .clipToBounds()
                 .background(CanvasBackground)
-                .onSizeChanged(onSizeChange)
+                .onSizeChanged { canvasPx = it; onSizeChange(it) }
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
@@ -164,7 +168,8 @@ fun DesignCanvas(
                             vp = vp,
                             density = dens,
                             px = down.position.x,
-                            py = down.position.y
+                            py = down.position.y,
+                            canvasH = latestCanvasH.toFloat()
                         )
                         val multiHit = if (multiOn) (target as? GestureTarget.Move)?.id else null
                         if (!multiOn && target is GestureTarget.Move && target.id != selectedBefore) {
@@ -186,16 +191,6 @@ fun DesignCanvas(
                         var appliedPanY = 0f
                         var moved = false
                         var multiTouch = false
-                        // إصبعان: 0 لم يُحسم، 1 تكبير/تحريك مساحة العمل، 2 تحويل العنصر المحدد (حجم + دوران + إزاحة).
-                        var pinchMode = 0
-                        var pinchId: String? = null
-                        var pinchBase = DesignRect(0f, 0f, 0f, 0f)
-                        var pinchRot0 = 0
-                        var pinchFree = false
-                        var cumZoom = 1f
-                        var cumRot = 0f
-                        var cumPanX = 0f
-                        var cumPanY = 0f
                         var lastX = down.position.x
                         var lastY = down.position.y
                         // بلا تعديل (معاينة بحجم مختلف): كل سحب يحرّك مساحة العمل، والنقر يحدد فقط.
@@ -215,43 +210,7 @@ fun DesignCanvas(
                                 val zoom = event.calculateZoom()
                                 val pan = event.calculatePan()
                                 val centroid = event.calculateCentroid()
-                                if (pinchMode == 0) {
-                                    // يُحسم مرة واحدة: إن كان مركز الإصبعين على العنصر المحدد (وهو غير مقفل) فالإيماءة له.
-                                    pinchMode = 1
-                                    val selId = if (!multiOn && latestEditable) latestSelected else null
-                                    val selRect = selId?.let { lay.frames[it] }
-                                    val unlocked = selId != null && latestElements[selId]?.prop(PropertyKeys.LOCKED) != "true"
-                                    if (selId != null && selRect != null && unlocked) {
-                                        val sr = CanvasMath.toScreenRect(vp, dens, selRect)
-                                        val m = 28f * dens
-                                        if (centroid.x in (sr.left - m)..(sr.right + m) && centroid.y in (sr.top - m)..(sr.bottom + m)) {
-                                            pinchMode = 2
-                                            pinchId = selId
-                                            pinchBase = selRect
-                                            pinchRot0 = latestElements[selId]?.intProp(PropertyKeys.ROTATION) ?: 0
-                                            pinchFree = selId in lay.freeIds
-                                        }
-                                    }
-                                }
-                                if (pinchMode == 2) {
-                                    cumZoom *= zoom
-                                    cumRot += event.calculateRotation()
-                                    cumPanX += pan.x
-                                    cumPanY += pan.y
-                                    val pxPerDp = dens * vp.scale
-                                    val maxSide = max(frameW, frameH) * 2f
-                                    val nw = (pinchBase.w * cumZoom).coerceIn(CanvasMath.MIN_ELEMENT_SIZE, maxSide)
-                                    val nh = (pinchBase.h * cumZoom).coerceIn(CanvasMath.MIN_ELEMENT_SIZE, maxSide)
-                                    val cx = pinchBase.x + pinchBase.w / 2f + if (pinchFree) cumPanX / pxPerDp else 0f
-                                    val cy = pinchBase.y + pinchBase.h / 2f + if (pinchFree) cumPanY / pxPerDp else 0f
-                                    pinchId?.let { id ->
-                                        latestOnRect(id, DesignRect(cx - nw / 2f, cy - nh / 2f, nw, nh))
-                                        latestOnRotate?.invoke(
-                                            id, CanvasMath.snapAngle(CanvasMath.normalizeDegrees(pinchRot0 + cumRot))
-                                        )
-                                    }
-                                    moved = true
-                                } else if (zoom != 1f || pan != Offset.Zero) {
+                                if (zoom != 1f || pan != Offset.Zero) {
                                     vp = CanvasMath.transform(vp, zoom, pan.x, pan.y, centroid.x, centroid.y)
                                     latestOnViewport(vp)
                                 }
@@ -376,7 +335,12 @@ fun DesignCanvas(
                                 modifier = Modifier
                                     .absoluteOffset(rect.x.dp, rect.y.dp)
                                     .size(rect.w.dp, rect.h.dp)
-                                    .graphicsLayer { rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat() }
+                                    .graphicsLayer {
+                                        rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat()
+                                        // القلب حول المركز: لا يغيّر حدود العنصر فلا يتأثر اللمس ولا التحديد.
+                                        if (element.boolProp(PropertyKeys.FLIP_X)) scaleX = -1f
+                                        if (element.boolProp(PropertyKeys.FLIP_Y)) scaleY = -1f
+                                    }
                                     .clipToBounds()
                             )
                         }
@@ -401,10 +365,22 @@ fun DesignCanvas(
                         ConstraintLines.compute(it, layout.frames, layout.parentContentOf(selectedId))
                     }.orEmpty()
                 } else emptyList(),
-                multi = if (multiMode) multiIds.mapNotNull { layout.frames[it] } else emptyList()
+                multi = if (multiMode) multiIds.mapNotNull { layout.frames[it] } else emptyList(),
+                canvasH = canvasPx.height.toFloat()
             )
         }
     }
+}
+
+/** مركزا زرّي التدوير (يسارًا) والتحريك (يمينًا) بإحداثيات العنصر غير المدار؛ تحت العنصر وإن ضاق المكان فوقه. */
+private fun toolCenters(sr: DesignRect, density: Float, canvasH: Float): Pair<Offset, Offset> {
+    val off = TOOL_OFFSET_DP * density
+    val r = TOOL_RADIUS_DP * density
+    val cx = (sr.left + sr.right) / 2f
+    val below = sr.bottom + off
+    val y = if (canvasH > 0f && below + r + 8f * density > canvasH) sr.top - off else below
+    val half = r + TOOL_GAP_DP * density
+    return Offset(cx - half, y) to Offset(cx + half, y)
 }
 
 /** يحدد هدف اللمس: مقبض العنصر المحدد، أو أعلى عنصر تحت الإصبع، أو تحريك المساحة. */
@@ -417,7 +393,8 @@ private fun decideTarget(
     vp: Viewport,
     density: Float,
     px: Float,
-    py: Float
+    py: Float,
+    canvasH: Float = 0f
 ): GestureTarget {
     val selected = rects.firstOrNull { it.first == selectedId }
     if (selected != null) {
@@ -429,13 +406,17 @@ private fun decideTarget(
         val (lx, ly) = if (rot == 0) px to py else CanvasMath.rotatePoint(px, py, cx, cy, -rot.toFloat())
         if (showTools) {
             val touch = TOOL_TOUCH_DP * density
-            val off = TOOL_OFFSET_DP * density
-            if (hypot(lx - cx, ly - (sr.top - off)) <= touch) {
+            val (rc, mc) = toolCenters(sr, density, canvasH)
+            val dr = hypot(lx - rc.x, ly - rc.y)
+            val dm = hypot(lx - mc.x, ly - mc.y)
+            if (dr <= touch && dr <= dm) {
                 return GestureTarget.Rotate(
                     selected.first, cx, cy, rot, CanvasMath.angleDegrees(cx, cy, px, py)
                 )
             }
-            if (hypot(lx - cx, ly - (sr.bottom + off)) <= touch) return GestureTarget.Repeat(selected.first)
+            if (dm <= touch) {
+                return GestureTarget.Move(selected.first, selected.second, selected.first in freeIds)
+            }
         }
         val handles = CanvasMath.handlePositions(sr, EDGE_HANDLE_MIN_SIDE_DP * density)
         val handle = CanvasMath.hitHandle(
@@ -468,7 +449,8 @@ private fun SelectionOverlay(
     grid: Int,
     viewport: Viewport,
     multi: List<DesignRect> = emptyList(),
-    constraintLines: List<ConstraintLine> = emptyList()
+    constraintLines: List<ConstraintLine> = emptyList(),
+    canvasH: Float = 0f
 ) {
     val density = LocalDensity.current.density
     Canvas(Modifier.fillMaxSize()) {
@@ -558,30 +540,39 @@ private fun SelectionOverlay(
                 drawCircle(SelectionColor, radius, center, style = Stroke(1.5.dp.toPx()))
             }
             if (showTools) {
-                val off = TOOL_OFFSET_DP.dp.toPx()
                 val r = TOOL_RADIUS_DP.dp.toPx()
-                val stroke = 2.dp.toPx()
-                // مقبض التدوير: دائرة بيضاء بسهم دائري، يصله خط بالعنصر.
-                val rc = Offset(pivot.x, rect.top - off)
-                drawLine(SelectionColor, Offset(pivot.x, rect.top), Offset(rc.x, rc.y + r), stroke)
-                drawCircle(Color.White, r, rc)
-                drawCircle(SelectionColor, r, rc, style = Stroke(stroke))
+                val stroke = 1.8.dp.toPx()
+                val (rc, mc) = toolCenters(rect, density, canvasH)
+                val ink = Palette.TextPrimary
+                fun disc(c: Offset) {
+                    drawCircle(Color(0x22000000), r, Offset(c.x, c.y + 1.5.dp.toPx()))
+                    drawCircle(Color.White, r, c)
+                    drawCircle(Palette.Border, r, c, style = Stroke(1.dp.toPx()))
+                }
+                // زر التدوير: سهم دائري.
+                disc(rc)
+                val ar = r * 0.5f
                 drawArc(
-                    color = SelectionColor,
-                    startAngle = -60f,
-                    sweepAngle = 270f,
-                    useCenter = false,
-                    topLeft = Offset(rc.x - r * 0.5f, rc.y - r * 0.5f),
-                    size = Size(r, r),
-                    style = Stroke(stroke)
+                    color = ink, startAngle = -50f, sweepAngle = 280f, useCenter = false,
+                    topLeft = Offset(rc.x - ar, rc.y - ar), size = Size(ar * 2, ar * 2),
+                    style = Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
                 )
-                // زر التكرار «+».
-                val pc = Offset(pivot.x, rect.bottom + off)
-                drawLine(SelectionColor, Offset(pivot.x, rect.bottom), Offset(pc.x, pc.y - r), stroke)
-                drawCircle(SelectionColor, r, pc)
-                val arm = r * 0.5f
-                drawLine(Color.White, Offset(pc.x - arm, pc.y), Offset(pc.x + arm, pc.y), stroke)
-                drawLine(Color.White, Offset(pc.x, pc.y - arm), Offset(pc.x, pc.y + arm), stroke)
+                val tip = Offset(rc.x + ar * 0.64f, rc.y - ar * 0.77f)
+                drawLine(ink, tip, Offset(tip.x + ar * 0.1f, tip.y - ar * 0.7f), stroke, androidx.compose.ui.graphics.StrokeCap.Round)
+                drawLine(ink, tip, Offset(tip.x + ar * 0.75f, tip.y + ar * 0.05f), stroke, androidx.compose.ui.graphics.StrokeCap.Round)
+                // زر التحريك: أربعة أسهم.
+                disc(mc)
+                val a2 = r * 0.55f
+                val h = r * 0.22f
+                val cap = androidx.compose.ui.graphics.StrokeCap.Round
+                drawLine(ink, Offset(mc.x - a2, mc.y), Offset(mc.x + a2, mc.y), stroke, cap)
+                drawLine(ink, Offset(mc.x, mc.y - a2), Offset(mc.x, mc.y + a2), stroke, cap)
+                for ((sx, sy) in listOf(1f to 0f, -1f to 0f, 0f to 1f, 0f to -1f)) {
+                    val tx = mc.x + sx * a2
+                    val ty = mc.y + sy * a2
+                    drawLine(ink, Offset(tx, ty), Offset(tx - sx * h + sy * h, ty - sy * h + sx * h), stroke, cap)
+                    drawLine(ink, Offset(tx, ty), Offset(tx - sx * h - sy * h, ty - sy * h - sx * h), stroke, cap)
+                }
             }
         }
     }

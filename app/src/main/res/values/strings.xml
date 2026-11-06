@@ -201,6 +201,10 @@
     <string name="contrast_large_only">ضعيف: لا يصلح إلا للنص الكبير (18 فأكثر)، كبّر الخط أو غيّر اللون</string>
     <string name="contrast_fail">غير مقروء بما يكفي: غيّر لون النص أو الخلفية</string>
     <string name="prop_rotation">الدوران (°)</string>
+    <string name="prop_flip_x">قلب أفقي</string>
+    <string name="prop_flip_y">قلب عمودي</string>
+    <string name="transform_tools">أدوات التحويل</string>
+    <string name="angle_preset">زاوية جاهزة</string>
     <string name="prop_text">النص</string>
     <string name="prop_hint">النص التوضيحي</string>
     <string name="prop_items">عناصر القائمة (سطر لكل عنصر)</string>
