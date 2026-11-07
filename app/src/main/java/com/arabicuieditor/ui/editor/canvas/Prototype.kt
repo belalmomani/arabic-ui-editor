@@ -26,6 +26,17 @@ object Prototype {
      * من الأعلى رسمًا إلى الأسفل، أول عنصر ظاهر تحت النقطة له إجراء (أو لأحد آبائه).
      * العنصر بلا إجراء لا يحجب ما تحته (كالعرض غير القابل للنقر في أندرويد). الدوران يُتجاهل هنا.
      */
+    /** أعلى عنصر ظاهر تحت النقطة (للتأثير البصري أثناء الضغط). */
+    fun topElementAt(screen: UiScreen, layout: LayoutResult, x: Float, y: Float): String? {
+        val byId = ElementTree.flatten(screen.elements).associateBy { it.id }
+        for (id in layout.paintOrder.asReversed()) {
+            val frame = layout.frames[id] ?: continue
+            if (x < frame.x || x > frame.x + frame.w || y < frame.y || y > frame.y + frame.h) continue
+            if (byId[id]?.boolProp(PropertyKeys.VISIBLE) == true) return id
+        }
+        return null
+    }
+
     fun actionAt(
         screen: UiScreen, layout: LayoutResult, x: Float, y: Float,
         trigger: String = Interactions.TRIGGER_CLICK

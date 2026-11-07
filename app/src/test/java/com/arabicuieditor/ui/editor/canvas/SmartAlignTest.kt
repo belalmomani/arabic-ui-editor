@@ -143,4 +143,35 @@ class SmartAlignTest {
         assertEquals(0, bad.gridSize)
         assertTrue(bad.snapObjects)
     }
+
+    @Test
+    fun spaceBetweenSetsExactGapKeepingFirstInPlace() {
+        val frames = listOf(
+            "b" to DesignRect(100f, 10f, 40f, 20f),
+            "a" to DesignRect(10f, 10f, 30f, 20f),
+            "c" to DesignRect(300f, 10f, 50f, 20f)
+        )
+        val out = SmartAlign.spaceBetween(frames, horizontal = true, gap = 8f)
+        assertFalse(out.containsKey("a"))
+        assertEquals(48f, out.getValue("b").x, 0.001f)
+        assertEquals(96f, out.getValue("c").x, 0.001f)
+    }
+
+    @Test
+    fun spaceBetweenNeedsTwoElements() {
+        assertTrue(SmartAlign.spaceBetween(listOf("a" to DesignRect(0f, 0f, 10f, 10f)), true, 8f).isEmpty())
+    }
+
+    @Test
+    fun alignToAnchorMovesOthersAndKeepsAnchor() {
+        val frames = listOf(
+            "a" to DesignRect(10f, 10f, 30f, 20f),
+            "anchor" to DesignRect(100f, 50f, 60f, 20f)
+        )
+        val out = SmartAlign.alignToAnchor(frames, "anchor", AlignEdge.LEFT)
+        assertFalse(out.containsKey("anchor"))
+        assertEquals(100f, out.getValue("a").x, 0.001f)
+        val c = SmartAlign.alignToAnchor(frames, "anchor", AlignEdge.CENTER_V)
+        assertEquals(50f, c.getValue("a").y, 0.001f)
+    }
 }

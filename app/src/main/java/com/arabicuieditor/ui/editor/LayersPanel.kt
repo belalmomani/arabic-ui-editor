@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.testTag
 import com.arabicuieditor.ui.editor.canvas.AlignEdge
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +61,10 @@ fun LayersPanel(
     onAlignMulti: (AlignEdge) -> Unit = {},
     onDistributeMulti: (Boolean) -> Unit = {},
     onDeleteMulti: () -> Unit = {},
+    onGroup: () -> Unit = {},
+    onUngroup: () -> Unit = {},
+    onSpaceMulti: (Boolean, Float) -> Unit = { _, _ -> },
+    onAlignToLast: (AlignEdge) -> Unit = {},
     onNudgeMulti: (Float, Float) -> Unit = { _, _ -> }
 ) {
     if (elements.isEmpty()) {
@@ -98,6 +103,11 @@ fun LayersPanel(
             label = { Text(stringResource(R.string.multi_mode)) },
             modifier = Modifier.testTag("multi_toggle")
         )
+        val selectedGroup = selectedId?.let { ElementTree.find(elements, it) }
+            ?.takeIf { it.type == com.arabicuieditor.data.model.ElementTypes.CONTAINER && it.children.isNotEmpty() }
+        if (selectedGroup != null && !multiMode) {
+            AssistChip(onClick = onUngroup, label = { Text(stringResource(R.string.ungroup)) }, modifier = Modifier.testTag("ungroup"))
+        }
         if (multiMode) {
             Text(stringResource(R.string.multi_count, multi.size), style = MaterialTheme.typography.labelMedium)
             if (multi.isNotEmpty()) {
@@ -116,6 +126,27 @@ fun LayersPanel(
                 AssistChip(onClick = { onNudgeMulti(8f, 0f) }, label = { Text("8 ▶") }, modifier = Modifier.testTag("multi_nudge_right"))
                 AssistChip(onClick = { onNudgeMulti(0f, -8f) }, label = { Text("▲ 8") }, modifier = Modifier.testTag("multi_nudge_up"))
                 AssistChip(onClick = { onNudgeMulti(0f, 8f) }, label = { Text("▼ 8") }, modifier = Modifier.testTag("multi_nudge_down"))
+            }
+            if (multi.size >= 2) {
+                AssistChip(onClick = onGroup, label = { Text(stringResource(R.string.group)) }, modifier = Modifier.testTag("group"))
+                var gapText by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("16") }
+                androidx.compose.material3.OutlinedTextField(
+                    value = gapText,
+                    onValueChange = { v -> gapText = v.filter { it.isDigit() }.take(3) },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.gap_label)) },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    modifier = Modifier.width(96.dp).testTag("gap_field")
+                )
+                AssistChip(onClick = { onSpaceMulti(true, gapText.toFloatOrNull() ?: 0f) }, label = { Text(stringResource(R.string.gap_h)) }, modifier = Modifier.testTag("multi_gap_h"))
+                AssistChip(onClick = { onSpaceMulti(false, gapText.toFloatOrNull() ?: 0f) }, label = { Text(stringResource(R.string.gap_v)) }, modifier = Modifier.testTag("multi_gap_v"))
+                Text(stringResource(R.string.align_to_last), style = MaterialTheme.typography.labelMedium)
+                AssistChip(onClick = { onAlignToLast(AlignEdge.LEFT) }, label = { Text(stringResource(R.string.align_to_left)) }, modifier = Modifier.testTag("last_align_left"))
+                AssistChip(onClick = { onAlignToLast(AlignEdge.CENTER_H) }, label = { Text(stringResource(R.string.align_to_center_h)) }, modifier = Modifier.testTag("last_align_center_h"))
+                AssistChip(onClick = { onAlignToLast(AlignEdge.RIGHT) }, label = { Text(stringResource(R.string.align_to_right)) }, modifier = Modifier.testTag("last_align_right"))
+                AssistChip(onClick = { onAlignToLast(AlignEdge.TOP) }, label = { Text(stringResource(R.string.align_to_top)) }, modifier = Modifier.testTag("last_align_top"))
+                AssistChip(onClick = { onAlignToLast(AlignEdge.CENTER_V) }, label = { Text(stringResource(R.string.align_to_center_v)) }, modifier = Modifier.testTag("last_align_center_v"))
+                AssistChip(onClick = { onAlignToLast(AlignEdge.BOTTOM) }, label = { Text(stringResource(R.string.align_to_bottom)) }, modifier = Modifier.testTag("last_align_bottom"))
             }
             if (multi.size >= 3) {
                 AssistChip(onClick = { onDistributeMulti(true) }, label = { Text(stringResource(R.string.distribute_h)) }, modifier = Modifier.testTag("multi_dist_h"))

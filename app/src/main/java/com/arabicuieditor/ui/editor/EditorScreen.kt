@@ -630,6 +630,10 @@ private fun EditorContent(
                                     onAlignMulti = viewModel::alignMulti,
                                     onDistributeMulti = viewModel::distributeMulti,
                                     onDeleteMulti = viewModel::deleteMulti,
+                                    onGroup = viewModel::groupMulti,
+                                    onUngroup = viewModel::unwrapSelected,
+                                    onSpaceMulti = viewModel::spaceMulti,
+                                    onAlignToLast = viewModel::alignMultiToLast,
                                     onNudgeMulti = viewModel::nudgeMulti
                                 )
 

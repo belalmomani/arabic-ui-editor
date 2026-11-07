@@ -18,6 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +44,9 @@ import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.Tokens
+import com.arabicuieditor.data.model.PressEffects
+import com.arabicuieditor.data.model.ScreenTransitions
+import com.arabicuieditor.data.model.prop
 import com.arabicuieditor.data.model.boolProp
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.resolved
@@ -109,6 +113,8 @@ fun PrototypePlayer(
         if (toast != null) { kotlinx.coroutines.delay(2500); toast = null }
     }
     val density = LocalDensity.current.density
+    // العنصر المضغوط الآن (لتأثير الضغط البصري).
+    var pressedId by remember { mutableStateOf<String?>(null) }
 
     // خلفية فاتحة موحّدة؛ شريطا الحالة والتنقل خارج المحتوى فيبقى «إغلاق» قابلًا للضغط.
     Column(modifier.background(Palette.Background).statusBarsPadding().navigationBarsPadding().testTag("proto_player")) {
@@ -131,12 +137,34 @@ fun PrototypePlayer(
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
             val scale = min(maxWidth.value / screen.width, maxHeight.value / screen.height)
+            // حركة ظهور الشاشة الجديدة (خاصية الشاشة)؛ الشاشة الأولى تظهر بلا حركة.
+            val transKind = screen.prop(PropertyKeys.SCREEN_TRANSITION)
+            val enter = remember(screen.id) {
+                androidx.compose.animation.core.Animatable(
+                    if (!ScreenTransitions.isAnimated(transKind) || (screen.id == startScreenId && nav.history.isEmpty())) 1f else 0f
+                )
+            }
+            LaunchedEffect(screen.id) { enter.animateTo(1f, androidx.compose.animation.core.tween(280)) }
             Box(
                 Modifier
                     .size((screen.width * scale).dp, (screen.height * scale).dp)
+                    .graphicsLayer {
+                        val t = enter.value
+                        when (transKind) {
+                            ScreenTransitions.FADE -> alpha = t
+                            ScreenTransitions.SLIDE -> { alpha = t; translationX = (1f - t) * size.width / 3f }
+                            ScreenTransitions.SCALE -> { alpha = t; scaleX = 0.9f + 0.1f * t; scaleY = 0.9f + 0.1f * t }
+                            else -> {}
+                        }
+                    }
                     .clipToBounds()
                     .pointerInput(effective, layout, scale, vars, overrides) {
                         detectTapGestures(
+                            onPress = { offset ->
+                                pressedId = Prototype.topElementAt(effective, layout, offset.x / density / scale, offset.y / density / scale)
+                                tryAwaitRelease()
+                                pressedId = null
+                            },
                             onLongPress = { offset ->
                                 val x = offset.x / density / scale
                                 val y = offset.y / density / scale
@@ -165,6 +193,9 @@ fun PrototypePlayer(
                         val rect = layout.frames[id]
                         if (element != null && rect != null && element.boolProp(PropertyKeys.VISIBLE)) {
                             key(id) {
+                                val kind = if (pressedId == id) element.prop(PropertyKeys.PRESS_EFFECT) else PressEffects.NONE
+                                val pressScale by animateFloatAsState(PressEffects.scaleOf(kind), label = "pressScale")
+                                val pressAlpha by animateFloatAsState(PressEffects.alphaOf(kind), label = "pressAlpha")
                                 ElementView(
                                     element = element,
                                     modifier = Modifier
@@ -173,8 +204,9 @@ fun PrototypePlayer(
                                         .graphicsLayer {
                                         rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat()
                                         // القلب حول المركز: لا يغيّر حدود العنصر فلا يتأثر اللمس ولا التحديد.
-                                        if (element.boolProp(PropertyKeys.FLIP_X)) scaleX = -1f
-                                        if (element.boolProp(PropertyKeys.FLIP_Y)) scaleY = -1f
+                                        scaleX = (if (element.boolProp(PropertyKeys.FLIP_X)) -1f else 1f) * pressScale
+                                        scaleY = (if (element.boolProp(PropertyKeys.FLIP_Y)) -1f else 1f) * pressScale
+                                        alpha = pressAlpha
                                     }
                                         .clipToBounds()
                                 )

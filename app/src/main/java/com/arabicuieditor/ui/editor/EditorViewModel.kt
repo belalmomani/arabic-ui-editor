@@ -19,6 +19,7 @@ import com.arabicuieditor.data.model.Constraints
 import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Interactions
 import com.arabicuieditor.data.model.LibraryLink
+import com.arabicuieditor.data.model.GroupFrame
 import com.arabicuieditor.data.model.LayoutEditing
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.PropertyKeys
@@ -199,6 +200,27 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val frames = _multi.value.filter { it in layout.freeIds }
             .mapNotNull { id -> layout.frames[id]?.let { id to it } }
         applyMoved(screen, layout, SmartAlign.distribute(frames, horizontal))
+    }
+
+    /** يضبط الفجوة بين العناصر الحرة المحددة إلى [gap] dp (أفقيًا أو عموديًا). خطوة تراجع واحدة. */
+    fun spaceMulti(horizontal: Boolean, gap: Float) {
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val frames = _multi.value.filter { it in layout.freeIds }
+            .mapNotNull { id -> layout.frames[id]?.let { id to it } }
+        applyMoved(screen, layout, SmartAlign.spaceBetween(frames, horizontal, gap.coerceIn(0f, 400f)))
+    }
+
+    /** يحاذي العناصر الحرة المحددة إلى آخر عنصر حُدِّد (هو يبقى مكانه). */
+    fun alignMultiToLast(edge: AlignEdge) {
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val ids = _multi.value.filter { it in layout.freeIds }
+        val anchor = ids.lastOrNull() ?: return
+        val frames = ids.mapNotNull { id -> layout.frames[id]?.let { id to it } }
+        applyMoved(screen, layout, SmartAlign.alignToAnchor(frames, anchor, edge))
     }
 
     /** يحذف كل العناصر المحددة دفعة واحدة (خطوة تراجع واحدة). */
@@ -715,6 +737,22 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val name = ElementOps.uniqueName(ElementTree.flatten(screen.elements), str(R.string.element_container))
         val wrapped = LayoutEditing.wrap(screen.elements, id, layout, containerId, name, frame.w, frame.h) ?: return
         editScreen(screen.id) { it.copy(elements = wrapped) }
+        _selectedId.value = containerId
+    }
+
+    /** يجمّع العناصر الحرة الجذرية المحددة (اثنان فأكثر) في حاوية واحدة تُحرَّك كوحدة. خطوة تراجع واحدة. */
+    fun groupMulti() {
+        val project = readyProject() ?: return
+        val screen = currentScreen() ?: return
+        val layout = layoutOf(project, screen)
+        val ids = _multi.value.filter { it in layout.freeIds && layout.parentOf[it] == null }.toSet()
+        if (ids.size < 2) return
+        val frames = ids.mapNotNull { id -> layout.frames[id]?.let { id to GroupFrame(it.x, it.y, it.w, it.h) } }.toMap()
+        val containerId = newId()
+        val name = ElementOps.uniqueName(ElementTree.flatten(screen.elements), str(R.string.group_name))
+        val grouped = LayoutEditing.group(screen.elements, ids, frames, containerId, name) ?: return
+        editScreen(screen.id) { it.copy(elements = grouped) }
+        setMultiMode(false)
         _selectedId.value = containerId
     }
 

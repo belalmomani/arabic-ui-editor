@@ -4,6 +4,9 @@ import kotlin.math.roundToInt
 
 enum class Axis { HORIZONTAL, VERTICAL }
 
+/** إطار عنصر بإحداثيات الشاشة (لحساب صندوق التجميع). */
+data class GroupFrame(val x: Float, val y: Float, val w: Float, val h: Float)
+
 /**
  * عمليات بنيوية نقية على شجرة العناصر لبناء التخطيطات: نقل بين الحاويات، تغليف، فك حاوية،
  * وتغيير نمط الأبعاد. كلها تعيد قائمة جديدة (أو null إن كانت العملية غير صالحة).
@@ -82,6 +85,45 @@ object LayoutEditing {
             children = listOf(child)
         )
         return ElementTree.update(roots, id) { container }
+    }
+
+    /**
+     * يجمّع عناصر جذرية حرة ([ids]، اثنان فأكثر) في حاوية حرة بحجم ثابت يساوي الصندوق المحيط بها.
+     * مواضع الأبناء تصبح نسبةً إلى الحاوية فيبقون في أماكنهم على الشاشة، وترتيبهم الرسمي محفوظ،
+     * والحاوية تأخذ مكان أعلاهم. يعيد null إن لم تكن كل العناصر جذرية أو لا إطار لأحدها.
+     */
+    fun group(
+        roots: List<UiElement>,
+        ids: Set<String>,
+        frames: Map<String, GroupFrame>,
+        containerId: String,
+        containerName: String
+    ): List<UiElement>? {
+        if (ids.size < 2) return null
+        val members = roots.filter { it.id in ids }
+        if (members.size != ids.size || members.any { frames[it.id] == null }) return null
+        val left = members.minOf { frames.getValue(it.id).x }
+        val top = members.minOf { frames.getValue(it.id).y }
+        val right = members.maxOf { frames.getValue(it.id).x + frames.getValue(it.id).w }
+        val bottom = members.maxOf { frames.getValue(it.id).y + frames.getValue(it.id).h }
+        val children = members.map { m ->
+            val f = frames.getValue(m.id)
+            m.copy(layout = m.layout.copy(x = f.x - left, y = f.y - top))
+        }
+        val container = UiElement(
+            id = containerId,
+            type = ElementTypes.CONTAINER,
+            layout = ElementLayout(left, top, SizeSpec.fixed(right - left), SizeSpec.fixed(bottom - top)),
+            childLayout = ChildLayout.ABSOLUTE,
+            properties = mapOf(PropertyKeys.NAME to containerName),
+            children = children
+        )
+        val topIndex = roots.indexOfLast { it.id in ids }
+        val out = ArrayList<UiElement>()
+        roots.forEachIndexed { i, e ->
+            if (i == topIndex) out += container else if (e.id !in ids) out += e
+        }
+        return out
     }
 
     /**

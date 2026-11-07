@@ -1,6 +1,9 @@
 package com.arabicuieditor.data.export
 
 import com.arabicuieditor.data.model.Aligns
+import com.arabicuieditor.data.model.ButtonStyles
+import com.arabicuieditor.data.model.PressEffects
+import com.arabicuieditor.data.model.ScreenTransitions
 import com.arabicuieditor.data.model.IconCatalog
 import com.arabicuieditor.data.model.ImageFits
 import com.arabicuieditor.data.model.ImageNames
@@ -40,6 +43,28 @@ import com.arabicuieditor.ui.editor.canvas.LayoutResult
  * - الدوران يُصدَّر كما هو. سلوك التثبيت/التحجيم عند تغيّر حجم الشاشة (Pins) غير مُصدَّر.
  */
 object ComposeExporter {
+    /** دالة مساعدة تُدرج في الكود المُصدَّر حين يستعمل زر تأثير الضغط. */
+    private val PRESS_HELPER = """// ---- تأثير الضغط على الأزرار ----
+private fun Modifier.pressEffect(kind: String): Modifier = composed {
+    var pressed by remember { mutableStateOf(false) }
+    val pressScale by animateFloatAsState(
+        if (!pressed) 1f else when (kind) { "shrink" -> 0.94f; "grow" -> 1.06f; else -> 1f },
+        label = "pressScale"
+    )
+    val pressAlpha by animateFloatAsState(if (pressed && kind == "dim") 0.7f else 1f, label = "pressAlpha")
+    this
+        .graphicsLayer { scaleX = pressScale; scaleY = pressScale; alpha = pressAlpha }
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                pressed = true
+                waitForUpOrCancellation()
+                pressed = false
+            }
+        }
+}
+"""
+
 
     const val DEFAULT_PACKAGE = "com.example.app"
 
@@ -287,6 +312,18 @@ object ComposeExporter {
                     it.type == ElementTypes.IMAGE && ImageNames.isValid(it.prop(PropertyKeys.IMAGE_SRC))
                 }
             }
+            val usesPress = project.screens.any { sc ->
+                ElementTree.flatten(sc.elements).any { pressKind(it) != null }
+            }
+            val usesTransitions = project.screens.any { ScreenTransitions.isAnimated(it.prop(PropertyKeys.SCREEN_TRANSITION)) }
+            if (usesTransitions) line("import androidx.compose.animation.*")
+            if (usesPress) {
+                line("import androidx.compose.animation.core.animateFloatAsState")
+                line("import androidx.compose.foundation.gestures.awaitEachGesture")
+                line("import androidx.compose.foundation.gestures.awaitFirstDown")
+                line("import androidx.compose.foundation.gestures.waitForUpOrCancellation")
+                line("import androidx.compose.ui.input.pointer.pointerInput")
+            }
             if (usesCustomFont) {
                 line("// يستعمل خطوطًا مخصصة: انسخ ملفاتها نفسها إلى res/font في مشروعك، واستورد R الخاص بحزمتك.")
             }
@@ -308,6 +345,7 @@ object ComposeExporter {
             )) line("import androidx.compose.$p.*")
             line()
             designObjects()
+            if (usesPress) PRESS_HELPER.lines().forEach { line(it) }
             if (usesLogic || usesInterp) appLogic()
             for (s in screens) {
                 screen(s)
@@ -350,13 +388,42 @@ object ComposeExporter {
             line("val navigate: (String) -> Unit = { stack = stack + it }")
             line("val back: () -> Unit = { if (stack.size > 1) stack = stack.dropLast(1) }")
             line("BackHandler(enabled = stack.size > 1) { back() }")
-            line("when (stack.last()) {")
+            val animated = order.withIndex().filter { ScreenTransitions.isAnimated(it.value.prop(PropertyKeys.SCREEN_TRANSITION)) }
+            if (animated.isEmpty()) {
+                line("when (stack.last()) {")
+            } else {
+                line("AnimatedContent(")
+                depth++
+                line("targetState = stack.last(),")
+                line("transitionSpec = {")
+                depth++
+                line("when (targetState) {")
+                depth++
+                animated.forEach { (i, s) ->
+                    val enter = ScreenTransitions.enterExpr(s.prop(PropertyKeys.SCREEN_TRANSITION))
+                    line("\"${screenRoute(i)}\" -> ($enter) togetherWith fadeOut()")
+                }
+                line("else -> EnterTransition.None togetherWith ExitTransition.None")
+                depth--
+                line("}")
+                depth--
+                line("},")
+                line("label = \"nav\"")
+                depth--
+                line(") { route ->")
+                depth++
+                line("when (route) {")
+            }
             depth++
             order.indices.forEach { i ->
                 line("\"${screenRoute(i)}\" -> ${screenFunction(i)}(onNavigate = navigate, onBack = back)")
             }
             depth--
             line("}")
+            if (animated.isNotEmpty()) {
+                depth--
+                line("}")
+            }
             depth--
             line("}")
         }
@@ -507,6 +574,11 @@ object ComposeExporter {
             return listOfNotNull(axis(l.width, true, skipW), axis(l.height, false, skipH))
         }
 
+        /** نوع تأثير الضغط للزر، أو null إن لم يكن له تأثير. */
+        private fun pressKind(e: UiElement): String? =
+            if (e.type != ElementTypes.BUTTON) null
+            else e.prop(PropertyKeys.PRESS_EFFECT).takeIf { it == PressEffects.SHRINK || it == PressEffects.DIM || it == PressEffects.GROW }
+
         /** المظهر: شفافية، دوران، ظل/قص، خلفية، حد، نقر. */
         private fun visual(e: UiElement, shadowed: Boolean = false): List<String> {
             val out = ArrayList<String>()
@@ -517,17 +589,40 @@ object ComposeExporter {
             val fx = e.prop(PropertyKeys.FLIP_X) == "true"
             val fy = e.prop(PropertyKeys.FLIP_Y) == "true"
             if (fx || fy) out += ".graphicsLayer(scaleX = ${if (fx) "-1f" else "1f"}, scaleY = ${if (fy) "-1f" else "1f"})"
+            pressKind(e)?.let { out += ".pressEffect(\"$it\")" }
             val radiusRaw = e.prop(PropertyKeys.CORNER_RADIUS)
             val shape = if (radiusRaw.isNotEmpty() && (Tokens.isRadiusRef(radiusRaw) || radiusValue(radiusRaw) > 0))
                 "RoundedCornerShape(${radiusExpr(radiusRaw)})" else null
+            val bg = e.prop(PropertyKeys.BG_COLOR)
+            val bw = intOf(e, PropertyKeys.BORDER_WIDTH)
+            // الأزرار الفنية: الزر الذي يغيّر المنطق لونه ديناميكيًا يبقى مسطحًا.
+            val look = if (e.type == ElementTypes.BUTTON && !isTarget(e)) ButtonStyles.look(e.prop(PropertyKeys.BUTTON_STYLE)) else null
+            if (look != null) {
+                val base = if (bg.isNotEmpty()) colorExpr(bg) else "Color.Transparent"
+                val shp = shape ?: "RectangleShape"
+                fun stop(s: ButtonStyles.Stop): String {
+                    val c = if (s.mix >= 0f) "lerp($base, Color.White, ${s.mix}f)" else "lerp($base, Color.Black, ${-s.mix}f)"
+                    return if (s.alpha < 1f) "$c.copy(alpha = ${s.alpha}f)" else c
+                }
+                if (look.elevationDp > 0) {
+                    val tint = if (look.glow) base else "Color.Black"
+                    out += ".shadow(${look.elevationDp}.dp, $shp, ambientColor = $tint, spotColor = $tint)"
+                }
+                out += ".clip($shp)"
+                out += if (look.darkFill) ".background(Color(0xFF0B1220), $shp)"
+                else ".background(Brush.verticalGradient(listOf(${look.stops.joinToString(", ") { stop(it) }})), $shp)"
+                if (look.borderDp > 0 && bw == 0) {
+                    val c = if (look.borderBase) base else "Color.White.copy(alpha = ${ButtonStyles.GLASS_BORDER_ALPHA}f)"
+                    out += ".border(${look.borderDp}.dp, $c, $shp)"
+                }
+            } else {
             if (shadowed) out += ".shadow(3.dp${shape?.let { ", $it" } ?: ""})"
             else if (shape != null) out += ".clip($shape)"
-            val bg = e.prop(PropertyKeys.BG_COLOR)
             if (isTarget(e)) {
                 val def = if (bg.isNotEmpty()) colorExpr(bg) else "Color.Transparent"
                 out += ".background(AppLogic.color(\"${esc(nameOf(e))}\", \"bgColor\", $def))"
             } else if (bg.isNotEmpty() && !isTransparent(bg)) out += ".background(${colorExpr(bg)})"
-            val bw = intOf(e, PropertyKeys.BORDER_WIDTH)
+            }
             if (bw > 0) {
                 val bc = colorExpr(e.prop(PropertyKeys.BORDER_COLOR))
                 out += ".border(${dp(bw)}, $bc${shape?.let { ", $it" } ?: ""})"

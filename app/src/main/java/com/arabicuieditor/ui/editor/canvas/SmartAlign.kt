@@ -252,6 +252,35 @@ object SmartAlign {
     }
 
     /**
+     * يضبط الفجوة بين الإطارات المتتالية على محور واحد إلى [gap] بالضبط؛ العنصر الأول يبقى مكانه
+     * والبقية تُرتَّب بعده بحسب موضعها. يحتاج عنصرين؛ ويعيد الإطارات التي تغيّرت فقط.
+     */
+    fun spaceBetween(frames: List<Pair<String, DesignRect>>, horizontal: Boolean, gap: Float): Map<String, DesignRect> {
+        if (frames.size < 2) return emptyMap()
+        val sorted = frames.sortedBy { if (horizontal) it.second.x else it.second.y }
+        val out = LinkedHashMap<String, DesignRect>()
+        var cursor = if (horizontal) sorted.first().second.x else sorted.first().second.y
+        for ((id, r) in sorted) {
+            val moved = if (horizontal) r.copy(x = cursor) else r.copy(y = cursor)
+            if (moved != r) out[id] = moved
+            cursor += (if (horizontal) r.w else r.h) + gap
+        }
+        return out
+    }
+
+    /** يحاذي كل الإطارات إلى إطار [anchorId] (يبقى هو مكانه). يعيد ما تغيّر فقط. */
+    fun alignToAnchor(frames: List<Pair<String, DesignRect>>, anchorId: String, edge: AlignEdge): Map<String, DesignRect> {
+        val anchor = frames.firstOrNull { it.first == anchorId }?.second ?: return emptyMap()
+        val out = LinkedHashMap<String, DesignRect>()
+        for ((id, r) in frames) {
+            if (id == anchorId) continue
+            val moved = alignIn(r, anchor, edge)
+            if (moved != r) out[id] = moved
+        }
+        return out
+    }
+
+    /**
      * يوزّع الإطارات بفجوات متساوية على محور واحد، مع بقاء الأول والأخير في مكانيهما.
      * يحتاج 3 عناصر على الأقل؛ وإلا يعيد خريطة فارغة. يعيد الإطارات التي تغيّرت فقط.
      */

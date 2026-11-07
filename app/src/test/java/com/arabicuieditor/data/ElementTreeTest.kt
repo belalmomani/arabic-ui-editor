@@ -6,6 +6,7 @@ import com.arabicuieditor.data.model.ElementLayout
 import com.arabicuieditor.data.model.ElementOps
 import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.ElementTypes
+import com.arabicuieditor.data.model.GroupFrame
 import com.arabicuieditor.data.model.LayoutEditing
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.SizeMode
@@ -175,5 +176,43 @@ class ElementTreeTest {
         assertTrue(ElementTree.canContain(ElementTypes.CARD))
         assertFalse(ElementTree.canContain(ElementTypes.BUTTON))
         assertFalse(ElementTree.canContain(ElementTypes.LIST))
+    }
+
+    @Test
+    fun groupWrapsRootElementsKeepingScreenPositions() {
+        val roots = listOf(leaf("a", 10f, 20f), leaf("x", 300f, 300f), leaf("b", 150f, 100f))
+        val frames = mapOf("a" to GroupFrame(10f, 20f, 100f, 40f), "b" to GroupFrame(150f, 100f, 100f, 40f))
+        val out = LayoutEditing.group(roots, setOf("a", "b"), frames, "g", "مجموعة")!!
+        assertEquals(listOf("x", "g"), out.map { it.id })
+        val g = out.last()
+        assertEquals(10f, g.layout.x, 0.001f)
+        assertEquals(20f, g.layout.y, 0.001f)
+        assertEquals(240f, g.layout.width.value, 0.001f)
+        assertEquals(120f, g.layout.height.value, 0.001f)
+        assertEquals(ChildLayout.ABSOLUTE, g.childLayout)
+        assertEquals(listOf("a", "b"), g.children.map { it.id })
+        assertEquals(0f, g.children[0].layout.x, 0.001f)
+        assertEquals(140f, g.children[1].layout.x, 0.001f)
+        assertEquals(80f, g.children[1].layout.y, 0.001f)
+    }
+
+    @Test
+    fun groupRejectsSingleOrNestedElements() {
+        val roots = listOf(group("c", listOf(leaf("n"))), leaf("a"))
+        val frames = mapOf("a" to GroupFrame(0f, 0f, 100f, 40f), "n" to GroupFrame(0f, 0f, 100f, 40f))
+        assertNull(LayoutEditing.group(roots, setOf("a"), frames, "g", "م"))
+        assertNull(LayoutEditing.group(roots, setOf("a", "n"), frames, "g", "م"))
+    }
+
+    @Test
+    fun ungroupRestoresScreenPositionsAfterGroup() {
+        val roots = listOf(leaf("a", 10f, 20f), leaf("b", 150f, 100f))
+        val frames = mapOf("a" to GroupFrame(10f, 20f, 100f, 40f), "b" to GroupFrame(150f, 100f, 100f, 40f))
+        val grouped = LayoutEditing.group(roots, setOf("a", "b"), frames, "g", "م")!!
+        val back = LayoutEditing.unwrap(grouped, "g", parentIsAbsolute = true)!!
+        assertEquals(listOf("a", "b"), back.map { it.id })
+        assertEquals(10f, back[0].layout.x, 0.001f)
+        assertEquals(150f, back[1].layout.x, 0.001f)
+        assertEquals(100f, back[1].layout.y, 0.001f)
     }
 }

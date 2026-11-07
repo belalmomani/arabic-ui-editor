@@ -61,6 +61,9 @@ object PropertyKeys {
     /** دوران العنصر بالدرجات (0..359) باتجاه عقارب الساعة حول مركزه. */
     const val ROTATION = "rotation"
     const val FLIP_X = "flipX"
+    const val BUTTON_STYLE = "buttonStyle"
+    const val PRESS_EFFECT = "pressEffect"
+    const val SCREEN_TRANSITION = "screenTransition"
     const val FLIP_Y = "flipY"
     const val VISIBLE = "visible"
     /** عنصر مقفل: يُحدَّد لكن لا يتحرك ولا يتغيّر حجمه بالسحب على اللوحة. */
@@ -373,6 +376,18 @@ object PropertyRegistry {
                 ElementTypes.DIVIDER to Tokens.color(Tokens.BORDER)
             ),
             fallback = TRANSPARENT
+        ),
+        PropertyDef(
+            PropertyKeys.BUTTON_STYLE, R.string.prop_button_style, PropertyGroup.APPEARANCE,
+            PropertyKind.Choice(ButtonStyles.options), setOf(ElementTypes.BUTTON), fallback = ButtonStyles.FLAT
+        ),
+        PropertyDef(
+            PropertyKeys.SCREEN_TRANSITION, R.string.prop_screen_transition, PropertyGroup.GENERAL,
+            PropertyKind.Choice(ScreenTransitions.options), setOf(SCREEN_TYPE), fallback = ScreenTransitions.NONE
+        ),
+        PropertyDef(
+            PropertyKeys.PRESS_EFFECT, R.string.prop_press_effect, PropertyGroup.APPEARANCE,
+            PropertyKind.Choice(PressEffects.options), setOf(ElementTypes.BUTTON), fallback = PressEffects.NONE
         ),
         PropertyDef(
             PropertyKeys.BORDER_WIDTH, R.string.prop_border_width, PropertyGroup.APPEARANCE, PropertyKind.Integer(0, 24), BOXED,

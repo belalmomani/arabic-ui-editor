@@ -19,7 +19,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.arabicuieditor.data.model.ButtonStyles
 import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.FontWeights
 import com.arabicuieditor.data.model.PropertyKeys
@@ -47,6 +50,27 @@ private val ContainerGuide = com.arabicuieditor.ui.theme.Palette.GuideGreen
 private val ImageCross = Color(0xFFB0B7BF)
 
 private fun argb(value: Int) = Color(value)
+
+/** يرسم الزر الفني: ظل (أو توهج) ثم قص ثم تعبئة متدرجة/داكنة ثم حد. */
+private fun Modifier.buttonLook(look: ButtonStyles.Look, base: Color, shape: Shape): Modifier {
+    fun stop(s: ButtonStyles.Stop): Color {
+        val c = if (s.mix >= 0f) lerp(base, Color.White, s.mix) else lerp(base, Color.Black, -s.mix)
+        return c.copy(alpha = s.alpha)
+    }
+    var m: Modifier = this
+    if (look.elevationDp > 0) {
+        val tint = if (look.glow) base else Color.Black
+        m = m.shadow(look.elevationDp.dp, shape, ambientColor = tint, spotColor = tint)
+    }
+    m = m.clip(shape)
+    m = if (look.darkFill) m.background(Color(ButtonStyles.DARK_FILL_ARGB), shape)
+    else m.background(Brush.verticalGradient(look.stops.map(::stop)), shape)
+    if (look.borderDp > 0) {
+        val c = if (look.borderBase) base else Color.White.copy(alpha = ButtonStyles.GLASS_BORDER_ALPHA)
+        m = m.border(look.borderDp.dp, c, shape)
+    }
+    return m
+}
 
 /**
  * يرسم عنصرًا واحدًا من خصائصه (كلها تُقرأ عبر [prop] والقيم الافتراضية في السجل).
@@ -85,8 +109,14 @@ fun ElementView(element: UiElement, modifier: Modifier) {
             StyledText(element, element.prop(PropertyKeys.TEXT), padded)
         }
 
-        ElementTypes.BUTTON -> Box(base.boxStyle(), contentAlignment = alignmentOf(element)) {
-            StyledText(element, element.prop(PropertyKeys.TEXT), padded, singleLine = true)
+        ElementTypes.BUTTON -> {
+            val look = ButtonStyles.look(element.prop(PropertyKeys.BUTTON_STYLE))
+            val styled = if (look == null) base.boxStyle()
+            else base.buttonLook(look, bg, shape)
+                .let { if (borderWidth > 0) it.border(borderWidth.dp, borderColor, shape) else it }
+            Box(styled, contentAlignment = alignmentOf(element)) {
+                StyledText(element, element.prop(PropertyKeys.TEXT), padded, singleLine = true)
+            }
         }
 
         ElementTypes.INPUT -> Box(base.boxStyle(), contentAlignment = alignmentOf(element)) {
