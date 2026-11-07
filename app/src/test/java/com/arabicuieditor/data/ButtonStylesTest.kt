@@ -105,4 +105,20 @@ class ButtonStylesTest {
         val plain = ComposeExporter.export(p.copy(screens = listOf(p.screens[0], p.screens[0].copy(id = "s2", name = "ب"))))
         assertFalse(plain.contains("AnimatedContent"))
     }
+
+    @Test
+    fun pivotDefaultsToCenterAndExportsOriginOnlyWhenCustom() {
+        assertEquals("50", PropertyRegistry.defaultOf(ElementTypes.BUTTON, PropertyKeys.PIVOT_X))
+        fun code(px: String): String {
+            val btn = UiElement(
+                id = "b", type = ElementTypes.BUTTON,
+                layout = ElementLayout(0f, 0f, SizeSpec.fixed(100f), SizeSpec.fixed(40f)),
+                properties = mapOf(PropertyKeys.ROTATION to "30", PropertyKeys.PIVOT_X to px, PropertyKeys.PIVOT_Y to "0")
+            )
+            val p = newProject("م", "الرئيسية")
+            return ComposeExporter.export(p.copy(screens = listOf(p.screens[0].copy(elements = listOf(btn)))))
+        }
+        assertTrue(code("0").contains("transformOrigin = TransformOrigin(0.0f, 0.0f)"))
+        assertTrue(code("50").contains("transformOrigin = TransformOrigin(0.5f, 0.0f)"))
+    }
 }

@@ -30,6 +30,8 @@ import com.arabicuieditor.ui.theme.Palette
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import com.arabicuieditor.data.model.pivotX
+import com.arabicuieditor.data.model.pivotY
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -164,6 +166,7 @@ fun DesignCanvas(
                             freeIds = lay.freeIds,
                             selectedId = selectedBefore,
                             rotationOf = { id -> latestElements[id]?.intProp(PropertyKeys.ROTATION) ?: 0 },
+                            pivotOf = { id -> latestElements[id]?.let { it.pivotX() to it.pivotY() } ?: (0.5f to 0.5f) },
                             showTools = latestEditable && (latestOnRotate != null || latestOnRepeat != null),
                             vp = vp,
                             density = dens,
@@ -336,8 +339,11 @@ fun DesignCanvas(
                                     .absoluteOffset(rect.x.dp, rect.y.dp)
                                     .size(rect.w.dp, rect.h.dp)
                                     .graphicsLayer {
+                                        transformOrigin = TransformOrigin(element.pivotX(), element.pivotY())
                                         rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat()
-                                        // القلب حول المركز: لا يغيّر حدود العنصر فلا يتأثر اللمس ولا التحديد.
+                                    }
+                                    .graphicsLayer {
+                                        // القلب حول المركز دائمًا: لا يغيّر حدود العنصر فلا يتأثر اللمس ولا التحديد.
                                         if (element.boolProp(PropertyKeys.FLIP_X)) scaleX = -1f
                                         if (element.boolProp(PropertyKeys.FLIP_Y)) scaleY = -1f
                                     }
@@ -353,6 +359,8 @@ fun DesignCanvas(
                 frameH = layout.height,
                 selected = selectedId?.let { layout.frames[it] },
                 rotation = selectedId?.let { elementsById[it]?.intProp(PropertyKeys.ROTATION) } ?: 0,
+                pivotX = selectedId?.let { elementsById[it]?.pivotX() } ?: 0.5f,
+                pivotY = selectedId?.let { elementsById[it]?.pivotY() } ?: 0.5f,
                 showTools = editable && (onElementRotate != null || onElementRepeat != null),
                 ghost = ghost,
                 guides = guides,
@@ -389,6 +397,7 @@ private fun decideTarget(
     freeIds: Set<String>,
     selectedId: String?,
     rotationOf: (String) -> Int,
+    pivotOf: (String) -> Pair<Float, Float> = { 0.5f to 0.5f },
     showTools: Boolean,
     vp: Viewport,
     density: Float,
@@ -400,8 +409,9 @@ private fun decideTarget(
     if (selected != null) {
         val sr = CanvasMath.toScreenRect(vp, density, selected.second)
         val rot = rotationOf(selected.first)
-        val cx = (sr.left + sr.right) / 2f
-        val cy = (sr.top + sr.bottom) / 2f
+        val (pfx, pfy) = pivotOf(selected.first)
+        val cx = sr.left + (sr.right - sr.left) * pfx
+        val cy = sr.top + (sr.bottom - sr.top) * pfy
         // نقطة اللمس بإحداثيات العنصر غير المدار.
         val (lx, ly) = if (rot == 0) px to py else CanvasMath.rotatePoint(px, py, cx, cy, -rot.toFloat())
         if (showTools) {
@@ -429,7 +439,7 @@ private fun decideTarget(
     val designX = CanvasMath.toDesignX(vp, density, px)
     val designY = CanvasMath.toDesignY(vp, density, py)
     val slopDesign = ELEMENT_HIT_SLOP_DP / vp.scale
-    val hit = CanvasMath.hitTestRotated(rects, rotationOf, designX, designY, slopDesign)
+    val hit = CanvasMath.hitTestRotated(rects, rotationOf, designX, designY, slopDesign, pivotOf)
     if (hit != null) {
         return GestureTarget.Move(hit, rects.first { it.first == hit }.second, hit in freeIds)
     }
@@ -443,6 +453,8 @@ private fun SelectionOverlay(
     frameH: Float,
     selected: DesignRect?,
     rotation: Int,
+    pivotX: Float = 0.5f,
+    pivotY: Float = 0.5f,
     showTools: Boolean,
     ghost: DesignRect?,
     guides: List<Guide>,
@@ -525,7 +537,7 @@ private fun SelectionOverlay(
         }
 
         val rect = selected?.let { CanvasMath.toScreenRect(viewport, density, it) } ?: return@Canvas
-        val pivot = Offset((rect.left + rect.right) / 2f, (rect.top + rect.bottom) / 2f)
+        val pivot = Offset(rect.left + rect.width * pivotX, rect.top + rect.height * pivotY)
         rotate(rotation.toFloat(), pivot) {
             drawRect(
                 color = SelectionColor,
@@ -538,6 +550,13 @@ private fun SelectionOverlay(
                 val center = Offset(h.x, h.y)
                 drawCircle(Color.White, radius, center)
                 drawCircle(SelectionColor, radius, center, style = Stroke(1.5.dp.toPx()))
+            }
+            if (pivotX != 0.5f || pivotY != 0.5f) {
+                // علامة نقطة الارتكاز: ✛ صغيرة.
+                val m = 5.dp.toPx()
+                drawLine(SelectionColor, Offset(pivot.x - m, pivot.y), Offset(pivot.x + m, pivot.y), 1.5.dp.toPx())
+                drawLine(SelectionColor, Offset(pivot.x, pivot.y - m), Offset(pivot.x, pivot.y + m), 1.5.dp.toPx())
+                drawCircle(SelectionColor, 2.dp.toPx(), pivot)
             }
             if (showTools) {
                 val r = TOOL_RADIUS_DP.dp.toPx()

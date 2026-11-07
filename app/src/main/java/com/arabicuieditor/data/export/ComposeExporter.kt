@@ -585,9 +585,16 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
             val opacity = intOf(e, PropertyKeys.OPACITY)
             if (opacity in 0..99) out += ".alpha(${opacity / 100.0}f)"
             val rotation = intOf(e, PropertyKeys.ROTATION)
-            if (rotation != 0) out += ".rotate(${rotation}f)"
             val fx = e.prop(PropertyKeys.FLIP_X) == "true"
             val fy = e.prop(PropertyKeys.FLIP_Y) == "true"
+            val pvx = intOf(e, PropertyKeys.PIVOT_X).coerceIn(0, 100)
+            val pvy = intOf(e, PropertyKeys.PIVOT_Y).coerceIn(0, 100)
+            if (rotation != 0) {
+                // الدوران حول نقطة الارتكاز (المركز افتراضيًا)؛ القلب حول المركز دائمًا كما في المحرر.
+                out += if (pvx != 50 || pvy != 50)
+                    ".graphicsLayer(rotationZ = ${rotation}f, transformOrigin = TransformOrigin(${pvx / 100f}f, ${pvy / 100f}f))"
+                else ".rotate(${rotation}f)"
+            }
             if (fx || fy) out += ".graphicsLayer(scaleX = ${if (fx) "-1f" else "1f"}, scaleY = ${if (fy) "-1f" else "1f"})"
             pressKind(e)?.let { out += ".pressEffect(\"$it\")" }
             val radiusRaw = e.prop(PropertyKeys.CORNER_RADIUS)

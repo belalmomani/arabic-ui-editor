@@ -147,4 +147,16 @@ class CanvasMathTest {
         assertEquals("bar", CanvasMath.hitTestRotated(rects, rot, 100f, 10f, 0f))
         assertNull(CanvasMath.hitTestRotated(rects, rot, 10f, 100f, 0f))
     }
+
+    @Test
+    fun rotatedHitTestUsesThePivotPoint() {
+        // مستطيل (0,0,100,20) مدار 180° حول زاويته العليا اليسرى: يغطي x∈[-100,0], y∈[-20,0].
+        val rects = listOf("bar" to DesignRect(0f, 0f, 100f, 20f))
+        val rot = { _: String -> 180 }
+        val pivot = { _: String -> 0f to 0f }
+        assertEquals("bar", CanvasMath.hitTestRotated(rects, rot, -50f, -10f, 0f, pivot))
+        assertNull(CanvasMath.hitTestRotated(rects, rot, 50f, 10f, 0f, pivot))
+        // حول المركز يبقى في مكانه تقريبًا
+        assertEquals("bar", CanvasMath.hitTestRotated(rects, rot, 50f, 10f, 0f))
+    }
 }

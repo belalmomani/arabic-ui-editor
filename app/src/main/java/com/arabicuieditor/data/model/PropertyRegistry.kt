@@ -61,6 +61,8 @@ object PropertyKeys {
     /** دوران العنصر بالدرجات (0..359) باتجاه عقارب الساعة حول مركزه. */
     const val ROTATION = "rotation"
     const val FLIP_X = "flipX"
+    const val PIVOT_X = "pivotX"
+    const val PIVOT_Y = "pivotY"
     const val BUTTON_STYLE = "buttonStyle"
     const val PRESS_EFFECT = "pressEffect"
     const val SCREEN_TRANSITION = "screenTransition"
@@ -236,6 +238,8 @@ object PropertyRegistry {
         PropertyDef(PropertyKeys.VISIBLE, R.string.prop_visible, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "true"),
         PropertyDef(PropertyKeys.OPACITY, R.string.prop_opacity, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "100"),
         PropertyDef(PropertyKeys.ROTATION, R.string.prop_rotation, PropertyGroup.GENERAL, PropertyKind.Integer(0, 359), ALL, fallback = "0"),
+        PropertyDef(PropertyKeys.PIVOT_X, R.string.prop_pivot_x, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "50"),
+        PropertyDef(PropertyKeys.PIVOT_Y, R.string.prop_pivot_y, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "50"),
         PropertyDef(PropertyKeys.FLIP_X, R.string.prop_flip_x, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "false"),
         PropertyDef(PropertyKeys.FLIP_Y, R.string.prop_flip_y, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "false"),
 

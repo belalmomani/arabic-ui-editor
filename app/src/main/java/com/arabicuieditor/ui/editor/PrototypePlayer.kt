@@ -48,6 +48,8 @@ import com.arabicuieditor.data.model.PressEffects
 import com.arabicuieditor.data.model.ScreenTransitions
 import com.arabicuieditor.data.model.prop
 import com.arabicuieditor.data.model.boolProp
+import com.arabicuieditor.data.model.pivotX
+import com.arabicuieditor.data.model.pivotY
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.script.ScriptEngine
@@ -202,8 +204,11 @@ fun PrototypePlayer(
                                         .absoluteOffset(rect.x.dp, rect.y.dp)
                                         .size(rect.w.dp, rect.h.dp)
                                         .graphicsLayer {
+                                        transformOrigin = TransformOrigin(element.pivotX(), element.pivotY())
                                         rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat()
-                                        // القلب حول المركز: لا يغيّر حدود العنصر فلا يتأثر اللمس ولا التحديد.
+                                    }
+                                    .graphicsLayer {
+                                        // القلب وتأثير الضغط حول المركز دائمًا.
                                         scaleX = (if (element.boolProp(PropertyKeys.FLIP_X)) -1f else 1f) * pressScale
                                         scaleY = (if (element.boolProp(PropertyKeys.FLIP_Y)) -1f else 1f) * pressScale
                                         alpha = pressAlpha

@@ -59,6 +59,7 @@ import com.arabicuieditor.data.model.Contrast
 import com.arabicuieditor.data.model.FontCatalog
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.data.model.colorProp
+import com.arabicuieditor.data.model.PivotPresets
 import com.arabicuieditor.data.model.boolProp
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.PropertyKeys
@@ -169,12 +170,37 @@ fun PropertiesPanel(
                         modifier = Modifier.testTag("flip_y")
                     )
                     val current = element.intProp(PropertyKeys.ROTATION)
+                    // (النقطة الافتراضية = المركز) نقطة الارتكاز تُعرض في الصف التالي.
                     listOf(0, 45, 90, 135, 180, 270).forEach { deg ->
                         FilterChip(
                             selected = current == deg,
                             onClick = { onSetProperty(PropertyKeys.ROTATION, deg.toString()) },
                             label = { Text("$deg°") },
                             modifier = Modifier.testTag("angle_$deg")
+                        )
+                    }
+                }
+            }
+        }
+
+        item(key = "pivot") {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("pivot_section")) {
+                SectionHeader(stringResource(R.string.pivot_title))
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val cx = element.intProp(PropertyKeys.PIVOT_X)
+                    val cy = element.intProp(PropertyKeys.PIVOT_Y)
+                    PivotPresets.all.forEach { (labelRes, x, y) ->
+                        FilterChip(
+                            selected = cx == x && cy == y,
+                            onClick = {
+                                onSetProperty(PropertyKeys.PIVOT_X, x.toString())
+                                onSetProperty(PropertyKeys.PIVOT_Y, y.toString())
+                            },
+                            label = { Text(stringResource(labelRes)) },
+                            modifier = Modifier.testTag("pivot_${x}_$y")
                         )
                     }
                 }

@@ -182,13 +182,15 @@ object CanvasMath {
         rotationOf: (String) -> Int,
         x: Float,
         y: Float,
-        slop: Float
+        slop: Float,
+        pivotOf: (String) -> Pair<Float, Float> = { 0.5f to 0.5f }
     ): String? {
         for (i in rects.indices.reversed()) {
             val (id, r) = rects[i]
             val rot = rotationOf(id)
+            val (fx, fy) = pivotOf(id)
             val (lx, ly) = if (rot == 0) x to y
-            else rotatePoint(x, y, r.x + r.w / 2f, r.y + r.h / 2f, -rot.toFloat())
+            else rotatePoint(x, y, r.x + r.w * fx, r.y + r.h * fy, -rot.toFloat())
             if (r.contains(lx, ly, slop)) return id
         }
         return null

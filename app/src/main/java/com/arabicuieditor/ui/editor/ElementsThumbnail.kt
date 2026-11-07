@@ -25,6 +25,8 @@ import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.Tokens
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.boolProp
+import com.arabicuieditor.data.model.pivotX
+import com.arabicuieditor.data.model.pivotY
 import com.arabicuieditor.data.model.intProp
 import com.arabicuieditor.data.model.resolved
 import com.arabicuieditor.ui.editor.canvas.DesignRect
@@ -87,8 +89,11 @@ fun ScreenThumbnail(
                                     .absoluteOffset(rect.x.dp, rect.y.dp)
                                     .size(rect.w.dp, rect.h.dp)
                                     .graphicsLayer {
+                                        transformOrigin = TransformOrigin(element.pivotX(), element.pivotY())
                                         rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat()
-                                        // القلب حول المركز: لا يغيّر حدود العنصر فلا يتأثر اللمس ولا التحديد.
+                                    }
+                                    .graphicsLayer {
+                                        // القلب حول المركز دائمًا: لا يغيّر حدود العنصر فلا يتأثر اللمس ولا التحديد.
                                         if (element.boolProp(PropertyKeys.FLIP_X)) scaleX = -1f
                                         if (element.boolProp(PropertyKeys.FLIP_Y)) scaleY = -1f
                                     }
