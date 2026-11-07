@@ -168,7 +168,8 @@ class PropertyRegistryTest {
     @Test
     fun screenRootUsesTheSameRegistry() {
         val free = keysIn(SCREEN_TYPE, ChildLayout.ABSOLUTE, ChildLayout.ABSOLUTE, isScreen = true)
-        assertTrue(free.isEmpty())
+        // الشاشة الحرة بلا خصائص تخطيط؛ الوحيدة المتاحة دائمًا حركة الظهور.
+        assertEquals(setOf(PropertyKeys.SCREEN_TRANSITION), free.toSet())
         val column = keysIn(SCREEN_TYPE, ChildLayout.COLUMN, ChildLayout.ABSOLUTE, isScreen = true)
         assertTrue(PropertyKeys.SPACING in column && PropertyKeys.PADDING_START in column)
         assertFalse(PropertyKeys.NAME in column || PropertyKeys.MARGIN_START in column)
