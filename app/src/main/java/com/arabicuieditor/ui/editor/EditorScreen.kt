@@ -392,6 +392,17 @@ private fun EditorContent(
                                 .testTag("multi_canvas_chip")
                         )
                     }
+                    if (!editable) {
+                        // عند حجم معاينة مختلف لا تظهر أزرار التدوير/التحريك ولا يعمل السحب؛ هذا الزر يعيد حجم التصميم.
+                        AssistChip(
+                            onClick = { viewModel.setPreviewSize(0f, 0f) },
+                            label = { Text(stringResource(R.string.preview_back_to_edit)) },
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(8.dp)
+                                .testTag("preview_back_to_edit")
+                        )
+                    }
                     FloatingTools(
                         expanded = quickOpen,
                         onToggle = { quickOpen = !quickOpen },

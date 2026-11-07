@@ -229,6 +229,7 @@
     <string name="trans_fade">تلاشٍ</string>
     <string name="trans_slide">انزلاق</string>
     <string name="trans_scale">تكبير</string>
+    <string name="preview_back_to_edit">حجم معاينة · اضغط للعودة إلى التحرير</string>
     <string name="transform_tools">أدوات التحويل</string>
     <string name="angle_preset">زاوية جاهزة</string>
     <string name="prop_text">النص</string>
