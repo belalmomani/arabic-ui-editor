@@ -102,7 +102,10 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
         private fun nameOf(e: UiElement) = e.properties[PropertyKeys.NAME].orEmpty()
         private val allElements: List<UiElement> by lazy { project.screens.flatMap { ElementTree.flatten(it.elements) } }
         private val clickBlocks: List<List<Step>> by lazy {
-            allElements.mapNotNull { (Interactions.clickAction(it) as? ClickAction.Blocks)?.steps }.filter { it.isNotEmpty() }
+            allElements.flatMap { e ->
+                listOf(Interactions.TRIGGER_CLICK, Interactions.TRIGGER_LONG_PRESS)
+                    .mapNotNull { (Interactions.actionFor(e, it) as? ClickAction.Blocks)?.steps }
+            }.filter { it.isNotEmpty() }
         }
         private val usesLogic get() = clickBlocks.isNotEmpty()
         /** أسماء العناصر التي تغيّرها خطوات المنطق؛ هذه وحدها تُرسم بقيم ديناميكية. */
@@ -643,17 +646,26 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
             return out
         }
 
-        private fun clickMod(e: UiElement): String? = when (val a = Interactions.clickAction(e)) {
+        /** جسم الإجراء كأسطر Kotlin، أو null إن لم يكن هناك إجراء (الجسم الفارغ "" يعني كتل بلا خطوات). */
+        private fun actionBody(a: ClickAction): String? = when (a) {
             ClickAction.None -> null
-            is ClickAction.Blocks -> blocksBody(a.steps).let { b ->
-                if (b.isEmpty()) ".clickable { }" else ".clickable { $b }"
-            }
-            is ClickAction.Script -> ".clickable { /* TODO: سكربت JS في المحرر لا يُصدَّر؛ اكتب المنطق هنا */ }"
-            ClickAction.Back -> ".clickable { onBack() }"
+            is ClickAction.Blocks -> blocksBody(a.steps)
+            is ClickAction.Script -> "/* TODO: سكربت JS في المحرر لا يُصدَّر؛ اكتب المنطق هنا */"
+            ClickAction.Back -> "onBack()"
             is ClickAction.Navigate -> {
                 val i = screenIndex[a.screenId]
-                if (i == null) ".clickable { /* TODO: الشاشة المستهدفة محذوفة */ }"
-                else ".clickable { onNavigate(\"${screenRoute(i)}\") }"
+                if (i == null) "/* TODO: الشاشة المستهدفة محذوفة */" else "onNavigate(\"${screenRoute(i)}\")"
+            }
+        }
+
+        /** النقر `.clickable`، ومع ضغطة مطوّلة `.combinedClickable` بالإجراءين. */
+        private fun clickMod(e: UiElement): String? {
+            val click = actionBody(Interactions.actionFor(e, Interactions.TRIGGER_CLICK))
+            val long = actionBody(Interactions.actionFor(e, Interactions.TRIGGER_LONG_PRESS))
+            return when {
+                click == null && long == null -> null
+                long == null -> if (click!!.isEmpty()) ".clickable { }" else ".clickable { $click }"
+                else -> ".combinedClickable(onClick = { ${click.orEmpty()} }, onLongClick = { $long })"
             }
         }
 

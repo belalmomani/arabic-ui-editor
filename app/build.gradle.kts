@@ -14,7 +14,7 @@ android {
         targetSdk = 35
         // يزيد رقم الإصدار تلقائيًا مع كل بناء على GitHub Actions.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.48.0"
+        versionName = "0.49.0"
     }
 
     // مفتاح توقيع ثابت للنسخة التجريبية (debug) كي يُثبَّت كل APK جديد فوق السابق

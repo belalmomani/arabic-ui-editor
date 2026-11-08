@@ -103,4 +103,31 @@ class ComposeLogicExportTest {
         assertTrue(code.contains("Unit"))
         assertFalse(code.contains("onNavigate(\"screen"))
     }
+
+    private fun codeWithLongPress(click: ClickAction?, long: ClickAction): String {
+        var btn = el("b", ElementTypes.BUTTON, mapOf(PropertyKeys.NAME to "زر", PropertyKeys.TEXT to "اضغط"))
+        if (click != null) btn = Interactions.withClickAction(btn, click)
+        btn = Interactions.withAction(btn, Interactions.TRIGGER_LONG_PRESS, long)
+        val p = newProject("م", "الرئيسية")
+        return ComposeExporter.export(p.copy(screens = listOf(p.screens[0].copy(elements = listOf(btn)))))
+    }
+
+    @Test
+    fun longPressExportsCombinedClickable() {
+        val code = codeWithLongPress(ClickAction.Back, ClickAction.Back)
+        assertTrue(code.contains(".combinedClickable(onClick = { onBack() }, onLongClick = { onBack() })"))
+    }
+
+    @Test
+    fun longPressOnlyKeepsAnEmptyClick() {
+        val code = codeWithLongPress(null, ClickAction.Back)
+        assertTrue(code.contains(".combinedClickable(onClick = {  }, onLongClick = { onBack() })"))
+    }
+
+    @Test
+    fun longPressToastStepDeclaresContext() {
+        val code = codeWithLongPress(null, ClickAction.Blocks(listOf(Step(Steps.TOAST, "تم"))))
+        assertTrue(code.contains("val ctx = LocalContext.current"))
+        assertTrue(code.contains("combinedClickable"))
+    }
 }
