@@ -149,4 +149,26 @@ class AndroidProjectExporterTest {
         }
         assertTrue(File(dir, "app/build.gradle.kts").isFile)
     }
+
+    @Test
+    fun customFontFilesAreBundledWhenAvailable() {
+        val p = imageProject()
+        val ttf = byteArrayOf(0, 1, 0, 0, 9)
+        val otf = byteArrayOf('O'.code.toByte(), 'T'.code.toByte(), 'T'.code.toByte(), 'O'.code.toByte(), 1)
+        val with = AndroidProjectExporter.files(p, "com.example.app", emptyMap(), mapOf("my_custom_font" to ttf))
+        assertTrue(with.containsKey("app/src/main/res/font/my_custom_font.ttf"))
+        val screens = String(with.getValue("app/src/main/java/com/example/app/Screens.kt"), Charsets.UTF_8)
+        assertTrue(screens.contains("FontFamily(Font(R.font.my_custom_font))"))
+        assertEquals("otf", AndroidProjectExporter.fontExtension(otf))
+        assertEquals("ttf", AndroidProjectExporter.fontExtension(ttf))
+        val without = AndroidProjectExporter.files(p, "com.example.app", emptyMap())
+        assertFalse(without.keys.any { it.startsWith("app/src/main/res/font/") })
+        val screens2 = String(without.getValue("app/src/main/java/com/example/app/Screens.kt"), Charsets.UTF_8)
+        assertFalse(screens2.contains("R.font."))
+    }
+
+    @Test
+    fun usedFontsListsOnlyCustomOnes() {
+        assertEquals(listOf("my_custom_font"), AndroidProjectExporter.usedFonts(imageProject()))
+    }
 }

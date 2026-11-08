@@ -4,6 +4,7 @@ import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.ImageNames
 import com.arabicuieditor.data.model.Project
+import com.arabicuieditor.data.model.FontCatalog
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.prop
 import java.io.File
@@ -16,7 +17,7 @@ import java.util.zip.ZipOutputStream
  * بـ GitHub Actions (لا يحتاج gradlew؛ الـ workflow يثبّت Gradle). دالة نقية ما عدا قراءة الصور.
  *
  * ما يُصدَّر: الشاشات (كود [ComposeExporter])، التنقل بينها، نظام التصميم، الصور المستعملة.
- * ما لا يُصدَّر: المنطق (متغيرات/سكربت)، الخطوط المخصصة (تُستبدل بخط النظام).
+ * ما لا يُصدَّر: منطق JS المتقدم؛ والخطوط المخصصة تُرفق إن توفرت ملفاتها وإلا تُستبدل بخط النظام.
  */
 object AndroidProjectExporter {
     const val DEFAULT_PACKAGE = "com.example.myapp"
@@ -48,11 +49,26 @@ object AndroidProjectExporter {
             .filter { ImageNames.isValid(it) }
             .distinct()
 
+    /** معرّفات الخطوط المخصصة المستعملة فعلًا في العناصر (غير خطوط النظام). */
+    fun usedFonts(project: Project): List<String> =
+        project.screens.flatMap { ElementTree.flatten(it.elements) }
+            .map { it.prop(PropertyKeys.FONT_FAMILY) }
+            .filter { it.isNotEmpty() && !FontCatalog.isSystem(it) && FontCatalog.isValid(it) }
+            .distinct()
+
+    /** امتداد ملف الخط من ترويسته: OTTO = ‎.otf وغيره ‎.ttf. */
+    fun fontExtension(bytes: ByteArray): String =
+        if (bytes.size >= 4 && bytes[0] == 'O'.code.toByte() && bytes[1] == 'T'.code.toByte() &&
+            bytes[2] == 'T'.code.toByte() && bytes[3] == 'O'.code.toByte()) "otf" else "ttf"
+
     /**
      * كل ملفات المشروع: مسار نسبي ← محتوى. [images] اسم الملف ← بايتاته (ما لا يوجد منها يُتخطّى
      * فيظهر خطأ ترجمة واضح في R.drawable؛ لذا تُرفق قائمة الناقص في README).
      */
-    fun files(project: Project, packageName: String, images: Map<String, ByteArray>): LinkedHashMap<String, ByteArray> {
+    fun files(
+        project: Project, packageName: String, images: Map<String, ByteArray>,
+        fonts: Map<String, ByteArray> = emptyMap()
+    ): LinkedHashMap<String, ByteArray> {
         require(isValidPackage(packageName)) { "اسم حزمة غير صالح: $packageName" }
         val out = LinkedHashMap<String, ByteArray>()
         fun text(path: String, content: String) { out[path] = content.toByteArray(Charsets.UTF_8) }
@@ -177,7 +193,8 @@ object AndroidProjectExporter {
                 }
             }
         """.trimIndent() + "\n")
-        text("app/src/main/java/$pkgPath/Screens.kt", ComposeExporter.export(project, null, packageName, customFonts = false))
+        text("app/src/main/java/$pkgPath/Screens.kt", ComposeExporter.export(project, null, packageName, customFonts = true, fontIds = fonts.keys))
+        for ((id, bytes) in fonts) out["app/src/main/res/font/$id.${fontExtension(bytes)}"] = bytes
         for (name in used) images[name]?.let { out["app/src/main/res/drawable/$name"] = it }
         text(".github/workflows/build-apk.yml", """
             name: Build APK
@@ -225,7 +242,10 @@ object AndroidProjectExporter {
             appendLine()
             appendLine("## ما لا يتضمنه")
             appendLine("- المنطق (المتغيرات، منطق الأزرار، سكربت JS): أماكنه تعليقات TODO في `Screens.kt`.")
-            appendLine("- الخطوط المخصصة: استُبدلت بخط النظام. أضف ملفات الخط إلى `res/font` وعدّل الكود.")
+            val usedF = usedFonts(project)
+            val missingF = usedF.filter { it !in fonts }
+            if (usedF.isNotEmpty() && missingF.isEmpty()) appendLine("- الخطوط المخصصة: أُرفقت ملفاتها في `res/font`.")
+            else if (missingF.isNotEmpty()) appendLine("- خطوط مخصصة لم تتوفر ملفاتها فاستُبدلت بخط النظام: ${missingF.joinToString("، ")}. أضف ملفاتها إلى `res/font` وعدّل الكود.")
             appendLine("- التصميم يُرسم يسار-يمين كما في المحرر (غلاف LayoutDirection.Ltr في كل شاشة).")
             if (missing.isNotEmpty()) {
                 appendLine()
@@ -238,13 +258,18 @@ object AndroidProjectExporter {
     }
 
     /** يكتب المشروع كملف ZIP إلى [out]؛ الصور تُقرأ من [imagesDir] (قد يكون null). */
-    fun writeZip(project: Project, packageName: String, imagesDir: File?, out: OutputStream) {
+    fun writeZip(
+        project: Project, packageName: String, imagesDir: File?, out: OutputStream,
+        fontLoader: ((String) -> ByteArray?)? = null
+    ) {
         val images = LinkedHashMap<String, ByteArray>()
         for (name in usedImages(project)) {
             val f = imagesDir?.let { File(it, name) }
             if (f != null && f.isFile) images[name] = f.readBytes()
         }
-        val files = files(project, packageName, images)
+        val fonts = LinkedHashMap<String, ByteArray>()
+        if (fontLoader != null) for (id in usedFonts(project)) fontLoader(id)?.let { fonts[id] = it }
+        val files = files(project, packageName, images, fonts)
         ZipOutputStream(out).use { zip ->
             for ((path, bytes) in files) {
                 zip.putNextEntry(ZipEntry(path))

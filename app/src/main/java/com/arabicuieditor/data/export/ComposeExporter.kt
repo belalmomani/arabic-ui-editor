@@ -71,10 +71,12 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
     /** @param onlyScreenId إن حُدّد يُصدَّر هذه الشاشة وحدها (مع كائنات التصميم) بلا جذر التنقل. */
     fun export(
         project: Project, onlyScreenId: String? = null, packageName: String = DEFAULT_PACKAGE,
-        customFonts: Boolean = true
+        customFonts: Boolean = true,
+        /** إن لم تكن null فالخطوط المخصصة المسموحة هي هذه فقط (التي أُرفقت ملفاتها). */
+        fontIds: Set<String>? = null
     ): String {
         val screens = if (onlyScreenId == null) project.screens else project.screens.filter { it.id == onlyScreenId }
-        return Generator(project, packageName, onlyScreenId == null, customFonts).generate(screens)
+        return Generator(project, packageName, onlyScreenId == null, customFonts, fontIds).generate(screens)
     }
 
     /** اسم دالة الشاشة رقم [index] (من 0): Screen1، Screen2... (الأسماء العربية لا تصلح معرّفات). */
@@ -83,7 +85,10 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
 
     // ---------------------------------------------------------------------------------------
 
-    private class Generator(val project: Project, val pkg: String, val withRoot: Boolean, val customFonts: Boolean = true) {
+    private class Generator(
+        val project: Project, val pkg: String, val withRoot: Boolean,
+        val customFonts: Boolean = true, val fontIds: Set<String>? = null
+    ) {
         private val ds: DesignSystem = project.designSystem
         private val sb = StringBuilder()
         private var depth = 0
@@ -758,7 +763,7 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
             FontCatalog.MONO -> "FontFamily.Monospace"
             FontCatalog.CURSIVE -> "FontFamily.Cursive"
             FontCatalog.DEFAULT, "" -> null
-            else -> if (customFonts && FontCatalog.isValid(id)) "FontFamily(Font(R.font.$id))" else null
+            else -> if (customFonts && FontCatalog.isValid(id) && (fontIds == null || id in fontIds)) "FontFamily(Font(R.font.$id))" else null
         }
 
         private fun textStyleArgs(e: UiElement, singleLine: Boolean): List<String> {
