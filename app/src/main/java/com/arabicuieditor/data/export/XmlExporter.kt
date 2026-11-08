@@ -162,6 +162,8 @@ object XmlExporter {
             if (opacity in 0..99) attrs += "android:alpha=\"${opacity / 100.0}\""
             val rot = e.i(PropertyKeys.ROTATION)
             if (rot != 0) attrs += "android:rotation=\"$rot\""
+            if (e.prop(PropertyKeys.FLIP_X) == "true") attrs += "android:scaleX=\"-1\""
+            if (e.prop(PropertyKeys.FLIP_Y) == "true") attrs += "android:scaleY=\"-1\""
 
             when (e.type) {
                 ElementTypes.TEXT -> leaf("TextView", e, attrs, background = false) { textAttrs(e, it, e.prop(PropertyKeys.TEXT), false) }

@@ -110,4 +110,18 @@ class FlutterExporterTest {
         assertTrue(!out.contains("MaterialApp"))
         assertTrue(out.contains("class Screen2"))
     }
+
+    @Test
+    fun flipAndPivotExportAsTransforms() {
+        val s = UiScreen("s1", "أ", 360f, 640f, listOf(
+            el("t", ElementTypes.TEXT, x = 20f, y = 30f, props = mapOf(
+                PropertyKeys.ROTATION to "30", PropertyKeys.PIVOT_X to "0", PropertyKeys.PIVOT_Y to "0",
+                PropertyKeys.FLIP_X to "true"
+            ))
+        ))
+        val out = FlutterExporter.export(project(s))
+        assertBalanced(out)
+        assertTrue(out.contains("Matrix4.diagonal3Values(-1.0, 1.0, 1.0)"))
+        assertTrue(out.contains("alignment: Alignment(-1.0, -1.0)"))
+    }
 }

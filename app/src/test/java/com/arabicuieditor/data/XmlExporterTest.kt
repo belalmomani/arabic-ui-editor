@@ -99,4 +99,14 @@ class XmlExporterTest {
         val f = files(out)
         assertEquals(setOf("res/layout/screen_2.xml"), f.keys)
     }
+
+    @Test
+    fun flipExportsScaleAttributes() {
+        val s = UiScreen("s1", "أ", 360f, 640f, listOf(
+            el("t", ElementTypes.TEXT, props = mapOf(PropertyKeys.FLIP_X to "true", PropertyKeys.FLIP_Y to "true"))
+        ))
+        val out = XmlExporter.export(project(s))
+        assertTrue(out.contains("android:scaleX=\"-1\""))
+        assertTrue(out.contains("android:scaleY=\"-1\""))
+    }
 }

@@ -162,10 +162,25 @@ object FlutterExporter {
             w = sized(e, parent, w, d)
             val op = e.i(PropertyKeys.OPACITY)
             if (op in 0..99) w = call("Opacity", listOf("opacity: ${op / 100.0}", "child: $w"), d)
+            // القلب (حول المركز) داخل الدوران، كما في المحرر.
+            val fx = e.prop(PropertyKeys.FLIP_X) == "true"
+            val fy = e.prop(PropertyKeys.FLIP_Y) == "true"
+            if (fx || fy) {
+                w = call("Transform", listOf(
+                    "alignment: Alignment.center",
+                    "transform: Matrix4.diagonal3Values(${if (fx) "-1.0" else "1.0"}, ${if (fy) "-1.0" else "1.0"}, 1.0)",
+                    "child: $w"
+                ), d)
+            }
             val rot = e.i(PropertyKeys.ROTATION)
             if (rot != 0) {
                 usesMath = true
-                w = call("Transform.rotate", listOf("angle: $rot * math.pi / 180", "child: $w"), d)
+                val ax = e.i(PropertyKeys.PIVOT_X).coerceIn(0, 100) / 50.0 - 1.0
+                val ay = e.i(PropertyKeys.PIVOT_Y).coerceIn(0, 100) / 50.0 - 1.0
+                val args = arrayListOf("angle: $rot * math.pi / 180")
+                if (ax != 0.0 || ay != 0.0) args += "alignment: Alignment($ax, $ay)"
+                args += "child: $w"
+                w = call("Transform.rotate", args, d)
             }
             w = withActions(e, w, d)
             w = placed(e, parent, pp, ownerId, w, d)
