@@ -392,6 +392,24 @@ private fun EditorContent(
                                 .testTag("multi_canvas_chip")
                         )
                     }
+                    val barId = selectedId
+                    if (editable && !multiMode && barId != null) {
+                        layout.frames[barId]?.let { fr ->
+                            ElementFloatingBar(
+                                rect = CanvasMath.toScreenRect(vp, density, fr),
+                                canvasW = canvasSize.width.toFloat(),
+                                canvasH = canvasSize.height.toFloat(),
+                                onDuplicate = viewModel::duplicateSelected,
+                                onDelete = viewModel::deleteSelected,
+                                onForward = { viewModel.reorderSelected(ReorderOp.FORWARD) },
+                                onBackward = { viewModel.reorderSelected(ReorderOp.BACKWARD) },
+                                onEdit = {
+                                    openTool = Tool.EDIT
+                                    if (subTab !in Tool.EDIT.subs) subTab = Tool.EDIT.subs.first()
+                                }
+                            )
+                        }
+                    }
                     if (!editable) {
                         // عند حجم معاينة مختلف لا تظهر أزرار التدوير/التحريك ولا يعمل السحب؛ هذا الزر يعيد حجم التصميم.
                         AssistChip(

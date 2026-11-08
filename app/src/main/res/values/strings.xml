@@ -242,6 +242,9 @@
     <string name="pivot_bottom_left">أسفل يسار</string>
     <string name="pivot_bottom">أسفل</string>
     <string name="pivot_bottom_right">أسفل يمين</string>
+    <string name="bar_forward">للأمام</string>
+    <string name="bar_backward">للخلف</string>
+    <string name="bar_edit">الخصائص</string>
     <string name="transform_tools">أدوات التحويل</string>
     <string name="angle_preset">زاوية جاهزة</string>
     <string name="prop_text">النص</string>
