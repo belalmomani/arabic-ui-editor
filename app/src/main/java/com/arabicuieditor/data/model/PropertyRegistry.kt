@@ -341,8 +341,8 @@ object PropertyRegistry {
         PropertyDef(PropertyKeys.IMAGE_ZOOM, R.string.prop_image_zoom, PropertyGroup.APPEARANCE, PropertyKind.Integer(100, 400), setOf(ElementTypes.IMAGE), fallback = "100"),
         PropertyDef(PropertyKeys.IMAGE_PAN_X, R.string.prop_image_pan_x, PropertyGroup.APPEARANCE, PropertyKind.Integer(-100, 100), setOf(ElementTypes.IMAGE), fallback = "0"),
         PropertyDef(PropertyKeys.IMAGE_PAN_Y, R.string.prop_image_pan_y, PropertyGroup.APPEARANCE, PropertyKind.Integer(-100, 100), setOf(ElementTypes.IMAGE), fallback = "0"),
-        PropertyDef(PropertyKeys.ICON, R.string.prop_icon, PropertyGroup.APPEARANCE, PropertyKind.Text(), setOf(ElementTypes.IMAGE), fallback = ""),
-        PropertyDef(PropertyKeys.ICON_COLOR, R.string.prop_icon_color, PropertyGroup.APPEARANCE, PropertyKind.ColorValue, setOf(ElementTypes.IMAGE), fallback = Tokens.color(Tokens.TEXT_COLOR)),
+        PropertyDef(PropertyKeys.ICON, R.string.prop_icon, PropertyGroup.APPEARANCE, PropertyKind.Text(), setOf(ElementTypes.IMAGE, ElementTypes.BUTTON), fallback = ""),
+        PropertyDef(PropertyKeys.ICON_COLOR, R.string.prop_icon_color, PropertyGroup.APPEARANCE, PropertyKind.ColorValue, setOf(ElementTypes.IMAGE, ElementTypes.BUTTON), fallback = Tokens.color(Tokens.TEXT_COLOR)),
         PropertyDef(PropertyKeys.FONT_FAMILY, R.string.prop_font_family, PropertyGroup.TEXT, PropertyKind.Text(), TEXTUAL, fallback = FontCatalog.DEFAULT),
         PropertyDef(
             PropertyKeys.FONT_WEIGHT, R.string.prop_font_weight, PropertyGroup.TEXT,

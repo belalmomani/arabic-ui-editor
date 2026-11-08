@@ -114,8 +114,19 @@ fun ElementView(element: UiElement, modifier: Modifier) {
             val styled = if (look == null) base.boxStyle()
             else base.buttonLook(look, bg, shape)
                 .let { if (borderWidth > 0) it.border(borderWidth.dp, borderColor, shape) else it }
+            val buttonIcon = iconVector(element.prop(PropertyKeys.ICON))
             Box(styled, contentAlignment = alignmentOf(element)) {
-                StyledText(element, element.prop(PropertyKeys.TEXT), padded, singleLine = true)
+                if (buttonIcon != null) {
+                    // زر أيقونة: الأيقونة تُعرض بدل النص.
+                    androidx.compose.material3.Icon(
+                        imageVector = buttonIcon,
+                        contentDescription = null,
+                        tint = argb(element.colorProp(PropertyKeys.ICON_COLOR)),
+                        modifier = Modifier.fillMaxSize(0.55f).align(Alignment.Center)
+                    )
+                } else {
+                    StyledText(element, element.prop(PropertyKeys.TEXT), padded, singleLine = true)
+                }
             }
         }
 

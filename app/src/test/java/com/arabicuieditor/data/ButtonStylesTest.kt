@@ -2,6 +2,8 @@ package com.arabicuieditor.data
 
 import com.arabicuieditor.data.export.ComposeExporter
 import com.arabicuieditor.data.model.ButtonStyles
+import com.arabicuieditor.data.model.ComponentLibrary
+import com.arabicuieditor.data.model.PresetCategory
 import com.arabicuieditor.data.model.ElementLayout
 import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.PressEffects
@@ -120,5 +122,40 @@ class ButtonStylesTest {
         }
         assertTrue(code("0").contains("transformOrigin = TransformOrigin(0.0f, 0.0f)"))
         assertTrue(code("50").contains("transformOrigin = TransformOrigin(0.5f, 0.0f)"))
+    }
+
+    @Test
+    fun styledButtonPresetsAreRealStyledButtons() {
+        val styled = ComponentLibrary.byCategory(PresetCategory.BUTTONS).filter { it.id.startsWith("sb_") }
+        assertTrue(styled.size >= 12)
+        val used = styled.map { p ->
+            val e = p.build { "نص" }.single()
+            assertEquals(ElementTypes.BUTTON, e.type)
+            assertEquals(PressEffects.SHRINK, e.properties[PropertyKeys.PRESS_EFFECT])
+            e.properties.getValue(PropertyKeys.BUTTON_STYLE)
+        }.toSet()
+        // كل نمط فني (عدا المسطح) ممثَّل بزر جاهز واحد على الأقل
+        val all = ButtonStyles.options.map { it.first }.filter { it != ButtonStyles.FLAT }.toSet()
+        assertTrue("$all vs $used", used.containsAll(all))
+    }
+
+    @Test
+    fun iconButtonExportsIconInsteadOfText() {
+        val check = ComponentLibrary.presets.first { it.id == "sb_check_3d" }.build { "x" }.single()
+        assertEquals("Check", check.properties[PropertyKeys.ICON])
+        val p = newProject("م", "الرئيسية")
+        val code = ComposeExporter.export(p.copy(screens = listOf(p.screens[0].copy(elements = listOf(check)))))
+        assertTrue(code.contains("imageVector = Icons.Filled.Check"))
+        assertTrue(code.contains("Brush.verticalGradient"))
+        assertTrue(code.contains("import androidx.compose.material.icons.Icons"))
+    }
+
+    @Test
+    fun everyPresetIconIsInTheCatalog() {
+        ComponentLibrary.byCategory(PresetCategory.BUTTONS).filter { it.id.startsWith("sb_") }.forEach { pr ->
+            pr.build { "x" }.single().properties[PropertyKeys.ICON]?.let {
+                assertTrue(it, com.arabicuieditor.data.model.IconCatalog.isValid(it))
+            }
+        }
     }
 }

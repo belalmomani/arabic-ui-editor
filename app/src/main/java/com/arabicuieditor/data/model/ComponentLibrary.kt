@@ -326,7 +326,7 @@ object ComponentLibrary {
                 )
             )
         }
-    ) + ProComponents.presets
+    ) + StyledButtons.presets + ProComponents.presets
 
     fun byCategory(category: PresetCategory): List<ComponentPreset> = presets.filter { it.category == category }
 }

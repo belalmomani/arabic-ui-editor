@@ -689,7 +689,21 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
                 depth++
             }
             when (e.type) {
-                ElementTypes.TEXT, ElementTypes.BUTTON -> textBox(e, place, e.prop(PropertyKeys.TEXT), singleLine = e.type == ElementTypes.BUTTON)
+                ElementTypes.BUTTON -> if (IconCatalog.isValid(e.prop(PropertyKeys.ICON))) {
+                    // زر أيقونة: الأيقونة بدل النص (كما في المحرر).
+                    call("Box", emptyList(), place + visual(e)) {
+                        call(
+                            "Icon",
+                            listOf(
+                                "imageVector = Icons.Filled.${e.prop(PropertyKeys.ICON)}",
+                                "contentDescription = null",
+                                "tint = ${colorExpr(e.prop(PropertyKeys.ICON_COLOR))}"
+                            ),
+                            listOf(".fillMaxSize(0.55f)", ".align(Alignment.Center)")
+                        )
+                    }
+                } else textBox(e, place, e.prop(PropertyKeys.TEXT), singleLine = true)
+                ElementTypes.TEXT -> textBox(e, place, e.prop(PropertyKeys.TEXT), singleLine = false)
                 ElementTypes.INPUT -> inputBox(e, place)
                 ElementTypes.IMAGE -> {
                     val src = e.prop(PropertyKeys.IMAGE_SRC)
