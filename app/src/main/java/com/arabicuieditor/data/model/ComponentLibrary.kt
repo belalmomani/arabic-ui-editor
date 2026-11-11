@@ -17,7 +17,8 @@ enum class PresetCategory(@StringRes val labelRes: Int) {
     MENUS(R.string.cat_menus),
     DIALOGS(R.string.cat_dialogs),
     NEWS(R.string.cat_news),
-    CHAT(R.string.cat_chat)
+    CHAT(R.string.cat_chat),
+    STICKERS(R.string.cat_stickers)
 }
 
 /**
@@ -29,6 +30,8 @@ class ComponentPreset(
     val id: String,
     @StringRes val labelRes: Int,
     val category: PresetCategory,
+    /** رقم يُمرَّر لنص التسمية (مثل «ملصق %d») إن لم يكن للمكوّن اسم ثابت. */
+    val labelArg: Int? = null,
     val build: (text: (Int) -> String) -> List<UiElement>
 )
 
@@ -83,7 +86,7 @@ object ComponentLibrary {
     private val DANGER = Tokens.color(Tokens.DANGER)
     private val MUTED = Tokens.color(Tokens.MUTED)
 
-    val presets: List<ComponentPreset> = listOf(
+    val presets: List<ComponentPreset> = Stickers.presets + listOf(
         // أزرار
         ComponentPreset("btn_primary", R.string.preset_btn_primary, PresetCategory.BUTTONS) { t ->
             listOf(el(ElementTypes.BUTTON, 140f, 44f, props = arrayOf(PropertyKeys.TEXT to t(R.string.preset_btn_primary))))

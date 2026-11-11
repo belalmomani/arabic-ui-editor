@@ -80,12 +80,19 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
             scope.launch(Dispatchers.IO) {
                 val ok = try {
                     context.contentResolver.openOutputStream(uri)?.use { out ->
-                        AndroidProjectExporter.writeZip(project, pkg, imagesDir, out) { id ->
-                            // ملف الخط المخصص من موارد التطبيق (إن وُجد في res/font).
-                            @Suppress("DiscouragedApi")
-                            val res = context.resources.getIdentifier(id, "font", context.packageName)
-                            if (res == 0) null else try { context.resources.openRawResource(res).use { it.readBytes() } } catch (_: Exception) { null }
-                        }
+                        AndroidProjectExporter.writeZip(
+                            project, pkg, imagesDir, out,
+                            fontLoader = { id ->
+                                // ملف الخط المخصص من موارد التطبيق (إن وُجد في res/font).
+                                @Suppress("DiscouragedApi")
+                                val res = context.resources.getIdentifier(id, "font", context.packageName)
+                                if (res == 0) null else try { context.resources.openRawResource(res).use { it.readBytes() } } catch (_: Exception) { null }
+                            },
+                            stickerLoader = { name ->
+                                // الملصقات المضمّنة في assets/stickers.
+                                try { context.assets.open(com.arabicuieditor.data.model.Stickers.assetPath(name)).use { it.readBytes() } } catch (_: Exception) { null }
+                            }
+                        )
                     } != null
                 } catch (_: Exception) { false }
                 withContext(Dispatchers.Main) {

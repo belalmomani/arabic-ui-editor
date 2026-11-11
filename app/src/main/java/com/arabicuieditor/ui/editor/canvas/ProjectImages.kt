@@ -7,7 +7,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import com.arabicuieditor.data.model.ImageNames
+import com.arabicuieditor.data.model.Stickers
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,6 +21,7 @@ val LocalImageDir = compositionLocalOf<File?> { null }
 /** يحمّل صورة المشروع مصغّرة في الخلفية. يعيد null أثناء التحميل أو إن فُقد الملف. */
 @Composable
 fun rememberProjectImage(name: String): ImageBitmap? {
+    if (name.isNotEmpty() && ImageNames.isValid(name) && Stickers.isSticker(name)) return rememberStickerImage(name)
     val dir = LocalImageDir.current
     if (dir == null || name.isEmpty() || !ImageNames.isValid(name)) return null
     val file = File(dir, name)
@@ -39,4 +43,29 @@ private fun decode(file: File): ImageBitmap? = try {
     }
 } catch (_: Throwable) {
     null
+}
+
+/** ملصق مضمّن من assets/stickers (لا يعتمد على مجلد المشروع). */
+@Composable
+private fun rememberStickerImage(name: String): ImageBitmap? {
+    val context = LocalContext.current.applicationContext
+    val bitmap by produceState<ImageBitmap?>(null, name) {
+        value = withContext(Dispatchers.IO) { StickerCache.load(context, name) }
+    }
+    return bitmap
+}
+
+private object StickerCache {
+    private val cache = android.util.LruCache<String, ImageBitmap>(64)
+
+    fun load(context: Context, name: String): ImageBitmap? {
+        cache.get(name)?.let { return it }
+        val bmp = try {
+            context.assets.open(Stickers.assetPath(name)).use { BitmapFactory.decodeStream(it) }?.asImageBitmap()
+        } catch (_: Throwable) {
+            null
+        }
+        if (bmp != null) cache.put(name, bmp)
+        return bmp
+    }
 }

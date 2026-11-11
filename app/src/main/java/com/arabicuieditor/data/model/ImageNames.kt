@@ -2,11 +2,11 @@ package com.arabicuieditor.data.model
 
 /**
  * أسماء ملفات الصور المستوردة داخل مجلد موارد المشروع. منطق نقي قابل للاختبار.
- * الصيغة: img_<رقم>.png|jpg — أحرف لاتينية صغيرة فقط، فتصلح اسمًا لـ drawable في Android.
+ * الصيغة: img_<رقم>.png|jpg (والملصقات المضمّنة stk_*.webp) — أحرف لاتينية صغيرة فقط، فتصلح اسمًا لـ drawable في Android.
  */
 object ImageNames {
     const val MAX_SIDE_PX = 1600
-    private val VALID = Regex("^[a-z][a-z0-9_]{0,39}\\.(png|jpg)$")
+    private val VALID = Regex("^[a-z][a-z0-9_]{0,39}\\.(png|jpg|webp)$")
 
     fun isValid(name: String): Boolean = VALID.matches(name)
 

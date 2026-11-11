@@ -4,6 +4,7 @@ import com.arabicuieditor.data.model.Aligns
 import com.arabicuieditor.data.model.ButtonStyles
 import com.arabicuieditor.data.model.PressEffects
 import com.arabicuieditor.data.model.ScreenTransitions
+import com.arabicuieditor.data.model.Stickers
 import com.arabicuieditor.data.model.IconCatalog
 import com.arabicuieditor.data.model.ImageFits
 import com.arabicuieditor.data.model.ImageNames
@@ -584,7 +585,7 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
 
         /** نوع تأثير الضغط للزر، أو null إن لم يكن له تأثير. */
         private fun pressKind(e: UiElement): String? =
-            if (e.type != ElementTypes.BUTTON) null
+            if (e.type != ElementTypes.BUTTON && e.type != ElementTypes.IMAGE) null
             else e.prop(PropertyKeys.PRESS_EFFECT).takeIf { it == PressEffects.SHRINK || it == PressEffects.DIM || it == PressEffects.GROW }
 
         /** المظهر: شفافية، دوران، ظل/قص، خلفية، حد، نقر. */
@@ -725,7 +726,8 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
                             )
                         }
                     } else if (src.isNotEmpty() && ImageNames.isValid(src)) {
-                        line("// انسخ الملف $src من resources إلى app/src/main/res/drawable/ (الاسم: ${ImageNames.drawableName(src)})")
+                        if (Stickers.isSticker(src)) line("// ملصق مضمّن: يأتي الملف $src ضمن «مشروع Android كامل (ZIP)» في res/drawable/")
+                        else line("// انسخ الملف $src من resources إلى app/src/main/res/drawable/ (الاسم: ${ImageNames.drawableName(src)})")
                         val zoom = intOf(e, PropertyKeys.IMAGE_ZOOM)
                         val px = intOf(e, PropertyKeys.IMAGE_PAN_X)
                         val py = intOf(e, PropertyKeys.IMAGE_PAN_Y)

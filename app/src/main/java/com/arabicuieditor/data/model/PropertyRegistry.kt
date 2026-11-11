@@ -391,7 +391,7 @@ object PropertyRegistry {
         ),
         PropertyDef(
             PropertyKeys.PRESS_EFFECT, R.string.prop_press_effect, PropertyGroup.APPEARANCE,
-            PropertyKind.Choice(PressEffects.options), setOf(ElementTypes.BUTTON), fallback = PressEffects.NONE
+            PropertyKind.Choice(PressEffects.options), setOf(ElementTypes.BUTTON, ElementTypes.IMAGE), fallback = PressEffects.NONE
         ),
         PropertyDef(
             PropertyKeys.BORDER_WIDTH, R.string.prop_border_width, PropertyGroup.APPEARANCE, PropertyKind.Integer(0, 24), BOXED,

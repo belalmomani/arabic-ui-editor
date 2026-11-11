@@ -107,6 +107,8 @@ fun LibraryPanel(
                 onRename = { c -> nameDialog = NameDialog(c.id, c.name) },
                 onDelete = onDeleteUser
             )
+        } else if (category == PresetCategory.STICKERS) {
+            StickersSection(onAdd)
         } else {
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -140,7 +142,7 @@ fun LibraryPanel(
                                 ScreenThumbnail(thumb, ds, 124f, 64f, wholeScreen = false)
                             }
                             Text(
-                                text = stringResource(preset.labelRes),
+                                text = preset.labelArg?.let { stringResource(preset.labelRes, it) } ?: stringResource(preset.labelRes),
                                 style = MaterialTheme.typography.labelMedium,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1

@@ -5,6 +5,7 @@ import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.ImageNames
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.FontCatalog
+import com.arabicuieditor.data.model.Stickers
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.prop
 import java.io.File
@@ -260,12 +261,18 @@ object AndroidProjectExporter {
     /** يكتب المشروع كملف ZIP إلى [out]؛ الصور تُقرأ من [imagesDir] (قد يكون null). */
     fun writeZip(
         project: Project, packageName: String, imagesDir: File?, out: OutputStream,
-        fontLoader: ((String) -> ByteArray?)? = null
+        fontLoader: ((String) -> ByteArray?)? = null,
+        /** يقرأ ملف ملصق مضمّن (assets/stickers) باسمه؛ يُستعمل لأسماء stk_*.webp فقط. */
+        stickerLoader: ((String) -> ByteArray?)? = null
     ) {
         val images = LinkedHashMap<String, ByteArray>()
         for (name in usedImages(project)) {
-            val f = imagesDir?.let { File(it, name) }
-            if (f != null && f.isFile) images[name] = f.readBytes()
+            if (Stickers.isSticker(name)) {
+                stickerLoader?.invoke(name)?.let { images[name] = it }
+            } else {
+                val f = imagesDir?.let { File(it, name) }
+                if (f != null && f.isFile) images[name] = f.readBytes()
+            }
         }
         val fonts = LinkedHashMap<String, ByteArray>()
         if (fontLoader != null) for (id in usedFonts(project)) fontLoader(id)?.let { fonts[id] = it }
