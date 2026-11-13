@@ -77,4 +77,20 @@ object Stickers {
     val presets: List<ComponentPreset> = byTileId.values.toList()
 
     fun presetFor(t: Tile): ComponentPreset = byTileId.getValue(t.id)
+
+    /** زر صورة فارغ: يختار المستخدم صورته من المعرض في «الخصائص»، وله تأثير ضغط جاهز. */
+    val blankImageButton: ComponentPreset = ComponentPreset("stk_blank", R.string.stk_blank_button, PresetCategory.STICKERS) { _ ->
+        listOf(
+            UiElement(
+                id = newId(),
+                type = ElementTypes.IMAGE,
+                layout = ElementLayout(0f, 0f, SizeSpec.fixed(120f), SizeSpec.fixed(120f)),
+                properties = mapOf(
+                    PropertyKeys.IMAGE_FIT to ImageFits.CROP,
+                    PropertyKeys.CORNER_RADIUS to "16",
+                    PropertyKeys.PRESS_EFFECT to PressEffects.SHRINK
+                )
+            )
+        )
+    }
 }

@@ -279,6 +279,10 @@
     <string name="stk_pack_p11">دعم ومساعدة</string>
     <string name="stk_pack_p12">ذكاء اصطناعي</string>
     <string name="stk_pack_p13">ترحيب</string>
+    <string name="stk_blank_button">+ زر من صورتي (اختر الصورة من الخصائص)</string>
+    <string name="stk_favorites">المفضلة</string>
+    <string name="stk_favorites_hint">اضغط لإضافة الملصق، واضغط مطوّلًا لوضعه في المفضلة أو إزالته منها.</string>
+    <string name="stk_favorites_empty">لا ملصقات مفضلة بعد: اضغط مطوّلًا على أي ملصق لإضافته هنا.</string>
     <string name="transform_tools">أدوات التحويل</string>
     <string name="angle_preset">زاوية جاهزة</string>
     <string name="prop_text">النص</string>

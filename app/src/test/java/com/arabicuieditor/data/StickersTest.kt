@@ -9,6 +9,7 @@ import com.arabicuieditor.data.model.ImageNames
 import com.arabicuieditor.data.model.PresetCategory
 import com.arabicuieditor.data.model.PressEffects
 import com.arabicuieditor.data.model.PropertyKeys
+import com.arabicuieditor.data.model.StickerFavorites
 import com.arabicuieditor.data.model.Stickers
 import com.arabicuieditor.data.model.newProject
 import java.io.ByteArrayInputStream
@@ -96,5 +97,27 @@ class StickersTest {
         // بلا محمّل: لا ملف، ويُذكر في README كصورة ناقصة
         val files = AndroidProjectExporter.files(project, "com.example.app", emptyMap())
         assertFalse(files.containsKey("app/src/main/res/drawable/stk_p13_20.webp"))
+    }
+
+    @Test
+    fun favoritesToggleKeepOrderAndIgnoreUnknownIds() {
+        var f = emptyList<String>()
+        f = StickerFavorites.toggle(f, "p02_03")
+        f = StickerFavorites.toggle(f, "p01_01")
+        f = StickerFavorites.toggle(f, "nope")
+        assertEquals(listOf("p02_03", "p01_01"), f)
+        f = StickerFavorites.toggle(f, "p02_03")
+        assertEquals(listOf("p01_01"), f)
+        assertEquals(listOf("p01_01", "p13_20"), StickerFavorites.decode("p01_01, bad ,p13_20,p01_01"))
+        assertEquals("p01_01,p13_20", StickerFavorites.encode(listOf("p01_01", "p13_20")))
+        assertEquals(emptyList<String>(), StickerFavorites.decode(null))
+    }
+
+    @Test
+    fun blankImageButtonHasPressEffectAndNoSource() {
+        val e = Stickers.blankImageButton.build { "x" }.single()
+        assertEquals(ElementTypes.IMAGE, e.type)
+        assertEquals(PressEffects.SHRINK, e.properties[PropertyKeys.PRESS_EFFECT])
+        assertFalse(e.properties.containsKey(PropertyKeys.IMAGE_SRC))
     }
 }
