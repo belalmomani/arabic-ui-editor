@@ -9,11 +9,25 @@ enum class TemplateCategory(@StringRes val labelRes: Int) {
     CHAT(R.string.tcat_chat),
     EDUCATION(R.string.tcat_education),
     ADMIN(R.string.tcat_admin),
-    LOGIN(R.string.tcat_login)
+    LOGIN(R.string.tcat_login),
+    FOOD(R.string.tcat_food),
+    BOOKING(R.string.tcat_booking),
+    PROFILE(R.string.tcat_profile)
 }
 
 /** شاشة واحدة من قالب: اسمها ومعرّفات المكوّنات الجاهزة التي تتكوّن منها بالترتيب. */
-class TemplateScreen(@StringRes val nameRes: Int, val presetIds: List<String>)
+class TemplateScreen(
+    @StringRes val nameRes: Int,
+    val presetIds: List<String>,
+    /** روابط انتقال جاهزة: نقر مكوّن (أو أحد أبنائه) ينقل إلى شاشة أخرى من القالب نفسه. */
+    val links: List<TemplateLink> = emptyList()
+)
+
+/**
+ * رابط داخل شاشة قالب: المكوّن رقم [presetIndex] في قائمة المكوّنات (أو ابنه رقم [childIndex] إن حُدّد)
+ * ينقل عند النقر إلى شاشة القالب رقم [target].
+ */
+class TemplateLink(val presetIndex: Int, val target: Int, val childIndex: Int? = null)
 
 /** قالب تطبيق: شاشة أو أكثر مركّبة من مكوّنات المكتبة الاحترافية بنصوص نموذجية تعدّلها كما تشاء. */
 class AppTemplate(
@@ -46,7 +60,7 @@ object Templates {
             listOf(
                 TemplateScreen(R.string.ts_chat_list, listOf(
                     "pro_appbar", "pro_chat_row", "pro_chat_row", "pro_chat_row", "pro_bottom_nav"
-                )),
+                ), links = listOf(TemplateLink(1, 1), TemplateLink(2, 1), TemplateLink(3, 1))),
                 TemplateScreen(R.string.ts_chat_room, listOf(
                     "pro_appbar", "pro_chat_in", "pro_chat_out", "pro_chat_in", "pro_chat_input"
                 ))
@@ -71,6 +85,43 @@ object Templates {
                 TemplateScreen(R.string.ts_signup, listOf("pro_login_signup")),
                 TemplateScreen(R.string.ts_otp, listOf("pro_login_otp"))
             )
+        ),
+        AppTemplate(
+            "tpl_food", R.string.tpl_food, R.string.tpl_food_d, TemplateCategory.FOOD,
+            listOf(
+                TemplateScreen(R.string.ts_food_menu, listOf(
+                    "pro_appbar", "pro_tabs", "pro_product_row", "pro_product_row", "pro_product_row", "pro_bottom_nav"
+                ), links = listOf(
+                    TemplateLink(2, 1), TemplateLink(3, 1), TemplateLink(4, 1),
+                    TemplateLink(5, 2, childIndex = 2)
+                )),
+                TemplateScreen(R.string.ts_food_item, listOf("pro_appbar", "pro_product_card", "pro_product_row")),
+                TemplateScreen(R.string.ts_food_cart, listOf(
+                    "pro_appbar", "pro_product_row", "pro_product_row", "pro_menu_list"
+                ))
+            )
+        ),
+        AppTemplate(
+            "tpl_booking", R.string.tpl_booking, R.string.tpl_booking_d, TemplateCategory.BOOKING,
+            listOf(
+                TemplateScreen(R.string.ts_booking_slots, listOf(
+                    "pro_appbar", "pro_tabs", "pro_news_row", "pro_news_row", "pro_news_row", "pro_bottom_nav"
+                ), links = listOf(TemplateLink(2, 1), TemplateLink(3, 1), TemplateLink(4, 1))),
+                TemplateScreen(
+                    R.string.ts_booking_details, listOf("pro_appbar", "pro_news_card", "pro_menu_list"),
+                    links = listOf(TemplateLink(1, 2))
+                ),
+                TemplateScreen(R.string.ts_booking_confirm, listOf("pro_appbar", "pro_dialog_confirm"))
+            )
+        ),
+        AppTemplate(
+            "tpl_profile", R.string.tpl_profile, R.string.tpl_profile_d, TemplateCategory.PROFILE,
+            listOf(
+                TemplateScreen(R.string.ts_profile_home, listOf(
+                    "pro_appbar", "pro_menu_settings", "pro_menu_list", "pro_bottom_nav"
+                )),
+                TemplateScreen(R.string.ts_profile_phone, listOf("pro_login_phone"))
+            )
         )
     )
 
@@ -84,6 +135,23 @@ object Templates {
         }
     }
 
+    /** يطبّق [links] على جذور المكوّنات (كل مكوّن قد يُنتج أكثر من جذر؛ الرابط على أولها). */
+    private fun linked(perPreset: List<List<UiElement>>, links: List<TemplateLink>, screenIds: List<String>): List<List<UiElement>> {
+        if (links.isEmpty()) return perPreset
+        val out = perPreset.map { it.toMutableList() }
+        for (l in links) {
+            val target = screenIds.getOrNull(l.target) ?: continue
+            val roots = out.getOrNull(l.presetIndex)?.takeIf { it.isNotEmpty() } ?: continue
+            val action = ClickAction.Navigate(target)
+            val root = roots[0]
+            roots[0] = if (l.childIndex == null) Interactions.withClickAction(root, action)
+            else root.copy(children = root.children.mapIndexed { i, c ->
+                if (i == l.childIndex) Interactions.withClickAction(c, action) else c
+            })
+        }
+        return out
+    }
+
     /**
      * يبني شاشات القالب (بمعرّفات جديدة وأسماء فريدة مقارنةً بـ [existing]).
      * الشاشة عمود مركَّز بحشوة وفواصل؛ معرّف مكوّن مجهول يُتخطّى.
@@ -91,12 +159,14 @@ object Templates {
     fun build(template: AppTemplate, existing: List<UiScreen>, text: (Int) -> String): List<UiScreen> {
         val taken = ArrayList(existing)
         val out = ArrayList<UiScreen>()
-        for (spec in template.screens) {
-            val elements = spec.presetIds.flatMap { id ->
+        val screenIds = template.screens.map { newId() }
+        template.screens.forEachIndexed { index, spec ->
+            val perPreset = spec.presetIds.map { id ->
                 ComponentLibrary.presets.firstOrNull { it.id == id }?.build(text).orEmpty()
             }
+            val elements = linked(perPreset, spec.links, screenIds).flatten()
             val screen = UiScreen(
-                id = newId(),
+                id = screenIds[index],
                 name = ScreenOps.uniqueName(taken, text(spec.nameRes)),
                 elements = elements,
                 childLayout = ChildLayout.COLUMN,

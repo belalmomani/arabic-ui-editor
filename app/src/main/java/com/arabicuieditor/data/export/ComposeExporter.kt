@@ -121,12 +121,31 @@ private fun playSound(ctx: android.content.Context, name: String) {
                     .mapNotNull { (Interactions.actionFor(e, it) as? ClickAction.Blocks)?.steps }
             }.filter { it.isNotEmpty() }
         }
-        private val usesLogic get() = clickBlocks.isNotEmpty()
+        // سكربتات JS الحرة: ما أمكن تحويله إلى Kotlin يُصدَّر، وغيره يبقى TODO بالكود الأصلي كتعليق.
+        private val scriptEnv by lazy {
+            ScriptToKotlin.Env(
+                route = { n -> project.screens.indexOfFirst { it.name == n || it.id == n }.takeIf { it >= 0 }?.let { screenRoute(it) } },
+                initialText = { n -> allElements.firstOrNull { nameOf(it) == n }?.prop(PropertyKeys.TEXT) },
+                initialVisible = { n -> initialVisible(n) },
+                soundCall = { id -> Sounds.valid(id)?.let { soundCall(it) } },
+                esc = { s -> esc(s) }
+            )
+        }
+        private val scriptResults: Map<String, ScriptToKotlin.Result?> by lazy {
+            allElements.flatMap { e ->
+                listOf(Interactions.TRIGGER_CLICK, Interactions.TRIGGER_LONG_PRESS)
+                    .mapNotNull { (Interactions.actionFor(e, it) as? ClickAction.Script)?.code }
+            }.distinct().associateWith { ScriptToKotlin.convert(it, scriptEnv) }
+        }
+        private val usesLogic get() = clickBlocks.isNotEmpty() || scriptResults.values.any { it != null }
         /** أسماء العناصر التي تغيّرها خطوات المنطق؛ هذه وحدها تُرسم بقيم ديناميكية. */
         private val targets: Set<String> by lazy {
-            clickBlocks.flatten().filter { Steps.usesElement(it.kind) && it.a.isNotBlank() }.map { it.a }.toSet()
+            clickBlocks.flatten().filter { Steps.usesElement(it.kind) && it.a.isNotBlank() }.map { it.a }.toSet() +
+                scriptResults.values.filterNotNull().flatMap { it.elements }
         }
-        private val usesToast: Boolean by lazy { clickBlocks.flatten().any { it.kind == Steps.TOAST } }
+        private val usesToast: Boolean by lazy {
+            clickBlocks.flatten().any { it.kind == Steps.TOAST } || scriptResults.values.any { it?.usesToast == true }
+        }
         private val usesSound: Boolean by lazy { Sounds.usedIn(project).isNotEmpty() }
         private fun soundCall(id: String) = "playSound(ctx, \"${Sounds.rawName(id)}\")"
         private val usesInterp: Boolean by lazy {
@@ -669,7 +688,8 @@ private fun playSound(ctx: android.content.Context, name: String) {
         private fun actionBody(a: ClickAction): String? = when (a) {
             ClickAction.None -> null
             is ClickAction.Blocks -> blocksBody(a.steps)
-            is ClickAction.Script -> "/* TODO: سكربت JS في المحرر لا يُصدَّر؛ اكتب المنطق هنا */"
+            is ClickAction.Script -> scriptResults[a.code]?.kotlin
+                ?: ("/* TODO: سكربت JS لا يمكن تحويله تلقائيًا؛ انقل منطقه إلى Kotlin:" + a.code.replace("*/", "* /").replace("/*", "/ *").lines().joinToString("") { "\n // $it" } + " */")
             ClickAction.Back -> "onBack()"
             is ClickAction.Navigate -> {
                 val i = screenIndex[a.screenId]

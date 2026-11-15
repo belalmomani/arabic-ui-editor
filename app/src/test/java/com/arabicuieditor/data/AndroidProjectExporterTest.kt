@@ -137,9 +137,33 @@ class AndroidProjectExporterTest {
                 logicButton
             )
         )
-        val screens = templateScreens + base.screens[0].copy(name = "عينة") + logicScreen
+        // شاشة أصوات وسكربت حر: تغطي تصدير الأصوات (نقر/مطوّل/ظهور) وتحويل JS إلى Kotlin وTODO لغير المدعوم.
+        val script = com.arabicuieditor.data.model.ClickAction.Script(
+            "vars.t += 1; \$('ع2').text = 'مرة ' + vars.t; " +
+                "if (vars.t >= 3) { toast('كفى'); navigate('عينة'); sound('pop'); } " +
+                "else { \$('س2').visible = !\$('س2').visible; }"
+        )
+        val scriptButton = com.arabicuieditor.data.model.Interactions.withClickAction(
+            el("sb", ElementTypes.BUTTON, 140f, mapOf(PropertyKeys.NAME to "زر2", PropertyKeys.TEXT to "سكربت")), script
+        )
+        val loopButton = com.arabicuieditor.data.model.Interactions.withClickAction(
+            el("lp", ElementTypes.BUTTON, 190f, mapOf(PropertyKeys.NAME to "زر3", PropertyKeys.TEXT to "حلقة")),
+            com.arabicuieditor.data.model.ClickAction.Script("for (var i = 0; i < 2; i++) { vars.z = i; } /* تعليق */")
+        )
+        val soundScreen = base.screens[0].copy(
+            id = "snd", name = "أصوات",
+            properties = base.screens[0].properties + (PropertyKeys.ENTER_SOUND to "tada"),
+            elements = listOf(
+                el("c2", ElementTypes.TEXT, 0f, mapOf(PropertyKeys.NAME to "ع2", PropertyKeys.TEXT to "بداية")),
+                el("s2", ElementTypes.TEXT, 60f, mapOf(PropertyKeys.NAME to "س2", PropertyKeys.TEXT to "سر")),
+                el("snb", ElementTypes.BUTTON, 90f, mapOf(PropertyKeys.TEXT to "صوت", PropertyKeys.SOUND to "pop", PropertyKeys.LONG_SOUND to "bell")),
+                scriptButton, loopButton
+            )
+        )
+        val screens = templateScreens + base.screens[0].copy(name = "عينة") + logicScreen + soundScreen
+        val sounds = listOf("pop", "bell", "tada").associateWith { File("src/main/assets/sounds/snd_$it.wav").readBytes() }
         val project = base.copy(screens = screens, startScreenId = screens.first().id)
-        val files = AndroidProjectExporter.files(project, "com.example.sample", emptyMap())
+        val files = AndroidProjectExporter.files(project, "com.example.sample", emptyMap(), sounds = sounds)
         val dir = File("build/exported-sample")
         dir.deleteRecursively()
         for ((path, bytes) in files) {

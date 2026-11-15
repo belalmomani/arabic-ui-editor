@@ -648,4 +648,21 @@
     <string name="drive_auto_off">أُوقف الرفع التلقائي</string>
     <string name="drive_auto_done">رُفعت المشاريع المعدّلة إلى Drive</string>
     <string name="prop_long_sound">صوت الضغطة المطوّلة</string>
+    <string name="tcat_food">مطاعم</string>
+    <string name="tcat_booking">حجوزات</string>
+    <string name="tcat_profile">حساب</string>
+    <string name="tpl_food">تطبيق مطعم وتوصيل</string>
+    <string name="tpl_food_d">قائمة طعام بتبويبات، تفاصيل وجبة، وسلة طلب</string>
+    <string name="ts_food_menu">قائمة الطعام</string>
+    <string name="ts_food_item">تفاصيل الوجبة</string>
+    <string name="ts_food_cart">سلة الطلب</string>
+    <string name="tpl_booking">تطبيق حجز مواعيد</string>
+    <string name="tpl_booking_d">قائمة مواعيد بتبويبات، تفاصيل الحجز، وتأكيد</string>
+    <string name="ts_booking_slots">المواعيد المتاحة</string>
+    <string name="ts_booking_details">تفاصيل الحجز</string>
+    <string name="ts_booking_confirm">تأكيد الحجز</string>
+    <string name="tpl_profile">حساب وإعدادات</string>
+    <string name="tpl_profile_d">صفحة الحساب والإعدادات وتسجيل الدخول برقم الهاتف</string>
+    <string name="ts_profile_home">حسابي</string>
+    <string name="ts_profile_phone">الدخول برقم الهاتف</string>
 </resources>

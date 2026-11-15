@@ -71,6 +71,8 @@ object Sounds {
     /** المعرّف نفسه إن كان صوتًا صالحًا، وإلا null (يشمل «بدون»). */
     fun valid(id: String): String? = id.takeIf { isValid(it) }
 
+    private val SCRIPT_SOUND = Regex("""sound\(\s*['\"]([^'\"]+)['\"]\s*\)""")
+
     fun usedIn(project: Project): List<String> {
         val out = LinkedHashSet<String>()
         for (s in project.screens) {
@@ -79,6 +81,9 @@ object Sounds {
                 e.prop(PropertyKeys.SOUND).takeIf { isValid(it) }?.let { out += it }
                 e.prop(PropertyKeys.LONG_SOUND).takeIf { isValid(it) }?.let { out += it }
                 for (trigger in listOf(Interactions.TRIGGER_CLICK, Interactions.TRIGGER_LONG_PRESS)) {
+                    (Interactions.actionFor(e, trigger) as? ClickAction.Script)?.let { sc ->
+                        SCRIPT_SOUND.findAll(sc.code).map { it.groupValues[1] }.filter { isValid(it) }.forEach { out += it }
+                    }
                     (Interactions.actionFor(e, trigger) as? ClickAction.Blocks)?.steps.orEmpty()
                         .filter { it.kind == Steps.SOUND && isValid(it.a) }
                         .forEach { out += it.a }

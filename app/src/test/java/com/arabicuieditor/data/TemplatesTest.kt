@@ -57,4 +57,20 @@ class TemplatesTest {
         assertEquals(listOf("tpl_news"), Templates.filter(null, "NEWS", label).map { it.id })
         assertTrue(Templates.filter(null, "zzz", label).isEmpty())
     }
+
+    @Test fun linksNavigateToOtherScreensOfTheSameTemplate() {
+        val t = Templates.all.first { it.id == "tpl_chat" }
+        val built = Templates.build(t, emptyList(), text)
+        val room = built[1].id
+        for (row in built[0].elements.subList(1, 4)) {
+            val a = com.arabicuieditor.data.model.Interactions.actionFor(row, com.arabicuieditor.data.model.Interactions.TRIGGER_CLICK)
+            assertEquals(com.arabicuieditor.data.model.ClickAction.Navigate(room), a)
+        }
+        val food = Templates.build(Templates.all.first { it.id == "tpl_food" }, emptyList(), text)
+        val cartNav = food[0].elements[5].children[2]
+        assertEquals(
+            com.arabicuieditor.data.model.ClickAction.Navigate(food[2].id),
+            com.arabicuieditor.data.model.Interactions.actionFor(cartNav, com.arabicuieditor.data.model.Interactions.TRIGGER_CLICK)
+        )
+    }
 }
