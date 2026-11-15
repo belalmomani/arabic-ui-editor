@@ -5,6 +5,7 @@ import com.arabicuieditor.data.model.ButtonStyles
 import com.arabicuieditor.data.model.PressEffects
 import com.arabicuieditor.data.model.ScreenTransitions
 import com.arabicuieditor.data.model.Stickers
+import com.arabicuieditor.data.model.Sounds
 import com.arabicuieditor.data.model.IconCatalog
 import com.arabicuieditor.data.model.ImageFits
 import com.arabicuieditor.data.model.ImageNames
@@ -67,6 +68,18 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
 """
 
 
+    /** دالة تشغيل الأصوات المضمّنة (res/raw/snd_*.wav) في الكود المُصدَّر. */
+    private val SOUND_HELPER = """// ---- الأصوات (الملفات في res/raw) ----
+private fun playSound(ctx: android.content.Context, name: String) {
+    val id = ctx.resources.getIdentifier(name, "raw", ctx.packageName)
+    if (id == 0) return
+    android.media.MediaPlayer.create(ctx, id)?.apply {
+        setOnCompletionListener { it.release() }
+        start()
+    }
+}
+"""
+
     const val DEFAULT_PACKAGE = "com.example.app"
 
     /** @param onlyScreenId إن حُدّد يُصدَّر هذه الشاشة وحدها (مع كائنات التصميم) بلا جذر التنقل. */
@@ -114,6 +127,8 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
             clickBlocks.flatten().filter { Steps.usesElement(it.kind) && it.a.isNotBlank() }.map { it.a }.toSet()
         }
         private val usesToast: Boolean by lazy { clickBlocks.flatten().any { it.kind == Steps.TOAST } }
+        private val usesSound: Boolean by lazy { Sounds.usedIn(project).isNotEmpty() }
+        private fun soundCall(id: String) = "playSound(ctx, \"${Sounds.rawName(id)}\")"
         private val usesInterp: Boolean by lazy {
             allElements.any { (it.type == ElementTypes.TEXT || it.type == ElementTypes.BUTTON) && it.prop(PropertyKeys.TEXT).contains("{{") }
         }
@@ -159,6 +174,7 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
                 Steps.NAV -> project.screens.indexOfFirst { it.name == s.a || it.id == s.a }.takeIf { it >= 0 }
                     ?.let { "onNavigate(\"${screenRoute(it)}\")" } ?: "/* الشاشة غير موجودة */ Unit"
                 Steps.BACK -> "onBack()"
+                Steps.SOUND -> if (Sounds.isValid(s.a)) soundCall(s.a) else null
                 else -> null
             }
         }
@@ -355,6 +371,7 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
             line()
             designObjects()
             if (usesPress) PRESS_HELPER.lines().forEach { line(it) }
+            if (usesSound) SOUND_HELPER.lines().forEach { line(it) }
             if (usesLogic || usesInterp) appLogic()
             for (s in screens) {
                 screen(s)
@@ -445,7 +462,8 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
             line("@Composable")
             line("fun ${screenFunction(idx)}(onNavigate: (String) -> Unit = {}, onBack: () -> Unit = {}) {")
             depth++
-            if (usesToast) line("val ctx = LocalContext.current")
+            if (usesToast || usesSound) line("val ctx = LocalContext.current")
+            Sounds.valid(s.prop(PropertyKeys.ENTER_SOUND))?.let { line("LaunchedEffect(Unit) { ${soundCall(it)} }") }
             line("// التصميم يسار-يمين كما في المحرر؛ احذف هذا الغلاف ليتبع اتجاه لغة الجهاز.")
             call("CompositionLocalProvider", listOf("LocalLayoutDirection provides LayoutDirection.Ltr"), null) {
                 val read: (String) -> String = { key -> s.prop(key) }
@@ -661,8 +679,12 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
 
         /** النقر `.clickable`، ومع ضغطة مطوّلة `.combinedClickable` بالإجراءين. */
         private fun clickMod(e: UiElement): String? {
-            val click = actionBody(Interactions.actionFor(e, Interactions.TRIGGER_CLICK))
-            val long = actionBody(Interactions.actionFor(e, Interactions.TRIGGER_LONG_PRESS))
+            val snd = Sounds.valid(e.prop(PropertyKeys.SOUND))?.let { soundCall(it) }
+            val click0 = actionBody(Interactions.actionFor(e, Interactions.TRIGGER_CLICK))
+            val click = if (snd == null) click0 else if (click0.isNullOrEmpty()) snd else "$snd; $click0"
+            val lsnd = Sounds.valid(e.prop(PropertyKeys.LONG_SOUND))?.let { soundCall(it) }
+            val long0 = actionBody(Interactions.actionFor(e, Interactions.TRIGGER_LONG_PRESS))
+            val long = if (lsnd == null) long0 else if (long0.isNullOrEmpty()) lsnd else "$lsnd; $long0"
             return when {
                 click == null && long == null -> null
                 long == null -> if (click!!.isEmpty()) ".clickable { }" else ".clickable { $click }"

@@ -81,6 +81,7 @@ fun PrototypePlayer(
     var vars by remember { mutableStateOf<Map<String, Any>>(emptyMap()) }
     var overrides by remember { mutableStateOf<Map<String, Map<String, String>>>(emptyMap()) }
     var toast by remember { mutableStateOf<String?>(null) }
+    val sounds = com.arabicuieditor.ui.common.rememberSoundPlayer()
     BackHandler(onBack = { if (nav.history.isEmpty()) onClose() else nav = nav.apply(ClickAction.Back, project.screens) })
 
     val screen = project.screens.firstOrNull { it.id == nav.current } ?: project.screens.firstOrNull()
@@ -103,6 +104,7 @@ fun PrototypePlayer(
             vars = out.vars
             overrides = out.overrides
             toast = out.error?.let { "خطأ في السكربت: $it" } ?: out.toast
+            out.sounds.forEach { sounds.play(it) }
             if (out.back) nav = nav.apply(ClickAction.Back, project.screens)
             out.navigateTo?.let { target ->
                 val dest = project.screens.firstOrNull { it.name == target || it.id == target }
@@ -111,6 +113,8 @@ fun PrototypePlayer(
             }
         } else nav = nav.apply(action, project.screens)
     }
+    // صوت دخول الشاشة (خاصية الشاشة «صوت الظهور»).
+    LaunchedEffect(screen.id) { sounds.play(screen.prop(PropertyKeys.ENTER_SOUND)) }
     LaunchedEffect(toast) {
         if (toast != null) { kotlinx.coroutines.delay(2500); toast = null }
     }
@@ -170,11 +174,13 @@ fun PrototypePlayer(
                             onLongPress = { offset ->
                                 val x = offset.x / density / scale
                                 val y = offset.y / density / scale
+                                Prototype.soundAt(effective, layout, x, y, PropertyKeys.LONG_SOUND)?.let { sounds.play(it) }
                                 perform(Prototype.actionAt(effective, layout, x, y, com.arabicuieditor.data.model.Interactions.TRIGGER_LONG_PRESS))
                             }
                         ) { offset ->
                             val x = offset.x / density / scale
                             val y = offset.y / density / scale
+                            Prototype.soundAt(effective, layout, x, y)?.let { sounds.play(it) }
                             perform(Prototype.actionAt(effective, layout, x, y))
                         }
                     }

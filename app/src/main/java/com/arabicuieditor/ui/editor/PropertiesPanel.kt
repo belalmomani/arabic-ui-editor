@@ -798,6 +798,12 @@ private fun ChoiceField(
                     modifier = Modifier.testTag("${tag}_$optionValue")
                 )
             }
+            if (kind.options === com.arabicuieditor.data.model.Sounds.options) {
+                if (com.arabicuieditor.data.model.Sounds.isCustom(value)) {
+                    FilterChip(selected = true, onClick = {}, label = { Text(value) }, modifier = Modifier.testTag("${tag}_custom"))
+                }
+                CustomSoundButton(onPicked = onValue, tag = "${tag}_import")
+            }
         }
     }
 }

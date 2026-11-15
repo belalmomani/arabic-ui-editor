@@ -66,6 +66,9 @@ object PropertyKeys {
     const val BUTTON_STYLE = "buttonStyle"
     const val PRESS_EFFECT = "pressEffect"
     const val SCREEN_TRANSITION = "screenTransition"
+    const val SOUND = "sound"
+    const val ENTER_SOUND = "enterSound"
+    const val LONG_SOUND = "longSound"
     const val FLIP_Y = "flipY"
     const val VISIBLE = "visible"
     /** عنصر مقفل: يُحدَّد لكن لا يتحرك ولا يتغيّر حجمه بالسحب على اللوحة. */
@@ -386,6 +389,18 @@ object PropertyRegistry {
             PropertyKind.Choice(ButtonStyles.options), setOf(ElementTypes.BUTTON), fallback = ButtonStyles.FLAT
         ),
         PropertyDef(
+            PropertyKeys.SOUND, R.string.prop_sound, PropertyGroup.GENERAL,
+            PropertyKind.Choice(Sounds.options), ALL, fallback = Sounds.NONE
+        ),
+        PropertyDef(
+            PropertyKeys.LONG_SOUND, R.string.prop_long_sound, PropertyGroup.GENERAL,
+            PropertyKind.Choice(Sounds.options), ALL, fallback = Sounds.NONE
+        ),
+        PropertyDef(
+            PropertyKeys.ENTER_SOUND, R.string.prop_enter_sound, PropertyGroup.GENERAL,
+            PropertyKind.Choice(Sounds.options), setOf(SCREEN_TYPE), fallback = Sounds.NONE
+        ),
+        PropertyDef(
             PropertyKeys.SCREEN_TRANSITION, R.string.prop_screen_transition, PropertyGroup.GENERAL,
             PropertyKind.Choice(ScreenTransitions.options), setOf(SCREEN_TYPE), fallback = ScreenTransitions.NONE
         ),
@@ -454,7 +469,9 @@ object PropertyRegistry {
             PropertyKind.ColorValue ->
                 if (Tokens.isToken(raw.trim())) raw.trim().takeIf { Tokens.accepts(key, kind, it) }
                 else ColorUtil.parse(raw)?.let { ColorUtil.format(it) }
-            is PropertyKind.Choice -> raw.takeIf { v -> kind.options.any { it.first == v } }
+            is PropertyKind.Choice -> raw.takeIf { v ->
+                kind.options.any { it.first == v } || (kind.options === Sounds.options && Sounds.isCustom(v))
+            }
             PropertyKind.Toggle -> raw.takeIf { it == "true" || it == "false" }
         }
     }

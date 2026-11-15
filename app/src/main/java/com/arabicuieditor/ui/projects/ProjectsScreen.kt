@@ -68,12 +68,53 @@ fun ProjectsScreen(
     val zipPicker = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> if (uri != null) viewModel.importZip(uri) }
+    val driveLinked by viewModel.driveLinked.collectAsState()
+    val info by viewModel.info.collectAsState()
+    val infoText = info?.let { stringResource(it) }
+    var driveTarget by remember { mutableStateOf<Project?>(null) }
+    val driveFolderPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) viewModel.linkDrive(uri, driveTarget?.id)
+        driveTarget = null
+    }
+    val driveAuto by viewModel.driveAuto.collectAsState()
+    val driveFiles by viewModel.driveFiles.collectAsState()
+    driveFiles?.let { files ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = viewModel::closeDriveList,
+            title = { Text(stringResource(R.string.drive_import_title)) },
+            text = {
+                if (files.isEmpty()) Text(stringResource(R.string.drive_import_empty))
+                else LazyColumn(Modifier.testTag("drive_files")) {
+                    items(files.size) { i ->
+                        Text(
+                            files[i].first,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.fillMaxWidth()
+                                .clickable { viewModel.importFromDrive(files[i].second) }
+                                .padding(vertical = 12.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = viewModel::closeDriveList) { Text(stringResource(R.string.action_cancel)) }
+            }
+        )
+    }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val errorText = error?.let { stringResource(it) }
 
     LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(infoText) {
+        if (infoText != null) {
+            snackbarHostState.showSnackbar(infoText)
+            viewModel.clearInfo()
+        }
+    }
     LaunchedEffect(errorText) {
         if (errorText != null) {
             snackbarHostState.showSnackbar(errorText)
@@ -86,6 +127,11 @@ fun ProjectsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (driveLinked) ExtendedFloatingActionButton(
+                    elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp),
+                    onClick = viewModel::openDriveList,
+                    modifier = Modifier.testTag("import_drive")
+                ) { Text(stringResource(R.string.drive_import)) }
                 ExtendedFloatingActionButton(
                     elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp),
                     onClick = { zipPicker.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) },
@@ -126,6 +172,15 @@ fun ProjectsScreen(
                                 zipTarget = project
                                 zipSaver.launch(project.name.replace(Regex("[^\\p{L}\\p{N}_ -]"), "_").ifBlank { "project" } + ".zip")
                             },
+                            driveLinked = driveLinked,
+                            driveAuto = driveAuto,
+                            onDriveAuto = viewModel::toggleDriveAuto,
+                            onDrive = {
+                                if (driveLinked) viewModel.uploadToDrive(project.id)
+                                else { driveTarget = project; driveFolderPicker.launch(null) }
+                            },
+                            onDriveChange = { driveTarget = null; driveFolderPicker.launch(null) },
+                            onDriveUnlink = viewModel::unlinkDrive,
                             onBackup = {
                                 val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                     type = "text/plain"
@@ -190,6 +245,12 @@ private fun ProjectCard(
     onDuplicate: () -> Unit,
     onBackup: () -> Unit,
     onZip: () -> Unit,
+    driveLinked: Boolean,
+    driveAuto: Boolean,
+    onDriveAuto: () -> Unit,
+    onDrive: () -> Unit,
+    onDriveChange: () -> Unit,
+    onDriveUnlink: () -> Unit,
     onDelete: () -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -242,6 +303,26 @@ private fun ProjectCard(
                         text = { Text(stringResource(R.string.action_zip)) },
                         onClick = { menuOpen = false; onZip() }
                     )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_drive_upload)) },
+                        onClick = { menuOpen = false; onDrive() },
+                        modifier = Modifier.testTag("menu_drive_upload")
+                    )
+                    if (driveLinked) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(if (driveAuto) R.string.action_drive_auto_off else R.string.action_drive_auto_on)) },
+                            onClick = { menuOpen = false; onDriveAuto() },
+                            modifier = Modifier.testTag("menu_drive_auto")
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_drive_change)) },
+                            onClick = { menuOpen = false; onDriveChange() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_drive_unlink)) },
+                            onClick = { menuOpen = false; onDriveUnlink() }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_delete)) },
                         onClick = { menuOpen = false; onDelete() }

@@ -3,9 +3,11 @@ package com.arabicuieditor.ui.editor.canvas
 import com.arabicuieditor.data.model.ClickAction
 import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Interactions
+import com.arabicuieditor.data.model.Sounds
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.UiScreen
 import com.arabicuieditor.data.model.boolProp
+import com.arabicuieditor.data.model.prop
 
 /** حالة تشغيل النموذج التفاعلي: الشاشة الحالية وسجل الشاشات السابقة للرجوع. */
 data class PrototypeState(val current: String, val history: List<String> = emptyList()) {
@@ -33,6 +35,25 @@ object Prototype {
             val frame = layout.frames[id] ?: continue
             if (x < frame.x || x > frame.x + frame.w || y < frame.y || y > frame.y + frame.h) continue
             if (byId[id]?.boolProp(PropertyKeys.VISIBLE) == true) return id
+        }
+        return null
+    }
+
+    /** صوت النقر للعنصر الأعلى تحت النقطة (أو لأقرب أب له صوت)؛ null إن لم يكن هناك صوت. */
+    fun soundAt(screen: UiScreen, layout: LayoutResult, x: Float, y: Float, key: String = PropertyKeys.SOUND): String? {
+        val byId = ElementTree.flatten(screen.elements).associateBy { it.id }
+        for (id in layout.paintOrder.asReversed()) {
+            val frame = layout.frames[id] ?: continue
+            if (x < frame.x || x > frame.x + frame.w || y < frame.y || y > frame.y + frame.h) continue
+            var cursor: String? = id
+            while (cursor != null) {
+                val e = byId[cursor] ?: break
+                if (!e.boolProp(PropertyKeys.VISIBLE)) return null
+                val s = e.prop(key)
+                if (Sounds.isValid(s)) return s
+                cursor = layout.parentOf[cursor]
+            }
+            return null
         }
         return null
     }

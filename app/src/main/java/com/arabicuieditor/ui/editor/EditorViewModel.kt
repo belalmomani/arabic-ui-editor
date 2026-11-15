@@ -438,19 +438,26 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
 
     // ---- نسخ ولصق بين الشاشات ----
 
-    private val _clipboard = MutableStateFlow<UiElement?>(null)
-    /** العنصر المنسوخ (بأبنائه) في ذاكرة المحرر؛ يبقى عند تبديل الشاشات. */
-    val clipboard: StateFlow<UiElement?> = _clipboard.asStateFlow()
+    private val _clipboard = MutableStateFlow<List<UiElement>>(emptyList())
+    /** العناصر المنسوخة (بأبنائها) في ذاكرة المحرر؛ تبقى عند تبديل الشاشات. فارغة = لا شيء منسوخ. */
+    val clipboard: StateFlow<List<UiElement>> = _clipboard.asStateFlow()
 
     fun copySelected() {
         val screen = currentScreen() ?: return
-        _clipboard.value = _selectedId.value?.let { ElementTree.find(screen.elements, it) }
+        _clipboard.value = listOfNotNull(_selectedId.value?.let { ElementTree.find(screen.elements, it) })
+    }
+
+    /** ينسخ كل العناصر المحددة في وضع التحديد المتعدد (دون أبناء عنصر محدد معه)، بترتيبها في الشاشة. */
+    fun copyMulti() {
+        val screen = currentScreen() ?: return
+        _clipboard.value = ElementOps.topMost(screen.elements, _multi.value)
     }
 
     /** يلصق نسخة بمعرّفات جديدة في الشاشة الحالية (مثل إضافة عنصر). */
     fun pasteElement(centerX: Float, centerY: Float) {
-        val e = _clipboard.value ?: return
-        insertElements(listOf(ElementTree.reId(e)), centerX, centerY, atPoint = false)
+        val items = _clipboard.value
+        if (items.isEmpty()) return
+        insertElements(items.map { ElementTree.reId(it) }, centerX, centerY, atPoint = false)
     }
 
     // ---- المكتبة الشخصية ----

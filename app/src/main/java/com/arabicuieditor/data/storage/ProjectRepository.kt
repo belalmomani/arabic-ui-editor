@@ -97,7 +97,7 @@ class ProjectRepository(private val root: File) {
             zip.write(ProjectJsonCodec.encode(project).toByteArray(Charsets.UTF_8))
             zip.closeEntry()
             resourcesDir(id).listFiles().orEmpty()
-                .filter { it.isFile && com.arabicuieditor.data.model.ImageNames.isValid(it.name) }
+                .filter { it.isFile && isResourceName(it.name) }
                 .forEach { f ->
                     zip.putNextEntry(java.util.zip.ZipEntry(ZIP_RES + f.name))
                     f.inputStream().use { it.copyTo(zip) }
@@ -122,7 +122,7 @@ class ProjectRepository(private val root: File) {
                     val entry = zip.nextEntry ?: break
                     val name = entry.name
                     val accept = !entry.isDirectory && (name == ZIP_PROJECT ||
-                        (name.startsWith(ZIP_RES) && com.arabicuieditor.data.model.ImageNames.isValid(name.removePrefix(ZIP_RES))))
+                        (name.startsWith(ZIP_RES) && isResourceName(name.removePrefix(ZIP_RES))))
                     if (!accept) { zip.closeEntry(); continue }
                     val bytes = readLimited(zip, MAX_ZIP_ENTRY) ?: return null
                     total += bytes.size
@@ -141,6 +141,10 @@ class ProjectRepository(private val root: File) {
         images.forEach { (n, b) -> File(dir, n).writeBytes(b) }
         return project
     }
+
+    /** اسم ملف مورد مسموح في نسخة ZIP: صورة صالحة أو صوت مستورد. */
+    private fun isResourceName(n: String) =
+        com.arabicuieditor.data.model.ImageNames.isValid(n) || com.arabicuieditor.data.model.Sounds.isCustom(n)
 
     private fun readLimited(s: java.io.InputStream, max: Int): ByteArray? {
         val buf = java.io.ByteArrayOutputStream()

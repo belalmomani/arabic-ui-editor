@@ -6,6 +6,7 @@ import com.arabicuieditor.data.model.ImageNames
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.FontCatalog
 import com.arabicuieditor.data.model.Stickers
+import com.arabicuieditor.data.model.Sounds
 import com.arabicuieditor.data.model.PropertyKeys
 import com.arabicuieditor.data.model.prop
 import java.io.File
@@ -68,7 +69,8 @@ object AndroidProjectExporter {
      */
     fun files(
         project: Project, packageName: String, images: Map<String, ByteArray>,
-        fonts: Map<String, ByteArray> = emptyMap()
+        fonts: Map<String, ByteArray> = emptyMap(),
+        sounds: Map<String, ByteArray> = emptyMap()
     ): LinkedHashMap<String, ByteArray> {
         require(isValidPackage(packageName)) { "اسم حزمة غير صالح: $packageName" }
         val out = LinkedHashMap<String, ByteArray>()
@@ -197,6 +199,7 @@ object AndroidProjectExporter {
         text("app/src/main/java/$pkgPath/Screens.kt", ComposeExporter.export(project, null, packageName, customFonts = true, fontIds = fonts.keys))
         for ((id, bytes) in fonts) out["app/src/main/res/font/$id.${fontExtension(bytes)}"] = bytes
         for (name in used) images[name]?.let { out["app/src/main/res/drawable/$name"] = it }
+        for (id in Sounds.usedIn(project)) sounds[id]?.let { out["app/src/main/res/raw/${Sounds.fileName(id)}"] = it }
         text(".github/workflows/build-apk.yml", """
             name: Build APK
 
@@ -240,6 +243,7 @@ object AndroidProjectExporter {
             appendLine("- `Screens.kt`: كل الشاشات والتنقل (AppRoot) ونظام التصميم (AppColors/AppRadius/AppText).")
             appendLine("- `MainActivity.kt`: نقطة الدخول. الحزمة: `$packageName`.")
             appendLine("- الصور المستعملة في `app/src/main/res/drawable/`.")
+            if (Sounds.usedIn(project).isNotEmpty()) appendLine("- الأصوات المستعملة في `app/src/main/res/raw/` (تُشغَّل بـ MediaPlayer من `Screens.kt`).")
             appendLine()
             appendLine("## ما لا يتضمنه")
             appendLine("- المنطق (المتغيرات، منطق الأزرار، سكربت JS): أماكنه تعليقات TODO في `Screens.kt`.")
@@ -263,7 +267,9 @@ object AndroidProjectExporter {
         project: Project, packageName: String, imagesDir: File?, out: OutputStream,
         fontLoader: ((String) -> ByteArray?)? = null,
         /** يقرأ ملف ملصق مضمّن (assets/stickers) باسمه؛ يُستعمل لأسماء stk_*.webp فقط. */
-        stickerLoader: ((String) -> ByteArray?)? = null
+        stickerLoader: ((String) -> ByteArray?)? = null,
+        /** يقرأ ملف صوت مضمّن (assets/sounds) بمعرّفه (click، pop...). */
+        soundLoader: ((String) -> ByteArray?)? = null
     ) {
         val images = LinkedHashMap<String, ByteArray>()
         for (name in usedImages(project)) {
@@ -276,7 +282,13 @@ object AndroidProjectExporter {
         }
         val fonts = LinkedHashMap<String, ByteArray>()
         if (fontLoader != null) for (id in usedFonts(project)) fontLoader(id)?.let { fonts[id] = it }
-        val files = files(project, packageName, images, fonts)
+        val sounds = LinkedHashMap<String, ByteArray>()
+        for (id in Sounds.usedIn(project)) {
+            val bytes = if (Sounds.isCustom(id)) imagesDir?.let { File(it, id) }?.takeIf { it.isFile }?.readBytes()
+            else soundLoader?.invoke(id)
+            bytes?.let { sounds[id] = it }
+        }
+        val files = files(project, packageName, images, fonts, sounds)
         ZipOutputStream(out).use { zip ->
             for ((path, bytes) in files) {
                 zip.putNextEntry(ZipEntry(path))

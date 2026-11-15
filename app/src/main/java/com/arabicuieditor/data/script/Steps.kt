@@ -23,8 +23,9 @@ object Steps {
     const val TOAST = "toast"      // b = النص
     const val NAV = "nav"          // a = اسم الشاشة
     const val BACK = "back"
+    const val SOUND = "sound"      // a = معرّف الصوت (click، pop، success...)
 
-    val kinds = listOf(INC, DEC, SET_VAR, IF, TEXT, SHOW, HIDE, TOGGLE, COLOR, BG, TOAST, NAV, BACK)
+    val kinds = listOf(INC, DEC, SET_VAR, IF, TEXT, SHOW, HIDE, TOGGLE, COLOR, BG, TOAST, NAV, BACK, SOUND)
     val ops = listOf("==", "!=", ">", "<", ">=", "<=")
     val palette = listOf("#E53935", "#FB8C00", "#FDD835", "#43A047", "#1E88E5", "#8E24AA", "#212121", "#FFFFFF")
     const val MAX_STEPS = 30
@@ -42,6 +43,7 @@ object Steps {
         COLOR, BG -> Step(kind, firstElement, palette[0])
         TOAST -> Step(kind, "", "تم")
         NAV -> Step(kind, firstScreen)
+        SOUND -> Step(kind, "click")
         else -> Step(kind)
     }
 
@@ -113,6 +115,7 @@ object Steps {
         TOAST -> "toast(${q(s.b)});"
         NAV -> "navigate(${q(s.a)});"
         BACK -> "back();"
+        SOUND -> "sound(${q(s.a)});"
         else -> null
     }
 

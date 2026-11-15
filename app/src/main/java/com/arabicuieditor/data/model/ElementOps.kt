@@ -5,6 +5,19 @@ package com.arabicuieditor.data.model
  * لا تعتمد على Android أو Compose، فتُختبر مباشرة على JVM.
  */
 object ElementOps {
+    /**
+     * العناصر المحددة بترتيب ظهورها في الشجرة، دون أي عنصر أحد آبائه محدد أيضًا
+     * (لأن نسخ الأب يتضمن أبناءه). منطق نقي للنسخ المتعدد.
+     */
+    fun topMost(roots: List<UiElement>, ids: Set<String>): List<UiElement> {
+        val out = ArrayList<UiElement>()
+        fun walk(list: List<UiElement>) {
+            for (e in list) if (e.id in ids) out += e else walk(e.children)
+        }
+        walk(roots)
+        return out
+    }
+
 
     /** أمام العنصر التالي في الترتيب. */
     fun moveForward(list: List<UiElement>, id: String): List<UiElement> = shift(list, id, +1)

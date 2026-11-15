@@ -113,4 +113,15 @@ class ElementOpsTest {
         assertTrue(edge[0].layout.x + 200f <= 360f)
         assertTrue(edge[0].layout.y + 120f <= 640f)
     }
+
+    @Test
+    fun topMostSkipsChildrenOfSelectedParents() {
+        val a = com.arabicuieditor.data.model.newElement(com.arabicuieditor.data.model.ElementTypes.BUTTON, 0f, 0f, "a")
+        val g = com.arabicuieditor.data.model.newElement(com.arabicuieditor.data.model.ElementTypes.CONTAINER, 0f, 0f, "g").copy(children = listOf(a))
+        val b = com.arabicuieditor.data.model.newElement(com.arabicuieditor.data.model.ElementTypes.BUTTON, 0f, 0f, "b")
+        val roots = listOf(g, b)
+        assertEquals(listOf(g.id, b.id), ElementOps.topMost(roots, setOf(a.id, g.id, b.id)).map { it.id })
+        assertEquals(listOf(a.id), ElementOps.topMost(roots, setOf(a.id)).map { it.id })
+        assertTrue(ElementOps.topMost(roots, emptySet()).isEmpty())
+    }
 }

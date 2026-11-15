@@ -91,6 +91,9 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
                             stickerLoader = { name ->
                                 // الملصقات المضمّنة في assets/stickers.
                                 try { context.assets.open(com.arabicuieditor.data.model.Stickers.assetPath(name)).use { it.readBytes() } } catch (_: Exception) { null }
+                            },
+                            soundLoader = { id ->
+                                try { context.assets.open(com.arabicuieditor.data.model.Sounds.assetPath(id)).use { it.readBytes() } } catch (_: Exception) { null }
                             }
                         )
                     } != null

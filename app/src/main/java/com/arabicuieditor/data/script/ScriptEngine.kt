@@ -20,14 +20,16 @@ data class ScriptOutcome(
     val navigateTo: String? = null,
     val back: Boolean = false,
     val toast: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    /** الأصوات التي طلبها السكربت بـ `sound('click')` بالترتيب (حدّ أقصى 8). */
+    val sounds: List<String> = emptyList()
 )
 
 /**
  * محرك سكربتات المعاينة (Rhino في وضع المفسّر، بلا وصول إلى جافا). كل تشغيل بنطاق جديد؛
  * الحالة تنتقل عبر [vars] و[overrides] فقط. حدّ زمني يوقف الحلقات اللانهائية.
  *
- * واجهة JS: `vars.x`، `$('اسم').text/.visible/.color/.bg`، `navigate('اسم الشاشة')`، `back()`، `toast('نص')`.
+ * واجهة JS: `vars.x`، `$('اسم').text/.visible/.color/.bg`، `navigate('اسم الشاشة')`، `back()`، `toast('نص')`، `sound('click')`.
  */
 object ScriptEngine {
     const val MAX_CODE = 4000
@@ -80,6 +82,7 @@ function DOLLAR(n){return {
         var nav: String? = null
         var back = false
         var toast: String? = null
+        val sounds = mutableListOf<String>()
         var error: String? = null
         var outVars = vars
         val cx = factory.enterContext()
@@ -105,6 +108,7 @@ function DOLLAR(n){return {
             fn("navigate") { a -> nav = str(a, 0); null }
             fn("back") { _ -> back = true; null }
             fn("toast") { a -> toast = str(a, 0).take(200); null }
+            fn("sound") { a -> if (sounds.size < 8) sounds += str(a, 0).take(30); null }
             val v = cx.newObject(scope)
             vars.forEach { (k, value) -> ScriptableObject.putProperty(v, k, value) }
             ScriptableObject.putProperty(scope, "vars", v)
@@ -122,7 +126,7 @@ function DOLLAR(n){return {
         } finally {
             Context.exit()
         }
-        return ScriptOutcome(outVars, ov, nav, back, toast, error)
+        return ScriptOutcome(outVars, ov, nav, back, toast, error, sounds)
     }
 
     private fun readVars(v: Scriptable): Map<String, Any> {

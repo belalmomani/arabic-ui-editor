@@ -61,6 +61,9 @@ fun LayersPanel(
     onAlignMulti: (AlignEdge) -> Unit = {},
     onDistributeMulti: (Boolean) -> Unit = {},
     onDeleteMulti: () -> Unit = {},
+    onCopyMulti: () -> Unit = {},
+    canPasteMulti: Boolean = false,
+    onPasteMulti: () -> Unit = {},
     onGroup: () -> Unit = {},
     onUngroup: () -> Unit = {},
     onSpaceMulti: (Boolean, Float) -> Unit = { _, _ -> },
@@ -112,6 +115,12 @@ fun LayersPanel(
             Text(stringResource(R.string.multi_count, multi.size), style = MaterialTheme.typography.labelMedium)
             if (multi.isNotEmpty()) {
                 AssistChip(onClick = onDeleteMulti, label = { Text(stringResource(R.string.multi_delete)) }, modifier = Modifier.testTag("multi_delete"))
+            }
+            if (multi.isNotEmpty()) {
+                AssistChip(onClick = onCopyMulti, label = { Text(stringResource(R.string.action_copy)) }, modifier = Modifier.testTag("multi_copy"))
+            }
+            if (canPasteMulti) {
+                AssistChip(onClick = onPasteMulti, label = { Text(stringResource(R.string.action_paste)) }, modifier = Modifier.testTag("multi_paste"))
             }
             if (multi.size >= 2) {
                 AssistChip(onClick = { onAlignMulti(AlignEdge.LEFT) }, label = { Text(stringResource(R.string.align_to_left)) }, modifier = Modifier.testTag("multi_align_left"))

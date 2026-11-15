@@ -53,6 +53,7 @@ internal fun stepLabel(kind: String): Int = when (kind) {
     Steps.COLOR -> R.string.st_color
     Steps.BG -> R.string.st_bg
     Steps.TOAST -> R.string.st_toast
+    Steps.SOUND -> R.string.st_sound
     Steps.NAV -> R.string.st_nav
     else -> R.string.st_back
 }
@@ -70,6 +71,7 @@ fun BlocksEditor(
     tagPrefix: String,
     modifier: Modifier = Modifier
 ) {
+    val soundPlayer = com.arabicuieditor.ui.common.rememberSoundPlayer()
     var draft by remember(steps) { mutableStateOf(steps) }
     fun set(i: Int, s: Step) { draft = draft.toMutableList().also { it[i] = s } }
     Column(modifier.testTag("${tagPrefix}_blocks_editor"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -131,6 +133,25 @@ fun BlocksEditor(
                                     label = { Text(n) }, modifier = Modifier.testTag("${tagPrefix}_step_${i}_scr_$n")
                                 )
                             }
+                        }
+                    }
+                    if (s.kind == Steps.SOUND) {
+                        ChipRow {
+                            com.arabicuieditor.data.model.Sounds.all.forEach { (id, label) ->
+                                FilterChip(
+                                    selected = id == s.a,
+                                    onClick = { set(i, s.copy(a = id)); soundPlayer.play(id) },
+                                    label = { Text(stringResource(label)) },
+                                    modifier = Modifier.testTag("${tagPrefix}_step_${i}_snd_$id")
+                                )
+                            }
+                            if (com.arabicuieditor.data.model.Sounds.isCustom(s.a)) {
+                                FilterChip(selected = true, onClick = {}, label = { Text(s.a) })
+                            }
+                            CustomSoundButton(
+                                onPicked = { set(i, s.copy(a = it)); soundPlayer.play(it) },
+                                tag = "${tagPrefix}_step_${i}_snd_import"
+                            )
                         }
                     }
                     when (s.kind) {

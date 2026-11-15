@@ -258,6 +258,7 @@ private fun EditorContent(
     val multiMode by viewModel.multiMode.collectAsState()
     val multiSet by viewModel.multi.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val previewSounds = com.arabicuieditor.ui.common.rememberSoundPlayer()
     val imagePicker = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri ->
@@ -571,7 +572,7 @@ private fun EditorContent(
                                 BottomTab.PROPERTIES -> PropertiesPanel(
                                     element = selectedElement,
                                     onPickImage = { imagePicker.launch("image/*") },
-                                    canPaste = clipboard != null,
+                                    canPaste = clipboard.isNotEmpty(),
                                     onCopy = viewModel::copySelected,
                                     onPaste = {
                                         val (cx, cy) = newElementCenter() ?: return@PropertiesPanel
@@ -596,6 +597,7 @@ private fun EditorContent(
                                     onUnlink = viewModel::unlinkSelected,
                                     rect = selectedRect,
                                     onSetProperty = { key, value ->
+                                        if (key == com.arabicuieditor.data.model.PropertyKeys.SOUND || key == com.arabicuieditor.data.model.PropertyKeys.LONG_SOUND) previewSounds.play(value)
                                         selectedElement?.let { viewModel.setProperty(it.id, key, value) }
                                     },
                                     onSetRect = { r ->
@@ -659,6 +661,12 @@ private fun EditorContent(
                                     onAlignMulti = viewModel::alignMulti,
                                     onDistributeMulti = viewModel::distributeMulti,
                                     onDeleteMulti = viewModel::deleteMulti,
+                                    onCopyMulti = viewModel::copyMulti,
+                                    canPasteMulti = clipboard.isNotEmpty(),
+                                    onPasteMulti = {
+                                        val (cx, cy) = newElementCenter() ?: return@LayersPanel
+                                        viewModel.pasteElement(cx, cy)
+                                    },
                                     onGroup = viewModel::groupMulti,
                                     onUngroup = viewModel::unwrapSelected,
                                     onSpaceMulti = viewModel::spaceMulti,
@@ -679,7 +687,10 @@ private fun EditorContent(
                                     onSetPreview = viewModel::setPreviewSize,
                                     onSetScreenSize = { w, h -> viewModel.setScreenSize(screen.id, w, h) },
                                     onSetLayout = viewModel::setScreenLayout,
-                                    onSetScreenProperty = viewModel::setScreenProperty,
+                                    onSetScreenProperty = { key, value ->
+                                        if (key == com.arabicuieditor.data.model.PropertyKeys.ENTER_SOUND) previewSounds.play(value)
+                                        viewModel.setScreenProperty(key, value)
+                                    },
                                     snapObjects = project.snapObjects,
                                     gridSize = project.gridSize,
                                     onSetSnapObjects = viewModel::setSnapObjects,
@@ -744,8 +755,8 @@ private data class QuickItem(val icon: ImageVector, val label: String, val tag: 
 private fun BottomToolBar(openTool: Tool?, hasSelection: Boolean, onToggle: (Tool) -> Unit) {
     val inactive = Color(0xFF4A5560) // رمادي داكن للعناصر غير النشطة
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // ست فئات تتوزع بالتساوي إن اتسع العرض، وإلا يُنزلق الشريط.
-        val itemWidth = maxOf(60.dp, maxWidth / Tool.entries.size)
+        // عرض ثابت لكل فئة فيكون الشريط كله منزلقًا دائمًا بالسحب الأفقي.
+        val itemWidth = 76.dp
         Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
             Tool.entries.forEach { t ->
                 val selected = openTool == t
