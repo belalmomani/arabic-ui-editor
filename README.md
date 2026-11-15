@@ -581,3 +581,6 @@ AGP 8.7.3 · Kotlin 2.0.21 · Compose BOM 2024.12.01 · Gradle 8.10.2 (يُثب�
 
 ### 0.59.0 — صوت الضغطة المطوّلة
 - خاصية جديدة «صوت الضغطة المطوّلة» لكل عنصر (بجانب صوت النقر): تُسمع في المعاينة وتُصدَّر داخل `onLongClick`. اختبار `longPressSoundIsExportedAndCounted`. **لم يُترجم محليًا.**
+
+### 0.59.1 — إصلاح ترجمة الاختبارات
+- حذف استيراد خاطئ `assertExists` في `StickersSectionTest` (دالة عضو في `SemanticsNodeInteraction` لا امتداد). **لم يُترجم محليًا.**
