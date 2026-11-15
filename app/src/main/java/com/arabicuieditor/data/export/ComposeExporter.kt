@@ -344,6 +344,12 @@ private fun playSound(ctx: android.content.Context, name: String) {
             line("// تصدير من «محرر الواجهات العربي» — مشروع: ${project.name.replace('\n', ' ')}")
             line("// الأسماء العربية للشاشات في تعليقات؛ الدوال Screen1، Screen2... (معرّفات لاتينية).")
             line("// التخطيط الحر والقيود تُصدَّر بمواضع وأبعاد التصميم الثابتة؛ لا يُصدَّر سلوك التثبيت أو القيود الحيّة عند تغيّر حجم الشاشة.")
+            // combinedClickable (الضغطة المطوّلة) واجهة تجريبية في Compose Foundation فتحتاج موافقة على مستوى الملف.
+            val usesLongPress = allElements.any { e ->
+                Interactions.actionFor(e, Interactions.TRIGGER_LONG_PRESS) != ClickAction.None ||
+                    Sounds.valid(e.prop(PropertyKeys.LONG_SOUND)) != null
+            }
+            if (usesLongPress) line("@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)")
             line("package $pkg")
             line()
             line("import androidx.activity.compose.BackHandler")

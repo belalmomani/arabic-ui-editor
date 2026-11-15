@@ -113,5 +113,7 @@ class SoundsTest {
         assertEquals(listOf("bell"), Sounds.usedIn(p2))
         val code = ComposeExporter.export(p2)
         assertTrue(code.contains("onLongClick = { playSound(ctx, \"snd_bell\") }"))
+        assertTrue(code.contains("@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)"))
+        assertTrue(code.indexOf("@file:OptIn") < code.indexOf("package "))
     }
 }
