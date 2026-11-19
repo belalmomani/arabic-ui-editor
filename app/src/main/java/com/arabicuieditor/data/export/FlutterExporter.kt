@@ -1,5 +1,6 @@
 package com.arabicuieditor.data.export
 
+import com.arabicuieditor.data.model.ElementState
 import com.arabicuieditor.data.model.Aligns
 import com.arabicuieditor.data.model.Arrangements
 import com.arabicuieditor.data.model.ChildLayout
@@ -160,8 +161,9 @@ object FlutterExporter {
         fun child(e: UiElement, parent: ChildLayout, pp: Map<String, String>, ownerId: String?, d: Int): String {
             var w = widget(e, d)
             w = sized(e, parent, w, d)
-            val op = e.i(PropertyKeys.OPACITY)
+            val op = ElementState.opacityPercent(e.i(PropertyKeys.OPACITY), e)
             if (op in 0..99) w = call("Opacity", listOf("opacity: ${op / 100.0}", "child: $w"), d)
+            if (!ElementState.enabled(e)) w = call("IgnorePointer", listOf("child: $w"), d)
             // القلب (حول المركز) داخل الدوران، كما في المحرر.
             val fx = e.prop(PropertyKeys.FLIP_X) == "true"
             val fy = e.prop(PropertyKeys.FLIP_Y) == "true"

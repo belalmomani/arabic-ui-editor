@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.arabicuieditor.data.model.ElementState
 import com.arabicuieditor.data.model.ButtonStyles
 import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.FontWeights
@@ -82,7 +83,7 @@ private fun Modifier.buttonLook(look: ButtonStyles.Look, base: Color, shape: Sha
 @Composable
 fun ElementView(element: UiElement, modifier: Modifier) {
     val visible = element.boolProp(PropertyKeys.VISIBLE)
-    val opacity = element.intProp(PropertyKeys.OPACITY) / 100f
+    val opacity = ElementState.opacityPercent(element.intProp(PropertyKeys.OPACITY), element) / 100f
     val base = modifier.alpha(if (visible) opacity else HIDDEN_ALPHA)
 
     val radius = element.intProp(PropertyKeys.CORNER_RADIUS).dp

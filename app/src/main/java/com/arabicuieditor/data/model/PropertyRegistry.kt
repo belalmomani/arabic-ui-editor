@@ -68,6 +68,7 @@ object PropertyKeys {
     const val SCREEN_TRANSITION = "screenTransition"
     const val SOUND = "sound"
     const val ENTER_SOUND = "enterSound"
+    const val ENABLED = "enabled"
     const val LONG_SOUND = "longSound"
     const val FLIP_Y = "flipY"
     const val VISIBLE = "visible"
@@ -239,6 +240,7 @@ object PropertyRegistry {
         PropertyDef(PropertyKeys.NAME, R.string.prop_name, PropertyGroup.GENERAL, PropertyKind.Text(), ALL),
         PropertyDef(PropertyKeys.LOCKED, R.string.prop_locked, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "false"),
         PropertyDef(PropertyKeys.VISIBLE, R.string.prop_visible, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "true"),
+        PropertyDef(PropertyKeys.ENABLED, R.string.prop_enabled, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "true"),
         PropertyDef(PropertyKeys.OPACITY, R.string.prop_opacity, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "100"),
         PropertyDef(PropertyKeys.ROTATION, R.string.prop_rotation, PropertyGroup.GENERAL, PropertyKind.Integer(0, 359), ALL, fallback = "0"),
         PropertyDef(PropertyKeys.PIVOT_X, R.string.prop_pivot_x, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "50"),

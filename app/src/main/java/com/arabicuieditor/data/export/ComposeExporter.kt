@@ -1,5 +1,6 @@
 package com.arabicuieditor.data.export
 
+import com.arabicuieditor.data.model.ElementState
 import com.arabicuieditor.data.model.Aligns
 import com.arabicuieditor.data.model.ButtonStyles
 import com.arabicuieditor.data.model.PressEffects
@@ -634,7 +635,7 @@ private fun playSound(ctx: android.content.Context, name: String) {
         /** المظهر: شفافية، دوران، ظل/قص، خلفية، حد، نقر. */
         private fun visual(e: UiElement, shadowed: Boolean = false): List<String> {
             val out = ArrayList<String>()
-            val opacity = intOf(e, PropertyKeys.OPACITY)
+            val opacity = ElementState.opacityPercent(intOf(e, PropertyKeys.OPACITY), e)
             if (opacity in 0..99) out += ".alpha(${opacity / 100.0}f)"
             val rotation = intOf(e, PropertyKeys.ROTATION)
             val fx = e.prop(PropertyKeys.FLIP_X) == "true"
@@ -705,6 +706,7 @@ private fun playSound(ctx: android.content.Context, name: String) {
 
         /** النقر `.clickable`، ومع ضغطة مطوّلة `.combinedClickable` بالإجراءين. */
         private fun clickMod(e: UiElement): String? {
+            if (!ElementState.enabled(e)) return null
             val snd = Sounds.valid(e.prop(PropertyKeys.SOUND))?.let { soundCall(it) }
             val click0 = actionBody(Interactions.actionFor(e, Interactions.TRIGGER_CLICK))
             val click = if (snd == null) click0 else if (click0.isNullOrEmpty()) snd else "$snd; $click0"

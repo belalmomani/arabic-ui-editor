@@ -689,4 +689,5 @@
     <string name="tpl_realestate_d">قائمة عقارات بتبويبات وتفاصيل العقار</string>
     <string name="ts_re_list">العقارات</string>
     <string name="ts_re_details">تفاصيل العقار</string>
+    <string name="prop_enabled">مفعّل</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.arabicuieditor.data.export
 
+import com.arabicuieditor.data.model.ElementState
 import com.arabicuieditor.data.model.Aligns
 import com.arabicuieditor.data.model.Arrangements
 import com.arabicuieditor.data.model.ChildLayout
@@ -158,8 +159,9 @@ object XmlExporter {
             val attrs = ArrayList<String>()
             sizeAttrs(e, parent, ownerId, attrs)
             positionAttrs(e, parent, parentProps, ownerId, gap, attrs)
-            val opacity = e.i(PropertyKeys.OPACITY)
+            val opacity = ElementState.opacityPercent(e.i(PropertyKeys.OPACITY), e)
             if (opacity in 0..99) attrs += "android:alpha=\"${opacity / 100.0}\""
+            if (!ElementState.enabled(e)) attrs += listOf("android:enabled=\"false\"", "android:clickable=\"false\"")
             val rot = e.i(PropertyKeys.ROTATION)
             if (rot != 0) attrs += "android:rotation=\"$rot\""
             if (e.prop(PropertyKeys.FLIP_X) == "true") attrs += "android:scaleX=\"-1\""

@@ -116,4 +116,17 @@ class SoundsTest {
         assertTrue(code.contains("@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)"))
         assertTrue(code.indexOf("@file:OptIn") < code.indexOf("package "))
     }
+
+    @Test
+    fun disabledElementIsDimmedAndNotClickable() {
+        val e = newElement(ElementTypes.BUTTON, 10f, 10f, "b")
+        val off = e.copy(properties = e.properties + (PropertyKeys.ENABLED to "false") + (PropertyKeys.SOUND to "pop"))
+        assertEquals(40, com.arabicuieditor.data.model.ElementState.opacityPercent(100, off))
+        assertEquals(100, com.arabicuieditor.data.model.ElementState.opacityPercent(100, e))
+        val p = newProject("م", "الرئيسية")
+        val proj = p.copy(screens = listOf(p.screens[0].copy(elements = listOf(off))))
+        val code = ComposeExporter.export(proj)
+        assertTrue(code.contains(".alpha(0.4f)"))
+        assertFalse(code.contains(".clickable"))
+    }
 }

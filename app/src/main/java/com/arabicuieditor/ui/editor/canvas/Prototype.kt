@@ -1,5 +1,6 @@
 package com.arabicuieditor.ui.editor.canvas
 
+import com.arabicuieditor.data.model.ElementState
 import com.arabicuieditor.data.model.ClickAction
 import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.Interactions
@@ -48,7 +49,7 @@ object Prototype {
             var cursor: String? = id
             while (cursor != null) {
                 val e = byId[cursor] ?: break
-                if (!e.boolProp(PropertyKeys.VISIBLE)) return null
+                if (!e.boolProp(PropertyKeys.VISIBLE) || !ElementState.enabled(e)) return null
                 val s = e.prop(key)
                 if (Sounds.isValid(s)) return s
                 cursor = layout.parentOf[cursor]
@@ -71,7 +72,7 @@ object Prototype {
             var found: ClickAction = ClickAction.None
             while (cursor != null) {
                 val e = byId[cursor] ?: break
-                if (!e.boolProp(PropertyKeys.VISIBLE)) { hidden = true; break }
+                if (!e.boolProp(PropertyKeys.VISIBLE) || !ElementState.enabled(e)) { hidden = true; break }
                 val a = Interactions.actionFor(e, trigger)
                 if (a != ClickAction.None) { found = a; break }
                 cursor = layout.parentOf[cursor]
