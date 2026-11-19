@@ -249,6 +249,72 @@ internal object ProComponents {
             row(fill(), 232f, spacing = 12, padding = 6, children = listOf(cell(), cell()), extra = mapOf(PropertyKeys.CHILD_ALIGN_V to Aligns.START))
         },
 
+        preset("pro_food_card", R.string.pc_food_card, PresetCategory.PRODUCTS) { t ->
+            column(
+                fill(), 268f, padding = 10, type = ElementTypes.CARD, spacing = 8,
+                children = listOf(
+                    image(fill(), 140f, 10),
+                    text(t(R.string.pc_food_name), fill(), 24f, 16, bold = true),
+                    text(t(R.string.pc_food_desc), fill(), 20f, 13, color = MUTED),
+                    row(
+                        fill(), 40f, spacing = 8,
+                        children = listOf(
+                            text(t(R.string.pc_food_price), fixed(100f), 24f, 15, bold = true, color = PRIMARY, weight = 1),
+                            button(t(R.string.pc_food_add), fixed(112f), 36f)
+                        )
+                    )
+                )
+            )
+        },
+
+        preset("pro_property_card", R.string.pc_property_card, PresetCategory.CARDS) { t ->
+            column(
+                fill(), 282f, padding = 10, type = ElementTypes.CARD, spacing = 8,
+                children = listOf(
+                    image(fill(), 150f, 10),
+                    row(
+                        fill(), 28f, spacing = 8,
+                        children = listOf(
+                            text(t(R.string.pc_property_price), fixed(100f), 26f, 17, bold = true, color = PRIMARY, weight = 1),
+                            text(t(R.string.pc_property_kind), fixed(70f), 22f, 13, color = MUTED)
+                        )
+                    ),
+                    text(t(R.string.pc_property_title), fill(), 24f, 15, bold = true),
+                    text(t(R.string.pc_property_place), fill(), 20f, 13, color = MUTED),
+                    text(t(R.string.pc_property_specs), fill(), 20f, 13, color = MUTED)
+                )
+            )
+        },
+
+        // قوائم الحجز والحساب
+        preset("pro_slot_row", R.string.pc_slot_row, PresetCategory.LISTS) { t ->
+            row(
+                fill(), 76f, padding = 12, type = ElementTypes.CARD, spacing = 12,
+                children = listOf(
+                    column(
+                        fixed(100f), 48f, spacing = 4, weight = 1,
+                        children = listOf(
+                            text(t(R.string.pc_slot_time), fill(), 24f, 16, bold = true),
+                            text(t(R.string.pc_slot_day), fill(), 20f, 13, color = MUTED)
+                        )
+                    ),
+                    button(t(R.string.pc_slot_book), fixed(84f), 36f)
+                )
+            )
+        },
+        preset("pro_profile_header", R.string.pc_profile_header, PresetCategory.CARDS) { t ->
+            column(
+                fill(), 220f, padding = 16, type = ElementTypes.CARD, spacing = 8,
+                extra = mapOf(PropertyKeys.CHILD_ALIGN_H to Aligns.CENTER),
+                children = listOf(
+                    image(fixed(80f), 80f, 40, icon = "Person", iconColor = PRIMARY),
+                    text(t(R.string.pc_profile_name), fill(), 26f, 18, bold = true, align = TextAligns.CENTER),
+                    text(t(R.string.pc_profile_email), fill(), 20f, 13, color = MUTED, align = TextAligns.CENTER),
+                    button(t(R.string.pc_profile_edit), fixed(160f), 36f, BtnStyle.OUTLINE)
+                )
+            )
+        },
+
         // شريط التنقل والتبويبات
         preset("pro_bottom_nav", R.string.pc_bottom_nav, PresetCategory.NAVIGATION) { t ->
             fun item(label: Int, active: Boolean, icon: String) = column(

@@ -73,4 +73,22 @@ class TemplatesTest {
             com.arabicuieditor.data.model.Interactions.actionFor(cartNav, com.arabicuieditor.data.model.Interactions.TRIGGER_CLICK)
         )
     }
+
+    @Test fun loginTemplateLinksFormToSignupAndOtp() {
+        val b = Templates.build(Templates.all.first { it.id == "tpl_login" }, emptyList(), text)
+        val form = b[0].elements[0]
+        val click = com.arabicuieditor.data.model.Interactions.TRIGGER_CLICK
+        assertEquals(
+            com.arabicuieditor.data.model.ClickAction.Navigate(b[2].id),
+            com.arabicuieditor.data.model.Interactions.actionFor(form.children[3], click)
+        )
+        assertEquals(
+            com.arabicuieditor.data.model.ClickAction.Navigate(b[1].id),
+            com.arabicuieditor.data.model.Interactions.actionFor(form.children[5], click)
+        )
+        assertEquals(
+            com.arabicuieditor.data.model.ClickAction.Navigate(b[2].id),
+            com.arabicuieditor.data.model.Interactions.actionFor(b[1].elements[0].children[4], click)
+        )
+    }
 }

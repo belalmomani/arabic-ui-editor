@@ -12,7 +12,8 @@ enum class TemplateCategory(@StringRes val labelRes: Int) {
     LOGIN(R.string.tcat_login),
     FOOD(R.string.tcat_food),
     BOOKING(R.string.tcat_booking),
-    PROFILE(R.string.tcat_profile)
+    PROFILE(R.string.tcat_profile),
+    REALESTATE(R.string.tcat_realestate)
 }
 
 /** شاشة واحدة من قالب: اسمها ومعرّفات المكوّنات الجاهزة التي تتكوّن منها بالترتيب. */
@@ -75,14 +76,20 @@ object Templates {
         AppTemplate(
             "tpl_admin", R.string.tpl_admin, R.string.tpl_admin_d, TemplateCategory.ADMIN,
             listOf(TemplateScreen(R.string.ts_admin_settings, listOf(
-                "pro_appbar", "pro_menu_settings", "pro_menu_list", "pro_bottom_nav"
+                "pro_appbar", "pro_profile_header", "pro_menu_settings", "pro_menu_list", "pro_bottom_nav"
             )))
         ),
         AppTemplate(
             "tpl_login", R.string.tpl_login, R.string.tpl_login_d, TemplateCategory.LOGIN,
             listOf(
-                TemplateScreen(R.string.ts_login, listOf("pro_login_form")),
-                TemplateScreen(R.string.ts_signup, listOf("pro_login_signup")),
+                TemplateScreen(
+                    R.string.ts_login, listOf("pro_login_form"),
+                    links = listOf(TemplateLink(0, 2, childIndex = 3), TemplateLink(0, 1, childIndex = 5))
+                ),
+                TemplateScreen(
+                    R.string.ts_signup, listOf("pro_login_signup"),
+                    links = listOf(TemplateLink(0, 2, childIndex = 4))
+                ),
                 TemplateScreen(R.string.ts_otp, listOf("pro_login_otp"))
             )
         ),
@@ -90,12 +97,12 @@ object Templates {
             "tpl_food", R.string.tpl_food, R.string.tpl_food_d, TemplateCategory.FOOD,
             listOf(
                 TemplateScreen(R.string.ts_food_menu, listOf(
-                    "pro_appbar", "pro_tabs", "pro_product_row", "pro_product_row", "pro_product_row", "pro_bottom_nav"
+                    "pro_appbar", "pro_tabs", "pro_food_card", "pro_food_card", "pro_product_row", "pro_bottom_nav"
                 ), links = listOf(
                     TemplateLink(2, 1), TemplateLink(3, 1), TemplateLink(4, 1),
                     TemplateLink(5, 2, childIndex = 2)
                 )),
-                TemplateScreen(R.string.ts_food_item, listOf("pro_appbar", "pro_product_card", "pro_product_row")),
+                TemplateScreen(R.string.ts_food_item, listOf("pro_appbar", "pro_food_card", "pro_product_row")),
                 TemplateScreen(R.string.ts_food_cart, listOf(
                     "pro_appbar", "pro_product_row", "pro_product_row", "pro_menu_list"
                 ))
@@ -105,13 +112,22 @@ object Templates {
             "tpl_booking", R.string.tpl_booking, R.string.tpl_booking_d, TemplateCategory.BOOKING,
             listOf(
                 TemplateScreen(R.string.ts_booking_slots, listOf(
-                    "pro_appbar", "pro_tabs", "pro_news_row", "pro_news_row", "pro_news_row", "pro_bottom_nav"
+                    "pro_appbar", "pro_tabs", "pro_slot_row", "pro_slot_row", "pro_slot_row", "pro_bottom_nav"
                 ), links = listOf(TemplateLink(2, 1), TemplateLink(3, 1), TemplateLink(4, 1))),
                 TemplateScreen(
                     R.string.ts_booking_details, listOf("pro_appbar", "pro_news_card", "pro_menu_list"),
                     links = listOf(TemplateLink(1, 2))
                 ),
                 TemplateScreen(R.string.ts_booking_confirm, listOf("pro_appbar", "pro_dialog_confirm"))
+            )
+        ),
+        AppTemplate(
+            "tpl_realestate", R.string.tpl_realestate, R.string.tpl_realestate_d, TemplateCategory.REALESTATE,
+            listOf(
+                TemplateScreen(R.string.ts_re_list, listOf(
+                    "pro_appbar", "pro_tabs", "pro_property_card", "pro_property_card", "pro_bottom_nav"
+                ), links = listOf(TemplateLink(2, 1), TemplateLink(3, 1))),
+                TemplateScreen(R.string.ts_re_details, listOf("pro_appbar", "pro_property_card", "pro_menu_list"))
             )
         ),
         AppTemplate(
