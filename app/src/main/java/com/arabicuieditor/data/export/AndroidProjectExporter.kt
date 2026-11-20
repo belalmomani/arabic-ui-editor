@@ -227,6 +227,7 @@ object AndroidProjectExporter {
                       name: app-debug-apk
                       path: app/build/outputs/apk/debug/app-debug.apk
                       if-no-files-found: error
+                      retention-days: 3
         """.trimIndent() + "\n")
         text(".gitignore", "build/\n.gradle/\nlocal.properties\n.idea/\n*.iml\n")
         text("README.md", buildString {

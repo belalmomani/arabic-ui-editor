@@ -52,7 +52,12 @@ fun GitHubBuildDialog(project: Project, packageName: String, imagesDir: File?, o
             try {
                 var token = GitHubAuthStore.token(context)
                 if (token == null) {
-                    token = builder.authorize(clientId, onState)
+                    token = builder.authorize(
+                        clientId, onState,
+                        resume = GitHubAuthStore.pending(context),
+                        onCode = { GitHubAuthStore.savePending(context, it) }
+                    )
+                    GitHubAuthStore.clearPending(context)
                     GitHubAuthStore.save(context, token)
                 }
                 val files = AndroidProjectExporter.collectFiles(
@@ -69,6 +74,7 @@ fun GitHubBuildDialog(project: Project, packageName: String, imagesDir: File?, o
                 if (r is BuildState.Failed && r.unauthorized) GitHubAuthStore.clear(context)
                 r
             } catch (e: GitHubException) {
+                GitHubAuthStore.clearPending(context)
                 BuildState.Failed(e.message.orEmpty())
             } catch (e: java.io.IOException) {
                 BuildState.Failed(context.getString(R.string.gh_network_error) + " (" + e.javaClass.simpleName + ": " + e.message + ")")
@@ -94,7 +100,7 @@ fun GitHubBuildDialog(project: Project, packageName: String, imagesDir: File?, o
                         SelectionContainer {
                             Text(st.userCode, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.testTag("github_user_code"))
                         }
-                        TextButton(onClick = { openUrl(context, st.uri) }) { Text(stringResource(R.string.gh_open_github)) }
+                        TextButton(onClick = { openUrl(context, st.uri + (if (st.uri.contains("?")) "&" else "?") + "user_code=" + st.userCode) }) { Text(stringResource(R.string.gh_open_github)) }
                     }
                     st is BuildState.Pushing -> Text(stringResource(R.string.gh_pushing, st.done, st.total))
                     st is BuildState.Building -> {
@@ -112,12 +118,12 @@ fun GitHubBuildDialog(project: Project, packageName: String, imagesDir: File?, o
             }
         },
         confirmButton = {
-            if (st is BuildState.Failed || st == null || st is BuildState.NeedAuth) TextButton(onClick = { state = null; attempt++ }) { Text(stringResource(R.string.gh_retry)) }
+            if (st is BuildState.Failed || st == null || st is BuildState.NeedAuth) TextButton(onClick = { GitHubAuthStore.clearPending(context); state = null; attempt++ }) { Text(stringResource(R.string.gh_retry)) }
             else TextButton(onClick = onDismiss) { Text(stringResource(R.string.export_close)) }
         },
         dismissButton = {
             Row {
-                TextButton(onClick = { GitHubAuthStore.clear(context); state = null; attempt++ }) { Text(stringResource(R.string.gh_relogin)) }
+                TextButton(onClick = { GitHubAuthStore.clear(context); GitHubAuthStore.clearPending(context); state = null; attempt++ }) { Text(stringResource(R.string.gh_relogin)) }
                 if (st is BuildState.Failed || st == null || st is BuildState.NeedAuth) TextButton(onClick = onDismiss) { Text(stringResource(R.string.export_close)) }
             }
         }

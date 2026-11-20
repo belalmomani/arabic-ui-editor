@@ -122,4 +122,14 @@ class GitHubBuildTest {
         assertNull(GitHubApi(f).runForCommit("t", com.arabicuieditor.data.github.RepoInfo("me", "r", "main"), "c1"))
         assertFalse(f.calls.isEmpty())
     }
+
+    @Test fun resumeUsesExistingCodeWithoutNewRequest() = runBlocking {
+        val f = Fake(listOf("POST https://github.com/login/oauth" to listOf(ok("""{"access_token":"T2"}"""))))
+        val existing = com.arabicuieditor.data.github.DeviceCode("d0", "U0", "v", 1, 100)
+        val states = mutableListOf<BuildState>()
+        val token = GitHubBuilder(GitHubApi(f), sleep = {}).authorize("c", states::add, resume = existing)
+        assertEquals("T2", token)
+        assertTrue(f.calls.none { it.url.contains("device/code") })
+        assertEquals(BuildState.NeedAuth("U0", "v"), states.first())
+    }
 }

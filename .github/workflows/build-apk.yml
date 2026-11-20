@@ -35,7 +35,7 @@ jobs:
           name: arabic-ui-editor-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 5
 
       # اختبارات المنطق (الهندسة، الخصائص، التراجع، JSON، الحفظ). فشلها يجعل التشغيل أحمر.
       - name: Run logic tests
@@ -54,6 +54,7 @@ jobs:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
+          retention-days: 2
 
   # يبني فعليًا مشروعًا مُصدَّرًا من كل القوالب، لاكتشاف أخطاء ترجمة الكود المُولَّد قبل أن تصل للمستخدم.
   verify-export:

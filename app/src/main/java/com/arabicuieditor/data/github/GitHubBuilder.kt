@@ -19,8 +19,11 @@ class GitHubBuilder(
     private val maxPolls: Int = 180
 ) {
     /** يعيد الرمز بعد موافقة المستخدم، أو يرمي [GitHubException]. */
-    suspend fun authorize(clientId: String, onState: (BuildState) -> Unit): String {
-        val code = api.startDeviceFlow(clientId)
+    suspend fun authorize(
+        clientId: String, onState: (BuildState) -> Unit,
+        resume: DeviceCode? = null, onCode: (DeviceCode) -> Unit = {}
+    ): String {
+        val code = resume ?: api.startDeviceFlow(clientId).also(onCode)
         onState(BuildState.NeedAuth(code.userCode, code.verificationUri))
         var interval = code.intervalSec.coerceAtLeast(1)
         var waited = 0
