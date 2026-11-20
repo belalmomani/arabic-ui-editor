@@ -24,7 +24,7 @@ class UrlConnectionHttp : Http {
         val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
         try {
             c.connectTimeout = 20_000
-            c.readTimeout = 60_000
+            c.readTimeout = 30_000
             c.requestMethod = method
             headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
             if (method != "GET" && method != "HEAD") {

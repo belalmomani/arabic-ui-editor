@@ -714,4 +714,5 @@
     <string name="gh_failed">تعذّر: %1$s</string>
     <string name="gh_network_error">تعذّر الاتصال بالشبكة</string>
     <string name="gh_retry">إعادة المحاولة</string>
+    <string name="gh_relogin">تسجيل دخول جديد</string>
 </resources>

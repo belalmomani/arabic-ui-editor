@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -70,7 +71,9 @@ fun GitHubBuildDialog(project: Project, packageName: String, imagesDir: File?, o
             } catch (e: GitHubException) {
                 BuildState.Failed(e.message.orEmpty())
             } catch (e: java.io.IOException) {
-                BuildState.Failed(context.getString(R.string.gh_network_error))
+                BuildState.Failed(context.getString(R.string.gh_network_error) + " (" + e.javaClass.simpleName + ": " + e.message + ")")
+            } catch (e: Exception) {
+                BuildState.Failed(e.javaClass.simpleName + ": " + e.message)
             }
         }
         state = result
@@ -109,10 +112,15 @@ fun GitHubBuildDialog(project: Project, packageName: String, imagesDir: File?, o
             }
         },
         confirmButton = {
-            if (st is BuildState.Failed) TextButton(onClick = { state = null; attempt++ }) { Text(stringResource(R.string.gh_retry)) }
+            if (st is BuildState.Failed || st == null || st is BuildState.NeedAuth) TextButton(onClick = { state = null; attempt++ }) { Text(stringResource(R.string.gh_retry)) }
             else TextButton(onClick = onDismiss) { Text(stringResource(R.string.export_close)) }
         },
-        dismissButton = if (st is BuildState.Failed) ({ TextButton(onClick = onDismiss) { Text(stringResource(R.string.export_close)) } }) else null
+        dismissButton = {
+            Row {
+                TextButton(onClick = { GitHubAuthStore.clear(context); state = null; attempt++ }) { Text(stringResource(R.string.gh_relogin)) }
+                if (st is BuildState.Failed || st == null || st is BuildState.NeedAuth) TextButton(onClick = onDismiss) { Text(stringResource(R.string.export_close)) }
+            }
+        }
     )
 }
 
