@@ -68,7 +68,14 @@ object PropertyKeys {
     const val SCREEN_TRANSITION = "screenTransition"
     const val SOUND = "sound"
     const val ENTER_SOUND = "enterSound"
+    const val EXIT_SOUND = "exitSound"
     const val ENABLED = "enabled"
+    const val DISABLED_BG = "disabledBg"
+    const val SELECTED = "selected"
+    const val SELECTED_BG = "selectedBg"
+    const val SELECTED_TEXT_COLOR = "selectedTextColor"
+    const val PRESS_TINT = "pressTint"
+    const val DISABLED_TEXT_COLOR = "disabledTextColor"
     const val LONG_SOUND = "longSound"
     const val FLIP_Y = "flipY"
     const val VISIBLE = "visible"
@@ -241,6 +248,31 @@ object PropertyRegistry {
         PropertyDef(PropertyKeys.LOCKED, R.string.prop_locked, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "false"),
         PropertyDef(PropertyKeys.VISIBLE, R.string.prop_visible, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "true"),
         PropertyDef(PropertyKeys.ENABLED, R.string.prop_enabled, PropertyGroup.GENERAL, PropertyKind.Toggle, ALL, fallback = "true"),
+        PropertyDef(
+            PropertyKeys.SELECTED, R.string.prop_selected, PropertyGroup.GENERAL, PropertyKind.Toggle,
+            setOf(ElementTypes.BUTTON, ElementTypes.CARD, ElementTypes.CONTAINER, ElementTypes.TEXT, ElementTypes.IMAGE),
+            fallback = "false"
+        ),
+        PropertyDef(
+            PropertyKeys.SELECTED_BG, R.string.prop_selected_bg, PropertyGroup.APPEARANCE, PropertyKind.ColorValue,
+            setOf(ElementTypes.BUTTON, ElementTypes.CARD, ElementTypes.CONTAINER), fallback = TRANSPARENT
+        ),
+        PropertyDef(
+            PropertyKeys.SELECTED_TEXT_COLOR, R.string.prop_selected_text_color, PropertyGroup.TEXT, PropertyKind.ColorValue,
+            setOf(ElementTypes.BUTTON, ElementTypes.TEXT), fallback = TRANSPARENT
+        ),
+        PropertyDef(
+            PropertyKeys.PRESS_TINT, R.string.prop_press_tint, PropertyGroup.APPEARANCE, PropertyKind.ColorValue,
+            setOf(ElementTypes.BUTTON, ElementTypes.IMAGE), fallback = TRANSPARENT
+        ),
+        PropertyDef(
+            PropertyKeys.DISABLED_BG, R.string.prop_disabled_bg, PropertyGroup.APPEARANCE, PropertyKind.ColorValue,
+            setOf(ElementTypes.BUTTON, ElementTypes.CARD, ElementTypes.CONTAINER, ElementTypes.INPUT), fallback = TRANSPARENT
+        ),
+        PropertyDef(
+            PropertyKeys.DISABLED_TEXT_COLOR, R.string.prop_disabled_text_color, PropertyGroup.TEXT, PropertyKind.ColorValue,
+            setOf(ElementTypes.BUTTON, ElementTypes.TEXT, ElementTypes.INPUT), fallback = TRANSPARENT
+        ),
         PropertyDef(PropertyKeys.OPACITY, R.string.prop_opacity, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "100"),
         PropertyDef(PropertyKeys.ROTATION, R.string.prop_rotation, PropertyGroup.GENERAL, PropertyKind.Integer(0, 359), ALL, fallback = "0"),
         PropertyDef(PropertyKeys.PIVOT_X, R.string.prop_pivot_x, PropertyGroup.GENERAL, PropertyKind.Integer(0, 100), ALL, fallback = "50"),
@@ -400,6 +432,10 @@ object PropertyRegistry {
         ),
         PropertyDef(
             PropertyKeys.ENTER_SOUND, R.string.prop_enter_sound, PropertyGroup.GENERAL,
+            PropertyKind.Choice(Sounds.options), setOf(SCREEN_TYPE), fallback = Sounds.NONE
+        ),
+        PropertyDef(
+            PropertyKeys.EXIT_SOUND, R.string.prop_exit_sound, PropertyGroup.GENERAL,
             PropertyKind.Choice(Sounds.options), setOf(SCREEN_TYPE), fallback = Sounds.NONE
         ),
         PropertyDef(

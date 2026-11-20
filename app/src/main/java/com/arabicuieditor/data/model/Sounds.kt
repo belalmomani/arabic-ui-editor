@@ -77,6 +77,7 @@ object Sounds {
         val out = LinkedHashSet<String>()
         for (s in project.screens) {
             s.prop(PropertyKeys.ENTER_SOUND).takeIf { isValid(it) }?.let { out += it }
+            s.prop(PropertyKeys.EXIT_SOUND).takeIf { isValid(it) }?.let { out += it }
             for (e in ElementTree.flatten(s.elements)) {
                 e.prop(PropertyKeys.SOUND).takeIf { isValid(it) }?.let { out += it }
                 e.prop(PropertyKeys.LONG_SOUND).takeIf { isValid(it) }?.let { out += it }

@@ -158,7 +158,8 @@ object FlutterExporter {
 
         // ---- العنصر ----
 
-        fun child(e: UiElement, parent: ChildLayout, pp: Map<String, String>, ownerId: String?, d: Int): String {
+        fun child(e0: UiElement, parent: ChildLayout, pp: Map<String, String>, ownerId: String?, d: Int): String {
+            val e = ElementState.resolved(e0)
             var w = widget(e, d)
             w = sized(e, parent, w, d)
             val op = ElementState.opacityPercent(e.i(PropertyKeys.OPACITY), e)
@@ -274,6 +275,19 @@ object FlutterExporter {
             val args = ArrayList<String>()
             tap?.let { args += "onTap: $it" }
             long?.let { args += "onLongPress: $it" }
+            val tint = ElementState.pressTint(e)
+            if (tint != null) {
+                // تظليل الضغط: طبقة InkWell فوق العنصر كي لا تُغطّيها خلفيته.
+                val r = e.i(PropertyKeys.CORNER_RADIUS)
+                val ink = ArrayList<String>()
+                ink += "splashColor: ${colorOf(tint)}"
+                ink += "highlightColor: ${colorOf(tint)}"
+                if (r > 0) ink += "borderRadius: BorderRadius.circular(${r}.0)"
+                tap?.let { ink += "onTap: $it" }
+                long?.let { ink += "onLongPress: $it" }
+                val overlay = call("Positioned.fill", listOf("child: " + call("Material", listOf("type: MaterialType.transparency", "child: " + call("InkWell", ink, d + 2)), d + 1)), d)
+                return call("Stack", listOf("children: [$w, $overlay]"), d)
+            }
             args += "child: $w"
             return call("GestureDetector", args, d)
         }

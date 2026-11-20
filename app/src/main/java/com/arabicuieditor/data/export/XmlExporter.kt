@@ -148,7 +148,8 @@ object XmlExporter {
             }
         }
 
-        fun element(e: UiElement, parent: ChildLayout, parentProps: Map<String, String>, ownerId: String?, gap: Int) {
+        fun element(e0: UiElement, parent: ChildLayout, parentProps: Map<String, String>, ownerId: String?, gap: Int) {
+            val e = ElementState.resolved(e0)
             val label = e.prop(PropertyKeys.NAME).replace('\n', ' ').trim()
             if (e.prop(PropertyKeys.VISIBLE) == "false") {
                 w("<!-- ${label.ifEmpty { e.type }} (مخفي في التصميم، لم يُصدَّر) -->")
@@ -200,6 +201,7 @@ object XmlExporter {
                 is ClickAction.Navigate -> screenIndex[a.screenId]?.let { "انتقال إلى ${layoutName(it)}" } ?: "انتقال إلى شاشة محذوفة"
             }
             describe(Interactions.clickAction(e))?.let { w("<!-- عند النقر: $it (اربطه بـ setOnClickListener) -->") }
+            ElementState.pressTint(e)?.let { w("<!-- تظليل عند الضغط: $it (أضف ripple بهذا اللون يدويًا) -->") }
             describe(Interactions.actionFor(e, Interactions.TRIGGER_LONG_PRESS))?.let { w("<!-- عند الضغط المطوّل: $it -->") }
         }
 

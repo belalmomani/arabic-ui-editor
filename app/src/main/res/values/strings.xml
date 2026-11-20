@@ -612,6 +612,7 @@
     <string name="snap_note">عند السحب تظهر خطوط إرشادية وردية لمحاذاة الحواف والمراكز، وبنفسجية للتباعد المتساوي. الشبكة تلتقط الحواف العلوية واليسرى.</string>
     <string name="prop_sound">صوت النقر</string>
     <string name="prop_enter_sound">صوت الظهور</string>
+    <string name="prop_exit_sound">صوت الخروج</string>
     <string name="st_sound">تشغيل صوت</string>
     <string name="snd_none">بدون صوت</string>
     <string name="snd_click">نقرة</string>
@@ -690,4 +691,27 @@
     <string name="ts_re_list">العقارات</string>
     <string name="ts_re_details">تفاصيل العقار</string>
     <string name="prop_enabled">مفعّل</string>
+    <string name="prop_disabled_bg">خلفية عند التعطيل</string>
+    <string name="prop_disabled_text_color">لون النص عند التعطيل</string>
+    <string name="prop_selected">محدد</string>
+    <string name="prop_selected_bg">خلفية عند التحديد</string>
+    <string name="prop_selected_text_color">لون النص عند التحديد</string>
+    <string name="prop_press_tint">تظليل عند الضغط</string>
+    <!-- ابنِ تطبيقي (GitHub) -->
+    <!-- ضع هنا Client ID لتطبيق OAuth في GitHub (مع تفعيل Device Flow). فارغ = الميزة معطّلة برسالة. -->
+    <string name="github_client_id" translatable="false">Ov23li8IFXvEplyJ6LV9</string>
+    <string name="gh_build_btn">ابنِ تطبيقي على GitHub (APK)</string>
+    <string name="gh_build_title">ابنِ تطبيقي</string>
+    <string name="gh_no_client_id">لم يُضبط معرّف تطبيق GitHub (Client ID) بعد. أنشئ OAuth App مع تفعيل Device Flow وضع المعرّف في github_client_id داخل strings.xml.</string>
+    <string name="gh_starting">جارٍ الاتصال بـ GitHub…</string>
+    <string name="gh_enter_code">افتح صفحة GitHub وأدخل هذا الرمز للموافقة:</string>
+    <string name="gh_open_github">فتح صفحة الموافقة</string>
+    <string name="gh_pushing">جارٍ رفع الملفات… %1$d من %2$d</string>
+    <string name="gh_building">يجري البناء على GitHub، قد يستغرق بضع دقائق…</string>
+    <string name="gh_open_run">فتح صفحة البناء</string>
+    <string name="gh_done_ok">اكتمل البناء بنجاح. حمّل ملف APK من قسم Artifacts في صفحة البناء.</string>
+    <string name="gh_done_fail">فشل البناء. افتح صفحة البناء لرؤية السجل.</string>
+    <string name="gh_failed">تعذّر: %1$s</string>
+    <string name="gh_network_error">تعذّر الاتصال بالشبكة</string>
+    <string name="gh_retry">إعادة المحاولة</string>
 </resources>

@@ -124,4 +124,25 @@ class FlutterExporterTest {
         assertTrue(out.contains("Matrix4.diagonal3Values(-1.0, 1.0, 1.0)"))
         assertTrue(out.contains("alignment: Alignment(-1.0, -1.0)"))
     }
+
+    @Test
+    fun pressTintBecomesInkWellOverlay() {
+        val b = Interactions.withClickAction(
+            el("b", ElementTypes.BUTTON, props = mapOf(PropertyKeys.TEXT to "x", PropertyKeys.PRESS_TINT to "#33000000", PropertyKeys.CORNER_RADIUS to "8")),
+            ClickAction.Back
+        )
+        val out = FlutterExporter.export(project(UiScreen("s1", "أ", 360f, 640f, listOf(b))))
+        assertBalanced(out)
+        assertTrue(out.contains("InkWell("))
+        assertTrue(out.contains("splashColor: Color(0x33000000)"))
+        assertTrue(out.contains("onTap: () => Navigator.pop(context)"))
+    }
+
+    @Test
+    fun noPressTintKeepsGestureDetector() {
+        val b = Interactions.withClickAction(el("b", ElementTypes.BUTTON), ClickAction.Back)
+        val out = FlutterExporter.export(project(UiScreen("s1", "أ", 360f, 640f, listOf(b))))
+        assertTrue(out.contains("GestureDetector("))
+        assertTrue(!out.contains("InkWell("))
+    }
 }

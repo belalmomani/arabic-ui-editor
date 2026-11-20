@@ -129,4 +129,56 @@ class SoundsTest {
         assertTrue(code.contains(".alpha(0.4f)"))
         assertFalse(code.contains(".clickable"))
     }
+
+    @Test
+    fun disabledColorsApplyOnlyWhenDisabled() {
+        val e = newElement(ElementTypes.BUTTON, 10f, 10f, "b")
+        val styled = e.copy(properties = e.properties + (PropertyKeys.DISABLED_BG to "#FF999999") + (PropertyKeys.DISABLED_TEXT_COLOR to "#FF111111"))
+        val on = com.arabicuieditor.data.model.ElementState.resolved(styled)
+        assertEquals(styled.properties[PropertyKeys.BG_COLOR], on.properties[PropertyKeys.BG_COLOR])
+        val off = com.arabicuieditor.data.model.ElementState.resolved(styled.copy(properties = styled.properties + (PropertyKeys.ENABLED to "false")))
+        assertEquals("#FF999999", off.properties[PropertyKeys.BG_COLOR])
+        assertEquals("#FF111111", off.properties[PropertyKeys.TEXT_COLOR])
+        // غير مضبوط (شفاف) فلا تغيير
+        val plain = e.copy(properties = e.properties + (PropertyKeys.ENABLED to "false"))
+        assertEquals(plain, com.arabicuieditor.data.model.ElementState.resolved(plain))
+    }
+
+    @Test
+    fun selectedStateSwapsColorsAndDisabledWins() {
+        val e = newElement(ElementTypes.BUTTON, 10f, 10f, "b")
+        val styled = e.copy(
+            properties = e.properties + (PropertyKeys.SELECTED to "true") + (PropertyKeys.SELECTED_BG to "#FF00AA00") +
+                (PropertyKeys.SELECTED_TEXT_COLOR to "#FFFFFFFF") + (PropertyKeys.DISABLED_BG to "#FF999999")
+        )
+        val sel = com.arabicuieditor.data.model.ElementState.resolved(styled)
+        assertEquals("#FF00AA00", sel.properties[PropertyKeys.BG_COLOR])
+        assertEquals("#FFFFFFFF", sel.properties[PropertyKeys.TEXT_COLOR])
+        val off = com.arabicuieditor.data.model.ElementState.resolved(styled.copy(properties = styled.properties + (PropertyKeys.ENABLED to "false")))
+        assertEquals("#FF999999", off.properties[PropertyKeys.BG_COLOR])
+        assertEquals("true", PropertyRegistry.normalize(PropertyKeys.SELECTED, "true"))
+    }
+
+    @Test
+    fun pressTintIsExportedAsOverlay() {
+        val e = newElement(ElementTypes.BUTTON, 10f, 10f, "b")
+        val t = e.copy(properties = e.properties + (PropertyKeys.PRESS_TINT to "#40000000"))
+        val p = newProject("م", "الرئيسية")
+        val code = ComposeExporter.export(p.copy(screens = listOf(p.screens[0].copy(elements = listOf(t)))))
+        assertTrue(code.contains(".pressEffect(\"none\", Color(android.graphics.Color.parseColor(\"#40000000\"))"))
+        assertTrue(code.contains("drawWithContent"))
+        assertEquals("#40000000", com.arabicuieditor.data.model.ElementState.pressTint(t))
+        assertNull(com.arabicuieditor.data.model.ElementState.pressTint(e))
+    }
+
+    @Test
+    fun exitSoundIsCollectedAndExported() {
+        val base = projectWithSound(Sounds.NONE)
+        val sc = base.screens[0]
+        val p = base.copy(screens = listOf(sc.copy(properties = sc.properties + (PropertyKeys.EXIT_SOUND to "pop"))))
+        assertEquals(listOf("pop"), Sounds.usedIn(p))
+        val code = com.arabicuieditor.data.export.ComposeExporter.export(p)
+        assertTrue(code.contains("DisposableEffect(Unit) { onDispose {"))
+        assertTrue(code.contains("snd_pop"))
+    }
 }

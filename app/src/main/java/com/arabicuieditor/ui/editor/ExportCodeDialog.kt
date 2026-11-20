@@ -73,6 +73,7 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
     val pkgValid = AndroidProjectExporter.isValidPackage(pkg)
     val imagesDir = com.arabicuieditor.ui.editor.canvas.LocalImageDir.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var showGitHub by rememberSaveable { mutableStateOf(false) }
     val zipLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")
     ) { uri ->
@@ -107,6 +108,8 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
             }
         }
     }
+
+    if (showGitHub) GitHubBuildDialog(project, pkg, imagesDir) { showGitHub = false }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize().testTag("export_dialog")) {
@@ -168,6 +171,11 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
                     enabled = pkgValid,
                     modifier = Modifier.fillMaxWidth().testTag("export_project_zip")
                 ) { Text(stringResource(R.string.export_zip_btn)) }
+                AppOutlinedButton(
+                    onClick = { showGitHub = true },
+                    enabled = pkgValid,
+                    modifier = Modifier.fillMaxWidth().testTag("export_github_build")
+                ) { Text(stringResource(R.string.gh_build_btn)) }
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.weight(1f).fillMaxWidth()

@@ -614,3 +614,28 @@ AGP 8.7.3 · Kotlin 2.0.21 · Compose BOM 2024.12.01 · Gradle 8.10.2 (يُثب�
 
 ### 0.67.0 — حالة «معطّل»
 - خاصية «مفعّل» لكل عنصر (مجموعة عام): إيقافها يجعله باهتًا (40% من شفافيته) ولا يستجيب للنقر ولا للصوت في المعاينة، ويُصدَّر كذلك: Compose بلا `clickable` وبشفافية، Flutter بـ`IgnorePointer`، XML بـ`enabled=false`. اختبار `disabledElementIsDimmedAndNotClickable`. **لم يُترجم محليًا.**
+
+### 0.68.0 — ألوان حالة «معطّل»
+- خاصيتان جديدتان: «خلفية عند التعطيل» و«لون النص عند التعطيل» (شفاف = غير مضبوط). تُطبَّقان عند إيقاف «مفعّل» في المحرر والمعاينة وكل المُصدِّرات (Compose وFlutter وXML) عبر نقطة واحدة `ElementState.resolved`. اختبار `disabledColorsApplyOnlyWhenDisabled`. **لم يُترجم محليًا.**
+
+### 0.68.1 — دليل المستخدم
+- ملف `docs/USER_GUIDE.md`: دليل عربي مختصر لكل مزايا التطبيق. لا تغيير في الكود.
+
+### 0.72.0 — صوت الخروج من الشاشة
+- خاصية جديدة للشاشة «صوت الخروج» (EXIT_SOUND): تُشغَّل عند مغادرة الشاشة في المعاينة، ويُصدَّر `DisposableEffect { onDispose { playSound } }` في Compose. تدخل ضمن ملفات الصوت المصدَّرة. اختبار جديد في SoundsTest.
+
+### 0.71.0 — تظليل الضغط في تصدير Flutter
+- Flutter: عند ضبط «تظليل عند الضغط» يُولَّد `Stack` مع طبقة `InkWell` فوق العنصر (splash/highlight بنفس اللون)؛ XML: تعليق يوضح اللون. اختباران جديدان في FlutterExporterTest.
+
+### 0.70.1
+- ضبط GitHub Client ID في `github_client_id` فصار زر «ابنِ تطبيقي» فعّالًا.
+
+### 0.70.0 — «ابنِ تطبيقي» على GitHub
+- زر «ابنِ تطبيقي على GitHub (APK)» في نافذة التصدير: تسجيل دخول بـOAuth Device Flow (رمز يُدخل في github.com/login/device) ← إنشاء مستودع **خاص** ← رفع المشروع كاملًا في commit واحد ← انتظار تشغيل Actions ← فتح رابط صفحة البناء (الـAPK في Artifacts).
+- يتطلب إذن INTERNET (جديد). الرمز يُحفظ في تخزين التطبيق الخاص فقط.
+- **إعداد لازم مرة واحدة**: GitHub ← Settings ← Developer settings ← OAuth Apps ← New (فعّل Device Flow) ثم ضع Client ID في `github_client_id` داخل strings.xml. بدونه تظهر رسالة توضيحية.
+- `AndroidProjectExporter.collectFiles` مستخرجة وتُستعمل في ZIP والرفع. اختبارات: GitHubBuildTest (HTTP مزيّف).
+
+### 0.69.0 — حالة «محدد» وتظليل الضغط
+- خاصية «محدد» مع «خلفية عند التحديد» و«لون النص عند التحديد» (تبويب نشط، خيار مختار...). المعطّل يغلب المحدد. تعمل في المحرر والمعاينة وكل المُصدِّرات عبر `ElementState.resolved`.
+- «تظليل عند الضغط» للأزرار والصور: طبقة بلون شبه شفاف أثناء الضغط في المعاينة وتصدير Compose (مساعد `pressEffect` مُوسَّع بـ`drawWithContent`). Flutter وXML لا يتأثران. اختبارات `selectedStateSwapsColorsAndDisabledWins` و`pressTintIsExportedAsOverlay`. **لم يُترجم محليًا.**

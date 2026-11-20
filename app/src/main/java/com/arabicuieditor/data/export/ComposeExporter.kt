@@ -48,7 +48,7 @@ import com.arabicuieditor.ui.editor.canvas.LayoutResult
 object ComposeExporter {
     /** دالة مساعدة تُدرج في الكود المُصدَّر حين يستعمل زر تأثير الضغط. */
     private val PRESS_HELPER = """// ---- تأثير الضغط على الأزرار ----
-private fun Modifier.pressEffect(kind: String): Modifier = composed {
+private fun Modifier.pressEffect(kind: String, tint: Color = Color.Unspecified, radius: Dp = 0.dp): Modifier = composed {
     var pressed by remember { mutableStateOf(false) }
     val pressScale by animateFloatAsState(
         if (!pressed) 1f else when (kind) { "shrink" -> 0.94f; "grow" -> 1.06f; else -> 1f },
@@ -63,6 +63,13 @@ private fun Modifier.pressEffect(kind: String): Modifier = composed {
                 pressed = true
                 waitForUpOrCancellation()
                 pressed = false
+            }
+        }
+        .drawWithContent {
+            drawContent()
+            if (pressed && tint != Color.Unspecified) {
+                if (radius > 0.dp) drawRoundRect(tint, cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius.toPx()))
+                else drawRect(tint)
             }
         }
 }
@@ -490,6 +497,7 @@ private fun playSound(ctx: android.content.Context, name: String) {
             depth++
             if (usesToast || usesSound) line("val ctx = LocalContext.current")
             Sounds.valid(s.prop(PropertyKeys.ENTER_SOUND))?.let { line("LaunchedEffect(Unit) { ${soundCall(it)} }") }
+            Sounds.valid(s.prop(PropertyKeys.EXIT_SOUND))?.let { line("DisposableEffect(Unit) { onDispose { ${soundCall(it)} } }") }
             line("// التصميم يسار-يمين كما في المحرر؛ احذف هذا الغلاف ليتبع اتجاه لغة الجهاز.")
             call("CompositionLocalProvider", listOf("LocalLayoutDirection provides LayoutDirection.Ltr"), null) {
                 val read: (String) -> String = { key -> s.prop(key) }
@@ -631,6 +639,7 @@ private fun playSound(ctx: android.content.Context, name: String) {
         private fun pressKind(e: UiElement): String? =
             if (e.type != ElementTypes.BUTTON && e.type != ElementTypes.IMAGE) null
             else e.prop(PropertyKeys.PRESS_EFFECT).takeIf { it == PressEffects.SHRINK || it == PressEffects.DIM || it == PressEffects.GROW }
+                ?: if (ElementState.pressTint(e) != null) PressEffects.NONE else null
 
         /** المظهر: شفافية، دوران، ظل/قص، خلفية، حد، نقر. */
         private fun visual(e: UiElement, shadowed: Boolean = false): List<String> {
@@ -649,8 +658,14 @@ private fun playSound(ctx: android.content.Context, name: String) {
                 else ".rotate(${rotation}f)"
             }
             if (fx || fy) out += ".graphicsLayer(scaleX = ${if (fx) "-1f" else "1f"}, scaleY = ${if (fy) "-1f" else "1f"})"
-            pressKind(e)?.let { out += ".pressEffect(\"$it\")" }
             val radiusRaw = e.prop(PropertyKeys.CORNER_RADIUS)
+            pressKind(e)?.let { kind ->
+                val tint = ElementState.pressTint(e)
+                val args = if (tint == null) "" else
+                    ", Color(android.graphics.Color.parseColor(\"${tint}\")), " +
+                        (if (radiusRaw.isNotEmpty() && (Tokens.isRadiusRef(radiusRaw) || radiusValue(radiusRaw) > 0)) radiusExpr(radiusRaw) else "0.dp")
+                out += ".pressEffect(\"$kind\"$args)"
+            }
             val shape = if (radiusRaw.isNotEmpty() && (Tokens.isRadiusRef(radiusRaw) || radiusValue(radiusRaw) > 0))
                 "RoundedCornerShape(${radiusExpr(radiusRaw)})" else null
             val bg = e.prop(PropertyKeys.BG_COLOR)
@@ -725,7 +740,8 @@ private fun playSound(ctx: android.content.Context, name: String) {
             intOf(e, PropertyKeys.PADDING_END), intOf(e, PropertyKeys.PADDING_BOTTOM)
         )
 
-        private fun child(e: UiElement, parent: ChildLayout, parentAh: String, parentAv: String, owner: String? = null) {
+        private fun child(e0: UiElement, parent: ChildLayout, parentAh: String, parentAv: String, owner: String? = null) {
+            val e = ElementState.resolved(e0)
             val label = e.prop(PropertyKeys.NAME).replace('\n', ' ').trim()
             val hiddenAtStart = e.prop(PropertyKeys.VISIBLE) == "false"
             val dynamic = isTarget(e)

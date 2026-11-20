@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -115,6 +116,9 @@ fun PrototypePlayer(
     }
     // صوت دخول الشاشة (خاصية الشاشة «صوت الظهور»).
     LaunchedEffect(screen.id) { sounds.play(screen.prop(PropertyKeys.ENTER_SOUND)) }
+    // صوت خروج الشاشة: عند مغادرتها (انتقال أو رجوع).
+    val exitSound = screen.prop(PropertyKeys.EXIT_SOUND)
+    androidx.compose.runtime.DisposableEffect(screen.id) { onDispose { sounds.play(exitSound) } }
     LaunchedEffect(toast) {
         if (toast != null) { kotlinx.coroutines.delay(2500); toast = null }
     }
@@ -221,6 +225,21 @@ fun PrototypePlayer(
                                     }
                                         .clipToBounds()
                                 )
+                                // تظليل الضغط: طبقة ملونة فوق العنصر ما دام مضغوطًا.
+                                val tint = if (pressedId == id) com.arabicuieditor.data.model.ElementState.pressTint(element) else null
+                                if (tint != null) {
+                                    androidx.compose.foundation.layout.Box(
+                                        Modifier
+                                            .absoluteOffset(rect.x.dp, rect.y.dp)
+                                            .size(rect.w.dp, rect.h.dp)
+                                            .graphicsLayer {
+                                                transformOrigin = TransformOrigin(element.pivotX(), element.pivotY())
+                                                rotationZ = element.intProp(PropertyKeys.ROTATION).toFloat()
+                                            }
+                                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(element.intProp(PropertyKeys.CORNER_RADIUS).dp))
+                                            .background(Color(android.graphics.Color.parseColor(tint)))
+                                    )
+                                }
                             }
                         }
                     }

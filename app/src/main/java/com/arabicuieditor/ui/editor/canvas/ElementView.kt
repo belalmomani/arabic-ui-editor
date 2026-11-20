@@ -82,6 +82,12 @@ private fun Modifier.buttonLook(look: ButtonStyles.Look, base: Color, shape: Sha
  */
 @Composable
 fun ElementView(element: UiElement, modifier: Modifier) {
+    val el = ElementState.resolved(element)
+    ElementViewResolved(el, modifier)
+}
+
+@Composable
+private fun ElementViewResolved(element: UiElement, modifier: Modifier) {
     val visible = element.boolProp(PropertyKeys.VISIBLE)
     val opacity = ElementState.opacityPercent(element.intProp(PropertyKeys.OPACITY), element) / 100f
     val base = modifier.alpha(if (visible) opacity else HIDDEN_ALPHA)

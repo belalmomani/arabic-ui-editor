@@ -262,15 +262,15 @@ object AndroidProjectExporter {
         return out
     }
 
-    /** يكتب المشروع كملف ZIP إلى [out]؛ الصور تُقرأ من [imagesDir] (قد يكون null). */
-    fun writeZip(
-        project: Project, packageName: String, imagesDir: File?, out: OutputStream,
+    /** يجمع ملفات المشروع الكاملة (مسار ← بايتات)؛ الصور تُقرأ من [imagesDir] (قد يكون null). */
+    fun collectFiles(
+        project: Project, packageName: String, imagesDir: File?,
         fontLoader: ((String) -> ByteArray?)? = null,
         /** يقرأ ملف ملصق مضمّن (assets/stickers) باسمه؛ يُستعمل لأسماء stk_*.webp فقط. */
         stickerLoader: ((String) -> ByteArray?)? = null,
         /** يقرأ ملف صوت مضمّن (assets/sounds) بمعرّفه (click، pop...). */
         soundLoader: ((String) -> ByteArray?)? = null
-    ) {
+    ): Map<String, ByteArray> {
         val images = LinkedHashMap<String, ByteArray>()
         for (name in usedImages(project)) {
             if (Stickers.isSticker(name)) {
@@ -288,7 +288,17 @@ object AndroidProjectExporter {
             else soundLoader?.invoke(id)
             bytes?.let { sounds[id] = it }
         }
-        val files = files(project, packageName, images, fonts, sounds)
+        return files(project, packageName, images, fonts, sounds)
+    }
+
+    /** يكتب المشروع كملف ZIP إلى [out]. */
+    fun writeZip(
+        project: Project, packageName: String, imagesDir: File?, out: OutputStream,
+        fontLoader: ((String) -> ByteArray?)? = null,
+        stickerLoader: ((String) -> ByteArray?)? = null,
+        soundLoader: ((String) -> ByteArray?)? = null
+    ) {
+        val files = collectFiles(project, packageName, imagesDir, fontLoader, stickerLoader, soundLoader)
         ZipOutputStream(out).use { zip ->
             for ((path, bytes) in files) {
                 zip.putNextEntry(ZipEntry(path))

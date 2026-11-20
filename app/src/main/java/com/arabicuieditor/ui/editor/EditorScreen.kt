@@ -688,7 +688,7 @@ private fun EditorContent(
                                     onSetScreenSize = { w, h -> viewModel.setScreenSize(screen.id, w, h) },
                                     onSetLayout = viewModel::setScreenLayout,
                                     onSetScreenProperty = { key, value ->
-                                        if (key == com.arabicuieditor.data.model.PropertyKeys.ENTER_SOUND) previewSounds.play(value)
+                                        if (key == com.arabicuieditor.data.model.PropertyKeys.ENTER_SOUND || key == com.arabicuieditor.data.model.PropertyKeys.EXIT_SOUND) previewSounds.play(value)
                                         viewModel.setScreenProperty(key, value)
                                     },
                                     snapObjects = project.snapObjects,
