@@ -54,6 +54,9 @@ fun ProjectsScreen(
     val error by viewModel.error.collectAsState()
 
     var showCreate by remember { mutableStateOf(false) }
+    var showAi by remember { mutableStateOf(false) }
+    var showPlanner by remember { mutableStateOf(false) }
+    var fillTarget by remember { mutableStateOf<Project?>(null) }
     var renameTarget by remember { mutableStateOf<Project?>(null) }
     var deleteTarget by remember { mutableStateOf<Project?>(null) }
 
@@ -64,6 +67,14 @@ fun ProjectsScreen(
         val t = zipTarget
         if (uri != null && t != null) viewModel.exportZip(t.id, uri)
         zipTarget = null
+    }
+    var blueprintTarget by remember { mutableStateOf<Project?>(null) }
+    val blueprintSaver = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/markdown")
+    ) { uri ->
+        val t = blueprintTarget
+        if (uri != null && t != null) viewModel.exportBlueprint(t.id, uri)
+        blueprintTarget = null
     }
     val zipPicker = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
@@ -142,6 +153,16 @@ fun ProjectsScreen(
                     onClick = { viewModel.importText(clipboard.getText()?.text.orEmpty()) },
                     modifier = Modifier.testTag("import_project")
                 ) { Text(stringResource(R.string.import_project)) }
+                ExtendedFloatingActionButton(
+                    elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp),
+                    onClick = { showPlanner = true },
+                    modifier = Modifier.testTag("create_planner")
+                ) { Text(stringResource(R.string.planner_fab)) }
+                ExtendedFloatingActionButton(
+                    elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp),
+                    onClick = { showAi = true },
+                    modifier = Modifier.testTag("create_ai")
+                ) { Text(stringResource(R.string.ai_fab)) }
                 ExtendedFloatingActionButton(onClick = { showCreate = true }, elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp)) {
                     Text(stringResource(R.string.home_new_project))
                 }
@@ -167,6 +188,11 @@ fun ProjectsScreen(
                             project = project,
                             onOpen = { onOpenProject(project.id) },
                             onRename = { renameTarget = project },
+                            onFill = { fillTarget = project },
+                            onBlueprint = {
+                                blueprintTarget = project
+                                blueprintSaver.launch(project.name.replace(Regex("[^\\p{L}\\p{N}_ -]"), "_").ifBlank { "project" } + "-blueprint.md")
+                            },
                             onDuplicate = { viewModel.duplicate(project) },
                             onZip = {
                                 zipTarget = project
@@ -198,6 +224,18 @@ fun ProjectsScreen(
             }
         }
     }
+
+    fillTarget?.let { target ->
+        AiContentDialog(
+            project = target,
+            onApply = { reply, onDone -> viewModel.applyAiContent(target.id, reply, onDone) },
+            onDismiss = { fillTarget = null }
+        )
+    }
+
+    if (showPlanner) PlannerDialog(onCreate = { plan -> viewModel.createPlanned(plan, onCreated = onOpenProject) }, onDismiss = { showPlanner = false })
+
+    if (showAi) AiProjectDialog(onCreate = viewModel::importAi, onDismiss = { showAi = false })
 
     if (showCreate) {
         NameDialog(
@@ -242,6 +280,8 @@ private fun ProjectCard(
     project: Project,
     onOpen: () -> Unit,
     onRename: () -> Unit,
+    onFill: () -> Unit,
+    onBlueprint: () -> Unit,
     onDuplicate: () -> Unit,
     onBackup: () -> Unit,
     onZip: () -> Unit,
@@ -290,6 +330,16 @@ private fun ProjectCard(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_rename)) },
                         onClick = { menuOpen = false; onRename() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_ai_fill)) },
+                        onClick = { menuOpen = false; onFill() },
+                        modifier = Modifier.testTag("menu_ai_fill")
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_blueprint)) },
+                        onClick = { menuOpen = false; onBlueprint() },
+                        modifier = Modifier.testTag("menu_blueprint")
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_duplicate)) },

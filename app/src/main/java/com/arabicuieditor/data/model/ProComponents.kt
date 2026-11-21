@@ -474,6 +474,30 @@ internal object ProComponents {
                 )
             )
         },
+        // خبر عاجل: زر «المزيد» يُظهر نص التفاصيل ويخفي نفسه.
+        preset("pro_news_more", R.string.pc_news_more, PresetCategory.NEWS) { t ->
+            val detail = text(t(R.string.pc_news_more_text), fill(), 60f, 14).let {
+                it.copy(properties = it.properties + (PropertyKeys.NAME to "more_text") + (PropertyKeys.VISIBLE to "false"))
+            }
+            val more = Interactions.withClickAction(
+                button(t(R.string.pc_news_more_btn), fixed(110f), 40f, BtnStyle.TEXT).let {
+                    it.copy(properties = it.properties + (PropertyKeys.NAME to "more_btn"))
+                },
+                ClickAction.Blocks(listOf(
+                    com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.SHOW, "more_text"),
+                    com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.HIDE, "more_btn")
+                ))
+            )
+            column(
+                fill(), 150f, padding = 12, spacing = 6, type = ElementTypes.CARD,
+                children = listOf(
+                    text(t(R.string.pc_news_tag), fill(), 18f, 12, bold = true, color = PRIMARY),
+                    text(t(R.string.pc_news_title), fill(), 44f, 17, bold = true),
+                    detail,
+                    more
+                )
+            ).let { it.copy(layout = it.layout.copy(height = SizeSpec(SizeMode.WRAP_CONTENT, 0f))) }
+        },
         preset("pro_news_row", R.string.pc_news_row, PresetCategory.NEWS) { t ->
             row(
                 fill(), 112f, padding = 10, spacing = 12, type = ElementTypes.CARD,

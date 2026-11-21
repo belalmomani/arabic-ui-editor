@@ -137,12 +137,72 @@ class ProjectsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** يبدّل نصوص مشروع موجود بردّ الذكاء الاصطناعي؛ [onDone] بعدد النصوص المبدَّلة (0 = لم يصلح الرد). */
+    fun applyAiContent(projectId: String, reply: String, onDone: (Int) -> Unit) {
+        viewModelScope.launch {
+            val n = try {
+                withContext(Dispatchers.IO) {
+                    val project = repository.load(projectId)
+                    val r = project?.let { com.arabicuieditor.data.ai.AiContent.apply(it, reply) }
+                    if (r != null) { repository.save(r.first); r.second } else 0
+                }
+            } catch (e: Exception) { 0 }
+            reload()
+            onDone(n)
+        }
+    }
+
+    /** ينشئ مشروعًا من «مخطِّط التطبيق» (بلا ذكاء اصطناعي) ويفتحه. */
+    fun createPlanned(plan: com.arabicuieditor.data.planner.AppPlan, onCreated: (String) -> Unit) {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            try {
+                val project = withContext(Dispatchers.IO) {
+                    repository.save(com.arabicuieditor.data.planner.AppPlanner.build(plan, { app.getString(it) }))
+                }
+                reload()
+                onCreated(project.id)
+            } catch (e: Exception) {
+                _error.value = R.string.error_action_failed
+            }
+        }
+    }
+
+    /** ينشئ مشروعًا من ردّ الذكاء الاصطناعي الملصوق؛ يعيد النجاح عبر [onDone]. */
+    fun importAi(reply: String, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = try {
+                withContext(Dispatchers.IO) { repository.importAi(reply) } != null
+            } catch (e: Exception) {
+                false
+            }
+            reload()
+            onDone(ok)
+        }
+    }
+
     /** يكتب نسخة ZIP كاملة للمشروع إلى [uri] (يختاره المستخدم). */
     fun exportZip(id: String, uri: android.net.Uri) {
         viewModelScope.launch {
             val ok = try {
                 withContext(Dispatchers.IO) {
                     getApplication<Application>().contentResolver.openOutputStream(uri)?.use { repository.exportZip(id, it) } ?: false
+                }
+            } catch (e: Exception) {
+                false
+            }
+            if (!ok) _error.value = R.string.error_action_failed
+        }
+    }
+
+    /** يكتب «مخطط التطبيق» (Markdown) إلى [uri]. */
+    fun exportBlueprint(id: String, uri: android.net.Uri) {
+        viewModelScope.launch {
+            val ok = try {
+                withContext(Dispatchers.IO) {
+                    val project = repository.load(id) ?: return@withContext false
+                    val md = com.arabicuieditor.data.planner.Blueprint.markdown(project)
+                    getApplication<Application>().contentResolver.openOutputStream(uri)?.use { it.write(md.toByteArray(Charsets.UTF_8)) } != null
                 }
             } catch (e: Exception) {
                 false

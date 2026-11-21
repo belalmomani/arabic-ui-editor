@@ -124,4 +124,33 @@ class ElementOpsTest {
         assertEquals(listOf(a.id), ElementOps.topMost(roots, setOf(a.id)).map { it.id })
         assertTrue(ElementOps.topMost(roots, emptySet()).isEmpty())
     }
+
+    private fun moreCard(): List<UiElement> =
+        com.arabicuieditor.data.model.ComponentLibrary.presets.first { it.id == "pro_news_more" }.build { "نص" }
+
+    private fun flat(list: List<UiElement>) = com.arabicuieditor.data.model.ElementTree.flatten(list)
+
+    @Test
+    fun newsMorePresetTogglesItsOwnDetail() {
+        val card = moreCard()
+        val all = flat(card)
+        val detail = all.first { it.properties[PropertyKeys.NAME] == "more_text" }
+        assertEquals("false", detail.properties[PropertyKeys.VISIBLE])
+        val btn = all.first { it.properties[PropertyKeys.NAME] == "more_btn" }
+        val steps = com.arabicuieditor.data.model.Interactions.clickAction(btn) as com.arabicuieditor.data.model.ClickAction.Blocks
+        assertEquals(listOf("show" to "more_text", "hide" to "more_btn"), steps.steps.map { it.kind to it.a })
+    }
+
+    @Test
+    fun secondCopyOfPresetGetsItsOwnTargets() {
+        val first = ElementOps.relinkBlockTargets(emptyList(), moreCard())
+        val second = ElementOps.relinkBlockTargets(flat(first), moreCard())
+        val all = flat(second)
+        assertTrue(all.any { it.properties[PropertyKeys.NAME] == "more_text_2" })
+        val btn = all.first { it.properties[PropertyKeys.NAME] == "more_btn_2" }
+        val steps = (com.arabicuieditor.data.model.Interactions.clickAction(btn) as com.arabicuieditor.data.model.ClickAction.Blocks).steps
+        assertEquals(listOf("more_text_2", "more_btn_2"), steps.map { it.a })
+        // النسخة الأولى لم تتغير.
+        assertTrue(flat(first).any { it.properties[PropertyKeys.NAME] == "more_text" })
+    }
 }

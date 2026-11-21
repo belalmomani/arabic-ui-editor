@@ -118,6 +118,44 @@ object ElementOps {
         }
     }
 
+    /**
+     * يجعل أسماء الأبناء المضافين فريدة بالنسبة للموجود، ويعدّل خطوات «المنطق» داخل المضاف
+     * التي تشير إلى هذه الأسماء، فلا يتحكم زر في عنصر من نسخة أخرى للمكوّن نفسه.
+     */
+    fun relinkBlockTargets(existing: List<UiElement>, added: List<UiElement>): List<UiElement> {
+        val used = HashSet<String>()
+        existing.forEach { e -> e.properties[PropertyKeys.NAME]?.takeIf { it.isNotBlank() }?.let { used += it } }
+        val mapping = HashMap<String, String>()
+        fun rename(e: UiElement): UiElement {
+            var cur = e
+            val n = e.properties[PropertyKeys.NAME].orEmpty()
+            if (n.isNotBlank()) {
+                var final = n
+                if (final in used) {
+                    var i = 2
+                    while ("${n}_$i" in used) i++
+                    final = "${n}_$i"
+                    mapping[n] = final
+                    cur = cur.withProp(PropertyKeys.NAME, final)
+                }
+                used += final
+            }
+            return cur.copy(children = cur.children.map { rename(it) })
+        }
+        fun rewrite(e: UiElement): UiElement {
+            val events = e.events.map { ev ->
+                if (ev.action != Interactions.ACTION_BLOCKS) ev else {
+                    val steps = com.arabicuieditor.data.script.Steps.decode(ev.params[Interactions.PARAM_STEPS].orEmpty())
+                        .map { s -> if (com.arabicuieditor.data.script.Steps.usesElement(s.kind) && s.a in mapping) s.copy(a = mapping.getValue(s.a)) else s }
+                    ev.copy(params = ev.params + (Interactions.PARAM_STEPS to com.arabicuieditor.data.script.Steps.encode(steps)))
+                }
+            }
+            return e.copy(events = events, children = e.children.map { rewrite(it) })
+        }
+        val renamed = added.map { rename(it) }
+        return if (mapping.isEmpty()) renamed else renamed.map { rewrite(it) }
+    }
+
     /** المستطيل المحيط بمجموعة عناصر (x, y, w, h)، أو null إن كانت فارغة. */
     fun bounds(elements: List<UiElement>): FloatArray? {
         if (elements.isEmpty()) return null

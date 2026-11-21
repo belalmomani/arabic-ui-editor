@@ -172,6 +172,14 @@ class ProjectRepository(private val root: File) {
         return project
     }
 
+    /** ينشئ مشروعًا من ردّ شات (JSON مبسّط، انظر AiProject)؛ null إن لم يصلح. */
+    @Synchronized
+    fun importAi(reply: String): Project? {
+        val project = com.arabicuieditor.data.ai.AiProject.parse(reply) ?: return null
+        write(project)
+        return project
+    }
+
     @Synchronized
     fun delete(id: String): Boolean {
         if (!isValidId(id)) return false

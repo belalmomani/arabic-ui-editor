@@ -551,11 +551,19 @@ class EditorViewModel(app: Application, handle: SavedStateHandle) : AndroidViewM
         val cx = if (!atPoint && parentId != null) parentFrame.w / 2f else centerX - parentFrame.x
         val cy = if (!atPoint && parentId != null) parentFrame.h / 2f else centerY - parentFrame.y
         val placed = ElementOps.placeCentered(raw, cx, cy, parentFrame.w, parentFrame.h)
-        val named = ElementOps.withUniqueNames(ElementTree.flatten(screen.elements), placed) { e -> str(elementLabelRes(e.type)) }
+        val named = ElementOps.relinkBlockTargets(
+            ElementTree.flatten(screen.elements),
+            ElementOps.withUniqueNames(ElementTree.flatten(screen.elements), placed) { e -> str(elementLabelRes(e.type)) }
+        )
 
-        val index: Int? = if (atPoint && (parentLayout == ChildLayout.COLUMN || parentLayout == ChildLayout.ROW)) {
+        val flow = parentLayout == ChildLayout.COLUMN || parentLayout == ChildLayout.ROW
+        val index: Int? = if (atPoint && flow) {
             val siblings = childrenOf(screen, parentId).map { it.id }
             LayoutEngine.dropIndex(layout, siblings, parentLayout == ChildLayout.COLUMN, centerX, centerY)
+        } else if (!atPoint && flow) {
+            // النقر على «إضافة»: يوضع العنصر الجديد مباشرة بعد العنصر المحدد (لا في آخر القائمة خارج الإطار).
+            val sel = _selectedId.value
+            childrenOf(screen, parentId).indexOfFirst { it.id == sel }.takeIf { it >= 0 }?.plus(1)
         } else null
 
         editScreen(screen.id) { s ->
