@@ -135,4 +135,13 @@ class AiProjectTest {
         assertNull(com.arabicuieditor.data.ai.AiContent.apply(p, """{"texts":{}}"""))
         assertNull(com.arabicuieditor.data.ai.AiContent.apply(p, """{"other":1}"""))
     }
+
+    @Test fun parsesReplyWithMarkdownEscapesFromChatCopy() {
+        // نسخ الشات يضيف \\[ و \\] قبل الأقواس و \\\\n مزدوجة داخل النصوص.
+        val reply = "{ \"name\": \"مطعم\", \"screens\": \\[ { \"name\": \"الرئيسية\", \"layout\": \"column\", \"elements\": \\[ { \"type\": \"list\", \"text\": \"أ\\\\nب\" }, { \"type\": \"button\", \"text\": \"رجوع\", \"back\": true } \\] } \\] }"
+        val p = AiProject.parse(reply)
+        org.junit.Assert.assertNotNull(p)
+        org.junit.Assert.assertEquals(1, p!!.screens.size)
+        org.junit.Assert.assertEquals(2, p.screens[0].elements.size)
+    }
 }

@@ -68,7 +68,15 @@ object AiProject {
         val start = text.indexOf('{')
         val end = text.lastIndexOf('}')
         if (start < 0 || end <= start) return null
-        return try { JSONObject(text.substring(start, end + 1)) } catch (_: Exception) { null }
+        val raw = text.substring(start, end + 1)
+        return try { JSONObject(raw) } catch (_: Exception) {
+            // ردود الشات المنسوخة أحيانًا تحمل هروب Markdown (\[ \] \_ \* \#) أو \\n مزدوجة أو علامات اقتباس ذكية.
+            val cleaned = raw
+                .replace("\\[", "[").replace("\\]", "]").replace("\\_", "_").replace("\\*", "*").replace("\\#", "#")
+                .replace("\\\\n", "\\n")
+                .replace('\u201C', '"').replace('\u201D', '"')
+            try { JSONObject(cleaned) } catch (_: Exception) { null }
+        }
     }
 
     /** يحوّل ردّ الشات إلى مشروع جديد، أو null إن لم يكن فيه شاشة واحدة صالحة. */
