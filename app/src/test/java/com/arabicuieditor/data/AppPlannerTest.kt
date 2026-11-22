@@ -102,4 +102,18 @@ class AppPlannerTest {
         val short = md.lines().first { it.startsWith("- القصير:") }.removePrefix("- القصير: ")
         assertTrue(short.length <= 80)
     }
+
+    @Test fun postsTemplateHasFiveLinkedScreens() {
+        val p = AppPlanner.build(AppPlan(PlanKind.POSTS, "باحث"), text)
+        assertEquals(5, p.screens.size)
+        assertEquals(p.screens[0].id, p.startScreenId)
+        val ids = p.screens.map { it.id }.toSet()
+        // كل انتقال يشير إلى شاشة موجودة
+        val targets = p.screens.flatMap { s -> ElementTree.flatten(s.elements).mapNotNull { (Interactions.clickAction(it) as? ClickAction.Navigate)?.screenId } }
+        assertTrue(targets.size >= 8)
+        assertTrue(ids.containsAll(targets))
+        // زر «بدء البحث» ينقل إلى النتائج
+        val start = ElementTree.flatten(p.screens[0].elements).first { it.type == ElementTypes.BUTTON && Interactions.clickAction(it) is ClickAction.Navigate }
+        assertEquals(p.screens[1].id, (Interactions.clickAction(start) as ClickAction.Navigate).screenId)
+    }
 }

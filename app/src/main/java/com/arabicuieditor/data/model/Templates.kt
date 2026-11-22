@@ -131,6 +131,22 @@ object Templates {
             )
         ),
         AppTemplate(
+            "tpl_posts", R.string.tpl_posts, R.string.tpl_posts_d, TemplateCategory.NEWS,
+            listOf(
+                // 0 البحث، 1 النتائج، 2 المكتبة، 3 الإعدادات، 4 تعديل منشور
+                TemplateScreen(R.string.ts_posts_search, listOf("pro_appbar", "pro_search_form", "pro_api_note"),
+                    listOf(TemplateLink(1, 1, childIndex = 4), TemplateLink(1, 3, childIndex = 7))),
+                TemplateScreen(R.string.ts_posts_results, listOf("pro_appbar", "pro_post_tools", "pro_post_card", "pro_post_card"),
+                    listOf(TemplateLink(1, 2, childIndex = 3), TemplateLink(2, 4, childIndex = 5), TemplateLink(3, 4, childIndex = 5))),
+                TemplateScreen(R.string.ts_posts_library, listOf("pro_appbar", "pro_post_tools", "pro_tabs", "pro_post_card", "pro_post_card", "pro_export_bar"),
+                    listOf(TemplateLink(3, 4, childIndex = 5), TemplateLink(4, 4, childIndex = 5))),
+                TemplateScreen(R.string.ts_posts_settings, listOf("pro_appbar", "pro_search_settings", "pro_api_note"),
+                    listOf(TemplateLink(1, 0, childIndex = 6))),
+                TemplateScreen(R.string.ts_posts_edit, listOf("pro_appbar", "pro_post_edit"),
+                    listOf(TemplateLink(1, 2, childIndex = 2), TemplateLink(1, 2, childIndex = 3)))
+            )
+        ),
+        AppTemplate(
             "tpl_profile", R.string.tpl_profile, R.string.tpl_profile_d, TemplateCategory.PROFILE,
             listOf(
                 TemplateScreen(R.string.ts_profile_home, listOf(

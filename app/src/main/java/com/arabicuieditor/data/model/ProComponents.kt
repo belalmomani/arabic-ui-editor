@@ -556,6 +556,93 @@ internal object ProComponents {
                     button(t(R.string.pc_send), fixed(72f), 44f)
                 )
             )
+        },
+
+        // باحث المنشورات: نموذج البحث (الأزرار أبناء مباشرة ليُربط أولها بالنتائج والأخير بالإعدادات)
+        preset("pro_search_form", R.string.pc_search_form, PresetCategory.INPUTS) { t ->
+            column(
+                fill(), 360f, padding = 14, spacing = 8, type = ElementTypes.CARD,
+                children = listOf(
+                    text(t(R.string.pc_sf_title), fill(), 26f, 17, bold = true),
+                    input(t(R.string.pc_sf_query), fill(), 48f),
+                    input(t(R.string.pc_sf_count), fill(), 48f),
+                    input(t(R.string.pc_sf_scope), fill(), 48f),
+                    button(t(R.string.pc_sf_start), fill(), 44f),
+                    button(t(R.string.pc_sf_stop), fill(), 44f, BtnStyle.DANGER),
+                    text(t(R.string.pc_sf_progress), fill(), 22f, 13, color = MUTED),
+                    button(t(R.string.pc_sf_settings), fill(), 40f, BtnStyle.TEXT)
+                )
+            )
+        },
+        // بطاقة منشور محفوظ/مطابق: الأزرار أبناء مباشرة (4 نسخ، 5 تعديل)
+        preset("pro_post_card", R.string.pc_post_card, PresetCategory.CARDS) { t ->
+            column(
+                fill(), 300f, padding = 12, spacing = 6, type = ElementTypes.CARD,
+                children = listOf(
+                    text(t(R.string.pc_post_title), fill(), 26f, 16, bold = true),
+                    text(t(R.string.pc_post_body), fill(), 60f, 14),
+                    text(t(R.string.pc_post_meta), fill(), 20f, 12, color = MUTED),
+                    text(t(R.string.pc_post_link), fill(), 20f, 12, color = PRIMARY),
+                    button(t(R.string.pc_post_copy), fill(), 40f),
+                    button(t(R.string.pc_post_edit), fill(), 40f, BtnStyle.OUTLINE)
+                )
+            )
+        },
+        // أدوات قائمة المنشورات: بحث داخلي + نسخ المحدد + فتح المكتبة (الأزرار أبناء مباشرة)
+        preset("pro_post_tools", R.string.pc_post_tools, PresetCategory.INPUTS) { t ->
+            column(
+                fill(), 200f, padding = 12, spacing = 8,
+                children = listOf(
+                    input(t(R.string.pc_pt_search), fill(), 48f),
+                    button(t(R.string.pc_pt_copy_selected), fill(), 40f),
+                    button(t(R.string.pc_pt_select_all), fill(), 40f, BtnStyle.OUTLINE),
+                    button(t(R.string.pc_pt_library), fill(), 40f, BtnStyle.TEXT)
+                )
+            )
+        },
+        preset("pro_export_bar", R.string.pc_export_bar, PresetCategory.BUTTONS) { t ->
+            row(
+                fill(), 56f, padding = 8, spacing = 8,
+                children = listOf(
+                    button(t(R.string.pc_export_json), fixed(100f), 44f, weight = 1),
+                    button(t(R.string.pc_export_excel), fixed(100f), 44f, BtnStyle.OUTLINE, weight = 1)
+                )
+            )
+        },
+        preset("pro_search_settings", R.string.pc_search_settings, PresetCategory.INPUTS) { t ->
+            column(
+                fill(), 330f, padding = 14, spacing = 8, type = ElementTypes.CARD,
+                children = listOf(
+                    text(t(R.string.pc_ss_title), fill(), 26f, 17, bold = true),
+                    input(t(R.string.pc_ss_phrase), fill(), 48f),
+                    input(t(R.string.pc_ss_must), fill(), 48f),
+                    input(t(R.string.pc_ss_exclude), fill(), 48f),
+                    input(t(R.string.pc_ss_period), fill(), 48f),
+                    input(t(R.string.pc_ss_pages), fill(), 48f),
+                    button(t(R.string.pc_ss_save), fill(), 44f)
+                )
+            )
+        },
+        preset("pro_post_edit", R.string.pc_post_edit_form, PresetCategory.INPUTS) { t ->
+            column(
+                fill(), 330f, padding = 14, spacing = 8, type = ElementTypes.CARD,
+                children = listOf(
+                    input(t(R.string.pc_pe_title), fill(), 48f),
+                    input(t(R.string.pc_pe_body), fill(), 140f),
+                    button(t(R.string.pc_pe_save), fill(), 44f),
+                    button(t(R.string.pc_pe_delete), fill(), 44f, BtnStyle.DANGER)
+                )
+            )
+        },
+        // تنبيه حدود الواجهة الرسمية
+        preset("pro_api_note", R.string.pc_api_note, PresetCategory.CARDS) { t ->
+            column(
+                fill(), 130f, padding = 12, spacing = 4, type = ElementTypes.CARD,
+                children = listOf(
+                    text(t(R.string.pc_an_title), fill(), 24f, 14, bold = true),
+                    text(t(R.string.pc_an_body), fill(), 80f, 12, color = MUTED)
+                )
+            )
         }
     )
 }
