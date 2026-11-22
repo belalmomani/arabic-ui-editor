@@ -19,12 +19,12 @@ interface Http {
 }
 
 /** تنفيذ حقيقي بـ HttpURLConnection (يدعم أندرويد PATCH). */
-class UrlConnectionHttp : Http {
+class UrlConnectionHttp(private val readTimeoutMs: Int = 30_000) : Http {
     override fun request(method: String, url: String, headers: Map<String, String>, body: String?, contentType: String): HttpResponse {
         val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
         try {
             c.connectTimeout = 20_000
-            c.readTimeout = 30_000
+            c.readTimeout = readTimeoutMs
             c.requestMethod = method
             headers.forEach { (k, v) -> c.setRequestProperty(k, v) }
             if (method != "GET" && method != "HEAD") {

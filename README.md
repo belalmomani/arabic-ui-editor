@@ -704,3 +704,9 @@ AGP 8.7.3 · Kotlin 2.0.21 · Compose BOM 2024.12.01 · Gradle 8.10.2 (يُثب�
 
 ### 0.81.1
 - إصلاح تجميع ProjectsScreen (import animateFloat).
+
+### 0.82.0
+- مفتاح API اختياري (Gemini, Groq, OpenRouter, Mistral, Cerebras, SambaNova, NVIDIA, Hugging Face, Cohere, OpenAI, Anthropic, DeepSeek, xAI, Together, Fireworks, DeepInfra, Perplexity أو مزوّد آخر متوافق مع OpenAI). يُحفظ على الجهاز فقط ويفعّل زر «إرسال تلقائي» في حواري الإنشاء بالذكاء الاصطناعي وتعبئة النصوص؛ بدونه يبقى النسخ واللصق.
+
+### 0.82.1
+- في إعداد المفتاح: رابط «احصل على المفتاح» فوق كل مزوّد (يفتح المتصفح)، وإضافة Novita، وتسمية Claude (Anthropic).

@@ -53,6 +53,7 @@ fun AiProjectDialog(onCreate: (reply: String, onDone: (Boolean) -> Unit) -> Unit
                     onClick = { clipboard.setText(AnnotatedString(AiProject.prompt(idea))); copied = true },
                     enabled = idea.isNotBlank(), modifier = Modifier.fillMaxWidth().testTag("ai_copy")
                 ) { Text(stringResource(if (copied) R.string.ai_copied else R.string.ai_copy)) }
+                AiAutoSection(prompt = AiProject.prompt(idea), enabled = idea.isNotBlank()) { reply = it.take(200_000); failed = false }
                 Text(stringResource(R.string.ai_step2), style = MaterialTheme.typography.titleSmall)
                 OutlinedTextField(
                     value = reply, onValueChange = { reply = it.take(200_000); failed = false },

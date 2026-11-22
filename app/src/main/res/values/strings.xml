@@ -815,4 +815,23 @@
     <string name="fill_image_failed">تعذّر استيراد الصورة</string>
     <string name="fill_empty">لا توجد حقول في هذا القسم</string>
     <string name="fill_image_n">صورة %1$d (%2$s)</string>
+    <string name="aik_title">مفتاح الذكاء الاصطناعي (اختياري)</string>
+    <string name="aik_intro">أدخل مفتاح API من أي مزوّد لإرسال الطلب تلقائيًا بدل النسخ واللصق. التطبيق يعمل كاملًا بدونه.</string>
+    <string name="aik_free_note">المزوّدون بعلامة ✓ لهم خطة مجانية. يمكنك تعديل اسم النموذج إن تغيّر عند المزوّد.</string>
+    <string name="aik_key_page">أنشئ المفتاح من: %1$s</string>
+    <string name="aik_get_key">احصل على المفتاح: %1$s</string>
+    <string name="aik_key">مفتاح API</string>
+    <string name="aik_model">النموذج (الافتراضي: %1$s)</string>
+    <string name="aik_base">عنوان المزوّد (https://…/v1)</string>
+    <string name="aik_privacy">يُحفظ المفتاح على جهازك فقط، ولا يُضمَّن في المشاريع أو التصدير. يُرسَل إلى المزوّد الذي اخترته مع طلبك.</string>
+    <string name="aik_save">حفظ</string>
+    <string name="aik_clear">حذف المفتاح</string>
+    <string name="aik_open">إعداد مفتاح للإرسال التلقائي (اختياري)</string>
+    <string name="aik_edit">تعديل مفتاح الذكاء الاصطناعي</string>
+    <string name="aia_send">إرسال تلقائي إلى %1$s</string>
+    <string name="aia_busy">جارٍ الإرسال… (قد يستغرق دقيقة)</string>
+    <string name="aia_bad_key">المفتاح غير صحيح أو لا يملك صلاحية.</string>
+    <string name="aia_rate">تجاوزت حد الاستخدام المجاني. حاول لاحقًا.</string>
+    <string name="aia_network">تعذّر الاتصال بالإنترنت.</string>
+    <string name="aia_other">فشل الطلب. تحقق من اسم النموذج والمزوّد.</string>
 </resources>
