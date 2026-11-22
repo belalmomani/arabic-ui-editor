@@ -47,6 +47,7 @@ import com.arabicuieditor.ui.screens.AppTopBar
 fun ProjectsScreen(
     onBack: () -> Unit,
     onOpenProject: (String) -> Unit,
+    onOpenSetup: (String) -> Unit = onOpenProject,
     viewModel: ProjectsViewModel = viewModel()
 ) {
     val projects by viewModel.projects.collectAsState()
@@ -233,7 +234,7 @@ fun ProjectsScreen(
         )
     }
 
-    if (showPlanner) PlannerDialog(onCreate = { plan -> viewModel.createPlanned(plan, onCreated = onOpenProject) }, onDismiss = { showPlanner = false })
+    if (showPlanner) PlannerDialog(onCreate = { plan -> viewModel.createPlanned(plan, onCreated = onOpenSetup) }, onDismiss = { showPlanner = false })
 
     if (showAi) AiProjectDialog(onCreate = viewModel::importAi, onDismiss = { showAi = false })
 

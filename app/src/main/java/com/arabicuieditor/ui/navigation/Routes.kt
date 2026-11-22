@@ -6,6 +6,8 @@ object Routes {
     const val PROJECTS = "projects"
     const val EDITOR = "editor/{projectId}"
     const val ABOUT = "about"
+    const val SETUP = "setup/{projectId}"
 
+    fun setup(projectId: String) = "setup/$projectId"
     fun editor(projectId: String) = "editor/$projectId"
 }

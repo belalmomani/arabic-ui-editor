@@ -790,4 +790,10 @@
     <string name="ps_details_realestate">تفاصيل العقار</string>
     <string name="ps_home_booking">الحجوزات</string>
     <string name="ps_details_booking">تفاصيل الخدمة</string>
+    <string name="setup_title">تم إنشاء تطبيقك</string>
+    <string name="setup_saved">حُفظ المشروع بصفحاته وعناصره، ويمكنك تعديل كل شيء في المحرر.</string>
+    <string name="setup_open_editor">الذهاب إلى المحرر</string>
+    <string name="setup_fill">إضافة الصور والمعلومات</string>
+    <string name="setup_fill_hint">اختياري: يمكنك تخطيه والعودة إليه لاحقًا.</string>
+    <string name="setup_back">رجوع إلى المشاريع</string>
 </resources>

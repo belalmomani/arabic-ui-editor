@@ -1,0 +1,81 @@
+package com.arabicuieditor.data
+
+import com.arabicuieditor.data.model.ElementTree
+import com.arabicuieditor.data.model.ElementTypes
+import com.arabicuieditor.data.model.PropertyKeys
+import com.arabicuieditor.data.planner.AppPlan
+import com.arabicuieditor.data.planner.AppPlanner
+import com.arabicuieditor.data.planner.ContentSlots
+import com.arabicuieditor.data.planner.PlanKind
+import com.arabicuieditor.data.planner.SlotKind
+import com.arabicuieditor.data.storage.ProjectJsonCodec
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ContentSlotsTest {
+    private val text: (Int) -> String = { "t$it" }
+    private fun project(kind: PlanKind = PlanKind.CLINIC) = AppPlanner.build(AppPlan(kind, "تطبيقي"), text)
+    private fun ids(p: com.arabicuieditor.data.model.Project) =
+        p.screens.flatMap { s -> ElementTree.flatten(s.elements).map { it.id } }
+
+    @Test fun contactEmailIsTaggedAndExtracted() {
+        val slots = ContentSlots.extract(project())
+        assertTrue(slots.any { it.kind == SlotKind.EMAIL })
+        assertTrue(slots.any { it.kind == SlotKind.TEXT })
+    }
+
+    @Test fun everyKindHasTextSlots() {
+        for (k in PlanKind.values()) assertTrue(k.name, ContentSlots.extract(project(k)).any { it.kind == SlotKind.TEXT })
+    }
+
+    @Test fun emptyOrInvalidValuesChangeNothing() {
+        val p = project()
+        val email = ContentSlots.extract(p).first { it.kind == SlotKind.EMAIL }
+        assertEquals(p, ContentSlots.apply(p, emptyMap()))
+        assertEquals(p, ContentSlots.apply(p, mapOf(email.elementId to "   ")))
+        assertEquals(p, ContentSlots.apply(p, mapOf(email.elementId to "not-an-email")))
+        assertEquals(p, ContentSlots.apply(p, mapOf("missing" to "x")))
+    }
+
+    @Test fun validEmailAndTextApplyWithoutTouchingStructure() {
+        val p = project()
+        val slots = ContentSlots.extract(p)
+        val email = slots.first { it.kind == SlotKind.EMAIL }
+        val txt = slots.first { it.kind == SlotKind.TEXT }
+        val q = ContentSlots.apply(p, mapOf(email.elementId to "a@b.com", txt.elementId to "عنوان جديد"))
+        assertEquals(ids(p), ids(q))
+        assertEquals(p.id, q.id)
+        assertEquals(p.screens.size, q.screens.size)
+        val byId = q.screens.flatMap { ElementTree.flatten(it.elements) }.associateBy { it.id }
+        assertEquals("a@b.com", byId[email.elementId]!!.properties[PropertyKeys.TEXT])
+        assertEquals("عنوان جديد", byId[txt.elementId]!!.properties[PropertyKeys.TEXT])
+        assertEquals(p.screens.map { it.width }, q.screens.map { it.width })
+    }
+
+    @Test fun imageApplyReplacesPlaceholderIcon() {
+        val p = project(PlanKind.SHOP)
+        val img = ContentSlots.extract(p).first { it.kind == SlotKind.IMAGE }
+        val q = ContentSlots.apply(p, mapOf(img.elementId to "img_1.png", "x" to "bad"))
+        val e = q.screens.flatMap { ElementTree.flatten(it.elements) }.first { it.id == img.elementId }
+        assertEquals("img_1.png", e.properties[PropertyKeys.IMAGE_SRC])
+        assertFalse(e.properties.containsKey(PropertyKeys.ICON))
+        assertEquals(ElementTypes.IMAGE, e.type)
+        // اسم ملف غير صالح يُتجاهل
+        assertEquals(p, ContentSlots.apply(p, mapOf(img.elementId to "../evil.png")))
+    }
+
+    @Test fun slotTagSurvivesJsonRoundTrip() {
+        val p = project()
+        val back = ProjectJsonCodec.decode(ProjectJsonCodec.encode(p))
+        assertEquals(ContentSlots.extract(p).map { it.kind }, ContentSlots.extract(back).map { it.kind })
+    }
+
+    @Test fun validators() {
+        assertTrue(ContentSlots.isValid(SlotKind.PHONE, "+962 79 123 4567"))
+        assertFalse(ContentSlots.isValid(SlotKind.PHONE, "abc"))
+        assertTrue(ContentSlots.isValid(SlotKind.EMAIL, "x@y.org"))
+        assertFalse(ContentSlots.isValid(SlotKind.EMAIL, "x@y"))
+    }
+}

@@ -10,6 +10,7 @@ import com.arabicuieditor.ui.editor.EditorScreen
 import com.arabicuieditor.ui.projects.ProjectsScreen
 import com.arabicuieditor.ui.screens.AboutScreen
 import com.arabicuieditor.ui.screens.HomeScreen
+import com.arabicuieditor.ui.projects.SetupScreen
 
 @Composable
 fun AppNavHost() {
@@ -26,7 +27,21 @@ fun AppNavHost() {
         composable(Routes.PROJECTS) {
             ProjectsScreen(
                 onBack = { navController.popBackStack() },
-                onOpenProject = { id -> navController.navigate(Routes.editor(id)) }
+                onOpenProject = { id -> navController.navigate(Routes.editor(id)) },
+                onOpenSetup = { id -> navController.navigate(Routes.setup(id)) }
+            )
+        }
+        composable(
+            route = Routes.SETUP,
+            arguments = listOf(navArgument("projectId") { type = NavType.StringType })
+        ) { entry ->
+            val id = entry.arguments?.getString("projectId").orEmpty()
+            SetupScreen(
+                projectId = id,
+                onBack = { navController.popBackStack() },
+                onOpenEditor = {
+                    navController.navigate(Routes.editor(id)) { popUpTo(Routes.SETUP) { inclusive = true } }
+                }
             )
         }
         composable(

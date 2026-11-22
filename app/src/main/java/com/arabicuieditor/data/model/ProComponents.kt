@@ -496,7 +496,7 @@ internal object ProComponents {
                     detail,
                     more
                 )
-            ).let { it.copy(layout = it.layout.copy(height = SizeSpec(SizeMode.WRAP_CONTENT, 0f))) }
+            ).let { it.copy(layout = it.layout.copy(height = SizeSpec(SizeMode.WRAP_CONTENT, 150f))) }
         },
         preset("pro_news_row", R.string.pc_news_row, PresetCategory.NEWS) { t ->
             row(

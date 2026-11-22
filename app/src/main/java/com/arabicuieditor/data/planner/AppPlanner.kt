@@ -148,10 +148,10 @@ object AppPlanner {
         val name = plan.name.trim().take(60).ifEmpty { text(plan.kind.labelRes) }
         val built = Templates.build(template(plan), emptyList(), text)
         val homeName = text(home(plan.kind).nameRes)
-        val screens = built.map { s ->
+        val screens = ContentSlots.tagPlanned(built.map { s ->
             val title = if (s.name == homeName) name else s.name
             s.copy(elements = s.elements.mapIndexed { i, e -> if (i == 0) withBarTitle(e, title) else e })
-        }
+        }, text)
         return Project(
             id = newId(), name = name, createdAt = now, updatedAt = now, screens = screens,
             startScreenId = screens.first().id,
