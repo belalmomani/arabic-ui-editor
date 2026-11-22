@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,7 @@ fun ProjectsScreen(
     onBack: () -> Unit,
     onOpenProject: (String) -> Unit,
     onOpenSetup: (String) -> Unit = onOpenProject,
+    onOpenFill: (String) -> Unit = onOpenProject,
     viewModel: ProjectsViewModel = viewModel()
 ) {
     val projects by viewModel.projects.collectAsState()
@@ -120,7 +122,17 @@ fun ProjectsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val errorText = error?.let { stringResource(it) }
 
-    LaunchedEffect(Unit) { viewModel.refresh() }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var pendingIds by remember { mutableStateOf(emptyList<String>()) }
+    LaunchedEffect(Unit) { viewModel.refresh(); pendingIds = com.arabicuieditor.data.planner.SetupStore.pending(ctx) }
+    val pendingProject = projects.firstOrNull { it.id in pendingIds }
+    val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "pulse")
+    val pulseScale by pulse.animateFloat(
+        initialValue = 1f, targetValue = 1.08f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(700), androidx.compose.animation.core.RepeatMode.Reverse
+        ), label = "pulseScale"
+    )
     LaunchedEffect(infoText) {
         if (infoText != null) {
             snackbarHostState.showSnackbar(infoText)
@@ -139,6 +151,12 @@ fun ProjectsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (pendingProject != null) ExtendedFloatingActionButton(
+                    onClick = { onOpenFill(pendingProject.id) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }.testTag("continue_setup")
+                ) { Text(stringResource(R.string.fill_pulse_btn)) }
                 if (driveLinked) ExtendedFloatingActionButton(
                     elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(1.dp, 1.dp, 1.dp, 1.dp),
                     onClick = viewModel::openDriveList,

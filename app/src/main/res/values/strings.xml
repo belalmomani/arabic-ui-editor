@@ -796,4 +796,23 @@
     <string name="setup_fill">إضافة الصور والمعلومات</string>
     <string name="setup_fill_hint">اختياري: يمكنك تخطيه والعودة إليه لاحقًا.</string>
     <string name="setup_back">رجوع إلى المشاريع</string>
+    <string name="fill_phone_sample">رقم الهاتف</string>
+    <string name="fill_pulse_btn">تكملة بناء التطبيق</string>
+    <string name="fill_title">تكملة بناء التطبيق</string>
+    <string name="fill_intro">كل الحقول اختيارية. الحقل الفارغ لا يغيّر شيئًا، ويمكنك العودة لاحقًا.</string>
+    <string name="fill_stage_contact">معلومات التواصل</string>
+    <string name="fill_stage_texts">النصوص</string>
+    <string name="fill_stage_images">الصور</string>
+    <string name="fill_email">البريد الإلكتروني</string>
+    <string name="fill_phone">رقم الهاتف</string>
+    <string name="fill_invalid">صيغة غير صحيحة</string>
+    <string name="fill_save">حفظ والتالي</string>
+    <string name="fill_skip">تخطي</string>
+    <string name="fill_skip_all">تخطي الكل والذهاب إلى المحرر</string>
+    <string name="fill_finish">إنهاء والذهاب إلى المحرر</string>
+    <string name="fill_pick_image">اختيار صورة</string>
+    <string name="fill_image_done">تمت إضافة الصورة</string>
+    <string name="fill_image_failed">تعذّر استيراد الصورة</string>
+    <string name="fill_empty">لا توجد حقول في هذا القسم</string>
+    <string name="fill_image_n">صورة %1$d (%2$s)</string>
 </resources>

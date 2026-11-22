@@ -5,7 +5,10 @@ import com.arabicuieditor.data.model.ElementTree
 import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.PropertyKeys
+import com.arabicuieditor.data.model.SizeMode
+import com.arabicuieditor.data.model.SizeSpec
 import com.arabicuieditor.data.model.UiElement
+import com.arabicuieditor.data.model.newId
 import com.arabicuieditor.data.model.UiScreen
 
 /**
@@ -52,10 +55,31 @@ object ContentSlots {
                 .filter { it.type == ElementTypes.TEXT && it.properties[PropertyKeys.TEXT] == sampleEmail }
                 .forEach { e ->
                     elements = ElementTree.update(elements, e.id) { it.copy(properties = it.properties + (SLOT_KEY to SLOT_EMAIL)) }
+                    // سطر هاتف بنفس تنسيق البريد تحته؛ نصه نموذجي غير رقمي حتى لا يبدو رقمًا حقيقيًا.
+                    val phone = e.copy(
+                        id = newId(),
+                        properties = e.properties + (PropertyKeys.TEXT to text(R.string.fill_phone_sample)) + (SLOT_KEY to SLOT_PHONE)
+                    )
+                    elements = insertAfter(elements, e.id, phone)
                 }
             s.copy(elements = elements)
         }
     }
+
+    /** يُدرج [added] بعد العنصر [id] داخل أبيه، ويزيد ارتفاع الأب الثابت بقدر ارتفاع الجديد مع المسافة. */
+    private fun insertAfter(roots: List<UiElement>, id: String, added: UiElement): List<UiElement> =
+        roots.flatMap { e ->
+            when {
+                e.id == id -> listOf(e, added)
+                e.children.isEmpty() -> listOf(e)
+                e.children.any { it.id == id } -> {
+                    val h = e.layout.height
+                    val grown = if (h.mode == SizeMode.FIXED) e.layout.copy(height = SizeSpec(SizeMode.FIXED, h.value + added.layout.height.value + 8f)) else e.layout
+                    listOf(e.copy(layout = grown, children = insertAfter(e.children, id, added)))
+                }
+                else -> listOf(e.copy(children = insertAfter(e.children, id, added)))
+            }
+        }
 
     /** الخانات الموجودة فعلًا بالترتيب (شاشة بعد شاشة). المشاريع القديمة بلا وسم تعطي قائمة عامة نصًا وصورًا. */
     fun extract(project: Project): List<ContentSlot> = buildList {

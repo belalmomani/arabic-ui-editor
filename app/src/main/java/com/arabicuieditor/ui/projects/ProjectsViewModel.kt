@@ -160,6 +160,7 @@ class ProjectsViewModel(app: Application) : AndroidViewModel(app) {
                 val project = withContext(Dispatchers.IO) {
                     repository.save(com.arabicuieditor.data.planner.AppPlanner.build(plan, { app.getString(it) }))
                 }
+                com.arabicuieditor.data.planner.SetupStore.add(app, project.id)
                 reload()
                 onCreated(project.id)
             } catch (e: Exception) {
