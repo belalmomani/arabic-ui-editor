@@ -5,6 +5,7 @@ import com.arabicuieditor.data.model.Aligns
 import com.arabicuieditor.data.model.Arrangements
 import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ClickAction
+import com.arabicuieditor.data.model.ExternalKinds
 import com.arabicuieditor.data.model.ColorUtil
 import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.FontWeights
@@ -66,8 +67,9 @@ object FlutterExporter {
                 bodies.append(screenClass(s, idx)).append("\n")
             }
             return buildString {
-                append("// تصدير Flutter من «محرر الواجهات العربي» — مشروع: ${project.name.replace('\n', ' ')}\n")
+                append("// تصدير Flutter من «محرر الواجهات» — مشروع: ${project.name.replace('\n', ' ')}\n")
                 append("// ضع هذا الملف في lib/main.dart. الصور: ضعها في assets/ وسجّلها في pubspec.yaml.\n")
+                if (bodies.contains("launchUrl(")) append("// الإجراءات الخارجية: نفّذ `flutter pub add url_launcher` ثم استبدل كل تعليق TODO فيها بالاستدعاء المذكور (مع import 'package:url_launcher/url_launcher.dart').\n")
                 if (usesMath) append("import 'dart:math' as math;\n")
                 append("import 'package:flutter/material.dart';\n\n")
                 if (withApp) {
@@ -266,6 +268,7 @@ object FlutterExporter {
                 is ClickAction.Blocks -> "() {} /* TODO: منطق المحرر لا يُصدَّر */"
                 is ClickAction.Script -> "() {} /* TODO: سكربت JS في المحرر لا يُصدَّر */"
                 ClickAction.Back -> "() => Navigator.pop(context)"
+                is ClickAction.External -> "() {} /* TODO: launchUrl(Uri.parse('${ExternalKinds.uri(a.kind, a.value).orEmpty().replace("'", "")}')) — أضف حزمة url_launcher */"
                 is ClickAction.Navigate -> screenIndex[a.screenId]?.let { "() => Navigator.pushNamed(context, '${routeName(it)}')" }
                     ?: "() {} /* TODO: الشاشة المستهدفة محذوفة */"
             }

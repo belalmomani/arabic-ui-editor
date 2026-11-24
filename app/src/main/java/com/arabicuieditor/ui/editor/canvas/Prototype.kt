@@ -15,7 +15,7 @@ data class PrototypeState(val current: String, val history: List<String> = empty
 
     /** يطبّق إجراء نقر. الانتقال لشاشة غير موجودة أو للشاشة نفسها لا يغيّر شيئًا. */
     fun apply(action: ClickAction, screens: List<UiScreen>): PrototypeState = when (action) {
-        ClickAction.None, is ClickAction.Script, is ClickAction.Blocks -> this
+        ClickAction.None, is ClickAction.Script, is ClickAction.Blocks, is ClickAction.External -> this
         ClickAction.Back -> if (history.isEmpty()) this else PrototypeState(history.last(), history.dropLast(1))
         is ClickAction.Navigate ->
             if (action.screenId == current || screens.none { it.id == action.screenId }) this

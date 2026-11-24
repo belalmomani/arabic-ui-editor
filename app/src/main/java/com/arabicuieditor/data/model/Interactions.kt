@@ -9,6 +9,40 @@ sealed interface ClickAction {
     data class Script(val code: String) : ClickAction
     /** منطق بالأزرار (بلا كتابة): خطوات تُترجم إلى سكربت وتعمل في المعاينة. */
     data class Blocks(val steps: List<com.arabicuieditor.data.script.Step>) : ClickAction
+    /** إجراء خارجي على الجهاز: اتصال، واتساب، بريد، رابط، خريطة، مشاركة (يعمل في المعاينة والتصدير Compose). */
+    data class External(val kind: String, val value: String) : ClickAction
+}
+
+/** أنواع الإجراءات الخارجية وتحويل القيمة إلى عنوان (URI). دوال نقية قابلة للاختبار. */
+object ExternalKinds {
+    const val CALL = "call"
+    const val WHATSAPP = "whatsapp"
+    const val EMAIL = "email"
+    const val URL = "url"
+    const val MAP = "map"
+    const val SHARE = "share"
+    val all = listOf(CALL, WHATSAPP, EMAIL, URL, MAP, SHARE)
+
+    private fun digits(v: String): String {
+        val t = v.trim()
+        return (if (t.startsWith("+")) "+" else "") + t.filter { it in '0'..'9' || it in '٠'..'٩' }
+            .map { if (it in '٠'..'٩') ('0' + (it - '٠')) else it }.joinToString("")
+    }
+
+    /** العنوان الذي يُفتح، أو null إن كانت القيمة فارغة/غير صالحة (المشاركة تعيد النص نفسه). */
+    fun uri(kind: String, value: String): String? {
+        val v = value.trim()
+        if (v.isEmpty()) return null
+        return when (kind) {
+            CALL -> digits(v).takeIf { it.length >= 3 }?.let { "tel:$it" }
+            WHATSAPP -> digits(v).removePrefix("+").takeIf { it.length >= 6 }?.let { "https://wa.me/$it" }
+            EMAIL -> v.takeIf { it.contains('@') && !it.contains(' ') }?.let { "mailto:$it" }
+            URL -> if (v.startsWith("http://") || v.startsWith("https://")) v else if (v.contains(' ')) null else "https://$v"
+            MAP -> "geo:0,0?q=" + java.net.URLEncoder.encode(v, "UTF-8")
+            SHARE -> v
+            else -> null
+        }
+    }
 }
 
 /** قراءة وكتابة إجراء النقر (دوال نقية فوق [EventBinding] الموجود في النموذج). */
@@ -21,6 +55,9 @@ object Interactions {
     const val PARAM_SCREEN = "screen"
     const val PARAM_CODE = "code"
     const val ACTION_BLOCKS = "blocks"
+    const val ACTION_EXTERNAL = "external"
+    const val PARAM_KIND = "kind"
+    const val PARAM_VALUE = "value"
     const val PARAM_STEPS = "steps"
 
     fun clickAction(e: UiElement): ClickAction = actionFor(e, TRIGGER_CLICK)
@@ -35,6 +72,7 @@ object Interactions {
             ACTION_BACK -> ClickAction.Back
             ACTION_BLOCKS -> ClickAction.Blocks(com.arabicuieditor.data.script.Steps.decode(ev.params[PARAM_STEPS].orEmpty()))
             ACTION_SCRIPT -> ClickAction.Script(ev.params[PARAM_CODE].orEmpty())
+            ACTION_EXTERNAL -> ClickAction.External(ev.params[PARAM_KIND].orEmpty(), ev.params[PARAM_VALUE].orEmpty())
             else -> ClickAction.None
         }
     }
@@ -53,6 +91,9 @@ object Interactions {
             )
             is ClickAction.Script -> listOf(
                 EventBinding(newId(), trigger, ACTION_SCRIPT, mapOf(PARAM_CODE to action.code))
+            )
+            is ClickAction.External -> listOf(
+                EventBinding(newId(), trigger, ACTION_EXTERNAL, mapOf(PARAM_KIND to action.kind, PARAM_VALUE to action.value))
             )
         }
         return e.copy(events = others + added)

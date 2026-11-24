@@ -140,10 +140,46 @@ object Templates {
                     listOf(TemplateLink(1, 2, childIndex = 3), TemplateLink(2, 4, childIndex = 5), TemplateLink(3, 4, childIndex = 5))),
                 TemplateScreen(R.string.ts_posts_library, listOf("pro_appbar", "pro_post_tools", "pro_tabs", "pro_post_card", "pro_post_card", "pro_export_bar"),
                     listOf(TemplateLink(3, 4, childIndex = 5), TemplateLink(4, 4, childIndex = 5))),
-                TemplateScreen(R.string.ts_posts_settings, listOf("pro_appbar", "pro_search_settings", "pro_api_note"),
+                TemplateScreen(R.string.ts_posts_settings, listOf("pro_appbar", "pro_search_settings", "pro_api_note", "pro_switch_row"),
                     listOf(TemplateLink(1, 0, childIndex = 6))),
                 TemplateScreen(R.string.ts_posts_edit, listOf("pro_appbar", "pro_post_edit"),
                     listOf(TemplateLink(1, 2, childIndex = 2), TemplateLink(1, 2, childIndex = 3)))
+            )
+        ),
+        AppTemplate(
+            "tpl_souq", R.string.tpl_souq, R.string.tpl_souq_d, TemplateCategory.STORE,
+            listOf(
+                // 0 الرئيسية، 1 البحث، 2 التفاصيل، 3 إضافة، 4 حسابي، 5 الرسائل، 6 الإبلاغ
+                TemplateScreen(R.string.ts_souq_home, listOf("pro_appbar", "pro_ad_search", "pro_category_list", "pro_ad_row", "pro_ad_row", "pro_market_nav"),
+                    listOf(TemplateLink(1, 1, childIndex = 1), TemplateLink(3, 2), TemplateLink(4, 2),
+                        TemplateLink(5, 1, childIndex = 1), TemplateLink(5, 3, childIndex = 2),
+                        TemplateLink(5, 5, childIndex = 3), TemplateLink(5, 4, childIndex = 4))),
+                TemplateScreen(R.string.ts_souq_search, listOf("pro_appbar", "pro_filter_chips", "pro_ad_filter", "pro_ad_row", "pro_ad_row"),
+                    listOf(TemplateLink(3, 2), TemplateLink(4, 2))),
+                TemplateScreen(R.string.ts_souq_details, listOf("pro_appbar", "pro_ad_details", "pro_rating_row", "pro_map_card"),
+                    listOf(TemplateLink(1, 5, childIndex = 8), TemplateLink(1, 6, childIndex = 11))),
+                TemplateScreen(R.string.ts_souq_add, listOf("pro_appbar", "pro_ad_form", "pro_location_row", "pro_dropdown", "pro_checkbox_row"),
+                    listOf(TemplateLink(1, 2, childIndex = 9), TemplateLink(1, 0, childIndex = 10))),
+                TemplateScreen(R.string.ts_souq_account, listOf("pro_appbar", "pro_profile_header", "pro_account_menu", "pro_switch_row", "pro_account_links"),
+                    listOf(TemplateLink(4, 7, childIndex = 0), TemplateLink(4, 8, childIndex = 1), TemplateLink(4, 9, childIndex = 2), TemplateLink(4, 10, childIndex = 3))),
+                TemplateScreen(R.string.ts_souq_msgs, listOf("pro_appbar", "pro_chat_row", "pro_chat_row", "pro_chat_row")),
+                TemplateScreen(R.string.ts_souq_report, listOf("pro_appbar", "pro_report_form"),
+                    listOf(TemplateLink(1, 2, childIndex = 3))),
+                // 7 المحفوظة، 8 سجل البحث، 9 المميزة، 10 تقييم البائع
+                TemplateScreen(R.string.ts_souq_saved, listOf("pro_appbar", "pro_ad_row", "pro_ad_row"),
+                    listOf(TemplateLink(1, 2), TemplateLink(2, 2))),
+                TemplateScreen(R.string.ts_souq_history, listOf("pro_appbar", "pro_search_history")),
+                TemplateScreen(R.string.ts_souq_featured, listOf("pro_appbar", "pro_featured_plan", "pro_featured_plan")),
+                TemplateScreen(R.string.ts_souq_review, listOf("pro_appbar", "pro_rating_row", "pro_review_form"),
+                    listOf(TemplateLink(2, 4, childIndex = 3)))
+            )
+        ),
+        AppTemplate(
+            "tpl_souq_admin", R.string.tpl_souq_admin, R.string.tpl_souq_admin_d, TemplateCategory.ADMIN,
+            listOf(
+                TemplateScreen(R.string.ts_sadmin_dash, listOf("pro_appbar", "pro_admin_stats", "pro_admin_menu")),
+                TemplateScreen(R.string.ts_sadmin_review, listOf("pro_appbar", "pro_tabs", "pro_admin_ad_row", "pro_admin_ad_row", "pro_admin_ad_row")),
+                TemplateScreen(R.string.ts_sadmin_users, listOf("pro_appbar", "pro_tabs", "pro_chat_row", "pro_chat_row", "pro_chat_row"))
             )
         ),
         AppTemplate(
@@ -193,8 +229,11 @@ object Templates {
         val out = ArrayList<UiScreen>()
         val screenIds = template.screens.map { newId() }
         template.screens.forEachIndexed { index, spec ->
+            // أسماء الأهداف داخل الشاشة فريدة: نسخ المكوّن المتكررة لا تتحكم ببعضها.
+            val soFar = ArrayList<UiElement>()
             val perPreset = spec.presetIds.map { id ->
-                ComponentLibrary.presets.firstOrNull { it.id == id }?.build(text).orEmpty()
+                val built = ComponentLibrary.presets.firstOrNull { it.id == id }?.build(text).orEmpty()
+                ElementOps.relinkBlockTargets(ElementTree.flatten(soFar), built).also { soFar += it }
             }
             val elements = linked(perPreset, spec.links, screenIds).flatten()
             val screen = UiScreen(

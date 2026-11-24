@@ -5,6 +5,7 @@ import com.arabicuieditor.data.model.Aligns
 import com.arabicuieditor.data.model.Arrangements
 import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ClickAction
+import com.arabicuieditor.data.model.ExternalKinds
 import com.arabicuieditor.data.model.ColorUtil
 import com.arabicuieditor.data.model.ElementTypes
 import com.arabicuieditor.data.model.FontWeights
@@ -64,7 +65,7 @@ object XmlExporter {
                 drawables.forEach { layouts += "res/drawable/${it.first}.xml" to it.second }
             }
             return buildString {
-                append("<!-- تصدير XML من «محرر الواجهات العربي» — مشروع: ${project.name.replace('\n', ' ')} -->\n")
+                append("<!-- تصدير XML من «محرر الواجهات» — مشروع: ${project.name.replace('\n', ' ')} -->\n")
                 append("<!-- انسخ كل جزء إلى الملف المذكور في سطر الفاصل. -->\n")
                 if (usesCardView) append("<!-- يستعمل CardView: أضف implementation(\"androidx.cardview:cardview:1.0.0\") -->\n")
                 for ((path, body) in layouts) {
@@ -198,6 +199,7 @@ object XmlExporter {
                 is ClickAction.Blocks -> "منطق المحرر (لا يُصدَّر؛ اكتبه في الكود)"
                 is ClickAction.Script -> "سكربت JS (لا يُصدَّر؛ اكتب المنطق في الكود)"
                 ClickAction.Back -> "رجوع"
+                is ClickAction.External -> "إجراء خارجي ${a.kind}: ${ExternalKinds.uri(a.kind, a.value).orEmpty().replace("--", "- -")} (نفّذه بـ Intent)"
                 is ClickAction.Navigate -> screenIndex[a.screenId]?.let { "انتقال إلى ${layoutName(it)}" } ?: "انتقال إلى شاشة محذوفة"
             }
             describe(Interactions.clickAction(e))?.let { w("<!-- عند النقر: $it (اربطه بـ setOnClickListener) -->") }

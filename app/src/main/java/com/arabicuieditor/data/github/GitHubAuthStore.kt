@@ -8,10 +8,10 @@ object GitHubAuthStore {
     private const val KEY = "token"
 
     fun token(context: Context): String? =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)?.takeIf { it.isNotBlank() }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)?.let { com.arabicuieditor.data.SecretBox.open(it) }?.takeIf { it.isNotBlank() }
 
     fun save(context: Context, token: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, token).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, com.arabicuieditor.data.SecretBox.seal(token)).apply()
     }
 
     /** رمز جهاز معلّق (لم تتم الموافقة عليه بعد)، يُستأنف بدل طلب رمز جديد إن لم ينتهِ. */

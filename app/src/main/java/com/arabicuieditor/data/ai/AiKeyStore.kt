@@ -8,7 +8,7 @@ object AiKeyStore {
 
     fun load(context: Context): AiSettings? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val key = p.getString("key", "").orEmpty()
+        val key = com.arabicuieditor.data.SecretBox.open(p.getString("key", "").orEmpty())
         if (key.isBlank()) return null
         return AiSettings(
             providerId = p.getString("provider", "gemini").orEmpty(),
@@ -20,7 +20,7 @@ object AiKeyStore {
 
     fun save(context: Context, s: AiSettings) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString("provider", s.providerId).putString("key", s.apiKey.trim())
+            .putString("provider", s.providerId).putString("key", com.arabicuieditor.data.SecretBox.seal(s.apiKey.trim()))
             .putString("model", s.model.trim()).putString("base", s.customBaseUrl.trim()).apply()
     }
 

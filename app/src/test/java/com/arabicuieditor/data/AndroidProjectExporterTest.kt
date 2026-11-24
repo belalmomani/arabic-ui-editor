@@ -160,7 +160,25 @@ class AndroidProjectExporterTest {
                 scriptButton, loopButton
             )
         )
-        val screens = templateScreens + base.screens[0].copy(name = "عينة") + logicScreen + soundScreen
+        // شاشة إجراءات خارجية: تُترجم كل أنواع Intent المُصدَّرة فعليًا في CI.
+        val extKinds = listOf(
+            com.arabicuieditor.data.model.ExternalKinds.CALL to "+962 79 123 4567",
+            com.arabicuieditor.data.model.ExternalKinds.WHATSAPP to "+962791234567",
+            com.arabicuieditor.data.model.ExternalKinds.EMAIL to "a@b.com",
+            com.arabicuieditor.data.model.ExternalKinds.URL to "example.com/a?b=1&c=\"2\"",
+            com.arabicuieditor.data.model.ExternalKinds.MAP to "عمّان، الأردن",
+            com.arabicuieditor.data.model.ExternalKinds.SHARE to "نص \$مشاركة \"مقتبس\""
+        )
+        val extScreen = base.screens[0].copy(
+            id = "ext", name = "خارجي",
+            elements = extKinds.mapIndexed { i, (k, v) ->
+                com.arabicuieditor.data.model.Interactions.withClickAction(
+                    el("ex$i", ElementTypes.BUTTON, i * 50f, mapOf(PropertyKeys.TEXT to k)),
+                    com.arabicuieditor.data.model.ClickAction.External(k, v)
+                )
+            }
+        )
+        val screens = templateScreens + base.screens[0].copy(name = "عينة") + logicScreen + soundScreen + extScreen
         val sounds = listOf("pop", "bell", "tada").associateWith { File("src/main/assets/sounds/snd_$it.wav").readBytes() }
         val project = base.copy(screens = screens, startScreenId = screens.first().id)
         val files = AndroidProjectExporter.files(project, "com.example.sample", emptyMap(), sounds = sounds)

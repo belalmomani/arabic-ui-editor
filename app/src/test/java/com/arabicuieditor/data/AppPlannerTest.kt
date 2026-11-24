@@ -116,4 +116,24 @@ class AppPlannerTest {
         val start = ElementTree.flatten(p.screens[0].elements).first { it.type == ElementTypes.BUTTON && Interactions.clickAction(it) is ClickAction.Navigate }
         assertEquals(p.screens[1].id, (Interactions.clickAction(start) as ClickAction.Navigate).screenId)
     }
+
+    @Test fun souqHasElevenLinkedScreensAndNavigatesFromBottomBar() {
+        val p = AppPlanner.build(AppPlan(PlanKind.CLASSIFIEDS, "سوقنا"), text)
+        assertEquals(11, p.screens.size)
+        val ids = p.screens.map { it.id }.toSet()
+        val targets = p.screens.flatMap { s -> ElementTree.flatten(s.elements).mapNotNull { (Interactions.clickAction(it) as? ClickAction.Navigate)?.screenId } }
+        assertTrue(targets.size >= 20)
+        assertTrue(ids.containsAll(targets))
+        // شريط التنقل في الرئيسية يفتح أربع شاشات مختلفة
+        val navTargets = ElementTree.flatten(p.screens[0].elements)
+            .mapNotNull { (Interactions.clickAction(it) as? ClickAction.Navigate)?.screenId }.toSet()
+        assertTrue(navTargets.containsAll(setOf(p.screens[1].id, p.screens[2].id, p.screens[3].id, p.screens[4].id, p.screens[5].id)))
+    }
+
+    @Test fun souqAdminTemplateBuildsAsSeparateScreens() {
+        val t = com.arabicuieditor.data.model.Templates.all.first { it.id == "tpl_souq_admin" }
+        val screens = com.arabicuieditor.data.model.Templates.build(t, emptyList(), text)
+        assertEquals(3, screens.size)
+        assertTrue(screens.all { it.elements.isNotEmpty() })
+    }
 }

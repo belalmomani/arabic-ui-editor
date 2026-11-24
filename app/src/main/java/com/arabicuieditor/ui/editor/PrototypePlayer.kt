@@ -98,8 +98,11 @@ fun PrototypePlayer(
         ElementTree.flatten(effective.elements).map { it.resolved(designSystem) }.associateBy { it.id }
     }
     // يطبّق إجراءً: السكربت يُشغَّل ثم تُطبَّق نتيجته (متغيرات، خصائص، انتقال، رجوع، رسالة).
+    val context = androidx.compose.ui.platform.LocalContext.current
     fun perform(action: ClickAction) {
-        if (action is ClickAction.Script || action is ClickAction.Blocks) {
+        if (action is ClickAction.External) {
+            if (!ExternalActions.open(context, action)) toast = "تعذّر تنفيذ الإجراء: تحقق من القيمة أو من وجود تطبيق مناسب"
+        } else if (action is ClickAction.Script || action is ClickAction.Blocks) {
             val code = if (action is ClickAction.Script) action.code else Steps.toJs((action as ClickAction.Blocks).steps)
             val out = ScriptEngine.run(code, vars, ScriptOverrides.baseProps(screen.elements), overrides)
             vars = out.vars

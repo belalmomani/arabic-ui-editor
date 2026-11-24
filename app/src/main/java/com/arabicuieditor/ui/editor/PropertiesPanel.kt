@@ -925,6 +925,43 @@ private fun InteractionSection(
                 label = { Text(stringResource(R.string.ia_script)) },
                 modifier = Modifier.testTag("${pre}_script")
             )
+            FilterChip(
+                selected = action is ClickAction.External,
+                onClick = { if (action !is ClickAction.External) onSetClick(ClickAction.External(com.arabicuieditor.data.model.ExternalKinds.CALL, "")) },
+                label = { Text(stringResource(R.string.ia_external)) },
+                modifier = Modifier.testTag("${pre}_external")
+            )
+        }
+        if (action is ClickAction.External) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                com.arabicuieditor.data.model.ExternalKinds.all.forEach { k ->
+                    FilterChip(
+                        selected = k == action.kind,
+                        onClick = { onSetClick(ClickAction.External(k, action.value)) },
+                        label = { Text(stringResource(externalLabel(k))) },
+                        modifier = Modifier.testTag("${pre}_ext_$k")
+                    )
+                }
+            }
+            var extDraft by remember(element.id, action.kind, action.value) { mutableStateOf(action.value) }
+            OutlinedTextField(
+                value = extDraft,
+                onValueChange = { extDraft = it.take(300) },
+                label = { Text(stringResource(externalHint(action.kind))) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().testTag("${pre}_ext_value")
+            )
+            if (extDraft.isNotBlank() && com.arabicuieditor.data.model.ExternalKinds.uri(action.kind, extDraft) == null) {
+                Text(stringResource(R.string.ia_ext_invalid), color = Color(0xFFC62828), style = MaterialTheme.typography.bodySmall)
+            }
+            TextButton(
+                onClick = { onSetClick(ClickAction.External(action.kind, extDraft.trim())) },
+                enabled = extDraft.trim() != action.value,
+                modifier = Modifier.testTag("${pre}_ext_save")
+            ) { Text(stringResource(R.string.ia_script_save)) }
         }
         if (action is ClickAction.Blocks) {
             BlocksEditor(
@@ -1110,4 +1147,22 @@ private fun IconSection(element: UiElement, onPick: (String) -> Unit) {
             }
         }
     }
+}
+
+
+private fun externalLabel(kind: String): Int = when (kind) {
+    com.arabicuieditor.data.model.ExternalKinds.CALL -> R.string.ek_call
+    com.arabicuieditor.data.model.ExternalKinds.WHATSAPP -> R.string.ek_whatsapp
+    com.arabicuieditor.data.model.ExternalKinds.EMAIL -> R.string.ek_email
+    com.arabicuieditor.data.model.ExternalKinds.URL -> R.string.ek_url
+    com.arabicuieditor.data.model.ExternalKinds.MAP -> R.string.ek_map
+    else -> R.string.ek_share
+}
+
+private fun externalHint(kind: String): Int = when (kind) {
+    com.arabicuieditor.data.model.ExternalKinds.CALL, com.arabicuieditor.data.model.ExternalKinds.WHATSAPP -> R.string.ek_hint_phone
+    com.arabicuieditor.data.model.ExternalKinds.EMAIL -> R.string.ek_hint_email
+    com.arabicuieditor.data.model.ExternalKinds.URL -> R.string.ek_hint_url
+    com.arabicuieditor.data.model.ExternalKinds.MAP -> R.string.ek_hint_map
+    else -> R.string.ek_hint_share
 }

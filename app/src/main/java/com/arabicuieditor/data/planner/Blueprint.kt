@@ -37,6 +37,7 @@ object Blueprint {
                 when (val a = Interactions.clickAction(e)) {
                     is ClickAction.Navigate -> names[a.screenId]?.let { "«${label(e).ifEmpty { e.type }}» ← $it" }
                     ClickAction.Back -> "«${label(e).ifEmpty { e.type }}» ← رجوع"
+                    is ClickAction.External -> "«${label(e).ifEmpty { e.type }}» ← إجراء خارجي (${a.kind})"
                     else -> null
                 }
             }.distinct()

@@ -153,4 +153,55 @@ class ElementOpsTest {
         // النسخة الأولى لم تتغير.
         assertTrue(flat(first).any { it.properties[PropertyKeys.NAME] == "more_text" })
     }
+
+    private fun preset(id: String) = com.arabicuieditor.data.model.ComponentLibrary.presets.first { it.id == id }.build { "نص" }
+
+    @Test
+    fun controlPresetsToggleTheirOwnParts() {
+        val cb = flat(preset("pro_checkbox_row"))
+        val box = cb.first { com.arabicuieditor.data.model.Interactions.clickAction(it) is com.arabicuieditor.data.model.ClickAction.Blocks }
+        val st = (com.arabicuieditor.data.model.Interactions.clickAction(box) as com.arabicuieditor.data.model.ClickAction.Blocks).steps
+        assertEquals(listOf("toggle" to "chk_mark"), st.map { it.kind to it.a })
+        assertEquals("false", cb.first { it.properties[PropertyKeys.NAME] == "chk_mark" }.properties[PropertyKeys.VISIBLE])
+
+        val sw = flat(preset("pro_switch_row"))
+        assertEquals("false", sw.first { it.properties[PropertyKeys.NAME] == "sw_on" }.properties[PropertyKeys.VISIBLE])
+        val on = sw.first { it.properties[PropertyKeys.NAME] == "sw_on" }
+        assertEquals(listOf("sw_off", "sw_on"), (com.arabicuieditor.data.model.Interactions.clickAction(on) as com.arabicuieditor.data.model.ClickAction.Blocks).steps.map { it.a })
+
+        val dd = flat(preset("pro_dropdown"))
+        val opt = dd.first { (com.arabicuieditor.data.model.Interactions.clickAction(it) as? com.arabicuieditor.data.model.ClickAction.Blocks)?.steps?.firstOrNull()?.kind == "text" }
+        val ostep = (com.arabicuieditor.data.model.Interactions.clickAction(opt) as com.arabicuieditor.data.model.ClickAction.Blocks).steps
+        assertEquals(listOf("dd_btn" to "text", "dd_opts" to "hide").map { it.second to it.first }, ostep.map { it.kind to it.a })
+    }
+
+    @Test
+    fun secondSwitchGetsItsOwnTargets() {
+        val first = ElementOps.relinkBlockTargets(emptyList(), preset("pro_switch_row"))
+        val second = flat(ElementOps.relinkBlockTargets(flat(first), preset("pro_switch_row")))
+        val on = second.first { it.properties[PropertyKeys.NAME] == "sw_on_2" }
+        assertEquals(listOf("sw_off_2", "sw_on_2"), (com.arabicuieditor.data.model.Interactions.clickAction(on) as com.arabicuieditor.data.model.ClickAction.Blocks).steps.map { it.a })
+    }
+
+    @Test
+    fun templateCopiesOfSameComponentHaveTheirOwnTargets() {
+        val t = com.arabicuieditor.data.model.Templates.all.first { it.id == "tpl_souq_admin" }
+        val screens = com.arabicuieditor.data.model.Templates.build(t, emptyList(), { "t$it" })
+        val review = screens[1]
+        val cards = flat(review.elements).filter { it.properties[PropertyKeys.NAME].orEmpty().startsWith("adm_card") }
+        assertEquals(3, cards.size)
+        assertEquals(3, cards.map { it.properties[PropertyKeys.NAME] }.toSet().size)
+        val hides = flat(review.elements).mapNotNull { (com.arabicuieditor.data.model.Interactions.clickAction(it) as? com.arabicuieditor.data.model.ClickAction.Blocks)?.steps }
+            .flatten().filter { it.kind == "hide" }.map { it.a }
+        assertEquals(6, hides.size)
+        assertEquals(3, hides.toSet().size)
+    }
+
+    @Test
+    fun cartAndToastLogicIsAttachedToStoreButtons() {
+        val card = flat(com.arabicuieditor.data.model.ComponentLibrary.presets.first { it.id == "pro_product_card" }.build { "x" })
+        val steps = card.mapNotNull { (com.arabicuieditor.data.model.Interactions.clickAction(it) as? com.arabicuieditor.data.model.ClickAction.Blocks)?.steps }.flatten()
+        assertEquals(listOf("inc", "toast"), steps.map { it.kind })
+        assertEquals("cart", steps.first().a)
+    }
 }

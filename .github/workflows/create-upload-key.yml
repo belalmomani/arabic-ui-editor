@@ -1,0 +1,47 @@
+name: Create upload key
+
+# يُشغَّل يدويًا مرة واحدة فقط. ينشئ مفتاح الرفع ويكتب الأسرار في ملف artifact خاص.
+# مهم: احتفظ بنسخة من الملف الناتج في مكان آمن — فقدان المفتاح يعقّد تحديث التطبيق.
+# (مع Play App Signing يمكن طلب إعادة تعيين مفتاح الرفع من Google عند الضياع.)
+
+on:
+  workflow_dispatch:
+    inputs:
+      password:
+        description: "كلمة مرور المفتاح (12 حرفًا أو أكثر، أحرف وأرقام فقط)"
+        required: true
+
+jobs:
+  keygen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Generate keystore
+        env:
+          PW: ${{ inputs.password }}
+        run: |
+          if [ ${#PW} -lt 12 ]; then echo "كلمة المرور أقصر من 12"; exit 1; fi
+          case "$PW" in *[!A-Za-z0-9]*) echo "استخدم أحرفًا وأرقامًا فقط"; exit 1;; esac
+          keytool -genkeypair -v -keystore upload.jks -storetype PKCS12 \
+            -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$PW" -keypass "$PW" \
+            -dname "CN=Arabic UI Editor, O=Arabic UI Editor, C=JO"
+          {
+            echo "UPLOAD_KEYSTORE_PASSWORD=$PW"
+            echo "UPLOAD_KEY_ALIAS=upload"
+            echo "UPLOAD_KEY_PASSWORD=$PW"
+            echo "UPLOAD_KEYSTORE_BASE64=$(base64 -w0 upload.jks)"
+          } > secrets.txt
+          # لا تُطبع الأسرار في السجل.
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upload-key-secrets
+          path: |
+            upload.jks
+            secrets.txt
+          retention-days: 1

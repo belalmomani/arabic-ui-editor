@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.arabicuieditor.ads.AdsManager
 import com.arabicuieditor.ui.navigation.AppNavHost
 import com.arabicuieditor.ui.theme.ArabicUiEditorTheme
 
@@ -11,6 +12,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        AdsManager.start(this)
         setContent {
             ArabicUiEditorTheme {
                 AppNavHost()

@@ -13,6 +13,7 @@ import com.arabicuieditor.data.model.ImageNames
 import com.arabicuieditor.data.model.Arrangements
 import com.arabicuieditor.data.model.ChildLayout
 import com.arabicuieditor.data.model.ClickAction
+import com.arabicuieditor.data.model.ExternalKinds
 import com.arabicuieditor.data.model.ColorUtil
 import com.arabicuieditor.data.model.DesignSystem
 import com.arabicuieditor.data.model.ElementTypes
@@ -155,6 +156,11 @@ private fun playSound(ctx: android.content.Context, name: String) {
             clickBlocks.flatten().any { it.kind == Steps.TOAST } || scriptResults.values.any { it?.usesToast == true }
         }
         private val usesSound: Boolean by lazy { Sounds.usedIn(project).isNotEmpty() }
+        private val usesExternal: Boolean by lazy {
+            allElements.any { e ->
+                listOf(Interactions.TRIGGER_CLICK, Interactions.TRIGGER_LONG_PRESS).any { Interactions.actionFor(e, it) is ClickAction.External }
+            }
+        }
         private fun soundCall(id: String) = "playSound(ctx, \"${Sounds.rawName(id)}\")"
         private val usesInterp: Boolean by lazy {
             allElements.any { (it.type == ElementTypes.TEXT || it.type == ElementTypes.BUTTON) && it.prop(PropertyKeys.TEXT).contains("{{") }
@@ -349,7 +355,7 @@ private fun playSound(ctx: android.content.Context, name: String) {
         // ---- التوليد ----
 
         fun generate(screens: List<UiScreen>): String {
-            line("// تصدير من «محرر الواجهات العربي» — مشروع: ${project.name.replace('\n', ' ')}")
+            line("// تصدير من «محرر الواجهات» — مشروع: ${project.name.replace('\n', ' ')}")
             line("// الأسماء العربية للشاشات في تعليقات؛ الدوال Screen1، Screen2... (معرّفات لاتينية).")
             line("// التخطيط الحر والقيود تُصدَّر بمواضع وأبعاد التصميم الثابتة؛ لا يُصدَّر سلوك التثبيت أو القيود الحيّة عند تغيّر حجم الشاشة.")
             // combinedClickable (الضغطة المطوّلة) واجهة تجريبية في Compose Foundation فتحتاج موافقة على مستوى الملف.
@@ -495,7 +501,7 @@ private fun playSound(ctx: android.content.Context, name: String) {
             line("@Composable")
             line("fun ${screenFunction(idx)}(onNavigate: (String) -> Unit = {}, onBack: () -> Unit = {}) {")
             depth++
-            if (usesToast || usesSound) line("val ctx = LocalContext.current")
+            if (usesToast || usesSound || usesExternal) line("val ctx = LocalContext.current")
             Sounds.valid(s.prop(PropertyKeys.ENTER_SOUND))?.let { line("LaunchedEffect(Unit) { ${soundCall(it)} }") }
             Sounds.valid(s.prop(PropertyKeys.EXIT_SOUND))?.let { line("DisposableEffect(Unit) { onDispose { ${soundCall(it)} } }") }
             line("// التصميم يسار-يمين كما في المحرر؛ احذف هذا الغلاف ليتبع اتجاه لغة الجهاز.")
@@ -713,10 +719,24 @@ private fun playSound(ctx: android.content.Context, name: String) {
             is ClickAction.Script -> scriptResults[a.code]?.kotlin
                 ?: ("/* TODO: سكربت JS لا يمكن تحويله تلقائيًا؛ انقل منطقه إلى Kotlin:" + a.code.replace("*/", "* /").replace("/*", "/ *").lines().joinToString("") { "\n // $it" } + " */")
             ClickAction.Back -> "onBack()"
+            is ClickAction.External -> externalBody(a)
             is ClickAction.Navigate -> {
                 val i = screenIndex[a.screenId]
                 if (i == null) "/* TODO: الشاشة المستهدفة محذوفة */" else "onNavigate(\"${screenRoute(i)}\")"
             }
+        }
+
+        /** فتح تطبيق خارجي (اتصال/واتساب/بريد/رابط/خريطة/مشاركة) بـ Intent داخل runCatching. */
+        private fun externalBody(a: ClickAction.External): String {
+            val uri = ExternalKinds.uri(a.kind, a.value) ?: return "/* TODO: قيمة الإجراء الخارجي فارغة أو غير صالحة */"
+            val q = esc(uri)
+            val intent = when (a.kind) {
+                ExternalKinds.CALL -> "android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse(\"$q\"))"
+                ExternalKinds.SHARE ->
+                    "android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).setType(\"text/plain\").putExtra(android.content.Intent.EXTRA_TEXT, \"$q\"), null)"
+                else -> "android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(\"$q\"))"
+            }
+            return "runCatching { ctx.startActivity($intent) }"
         }
 
         /** النقر `.clickable`، ومع ضغطة مطوّلة `.combinedClickable` بالإجراءين. */

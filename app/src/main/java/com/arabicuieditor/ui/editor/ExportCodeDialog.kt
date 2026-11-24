@@ -104,6 +104,7 @@ fun ExportCodeDialog(project: Project, currentScreenId: String?, onDismiss: () -
                         context, context.getString(if (ok) R.string.export_zip_ok else R.string.export_zip_failed),
                         android.widget.Toast.LENGTH_LONG
                     ).show()
+                    if (ok) com.arabicuieditor.ads.AdsManager.showInterstitial(context)
                 }
             }
         }

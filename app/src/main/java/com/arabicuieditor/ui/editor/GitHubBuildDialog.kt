@@ -86,12 +86,16 @@ fun GitHubBuildDialog(project: Project, packageName: String, imagesDir: File?, o
     }
 
     val st = state
+    androidx.compose.runtime.LaunchedEffect(st) {
+        if (st is BuildState.Done && st.success) com.arabicuieditor.ads.AdsManager.showInterstitial(context)
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("github_dialog"),
         title = { Text(stringResource(R.string.gh_build_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.gh_disclosure), style = MaterialTheme.typography.bodySmall)
                 when {
                     clientId.isEmpty() -> Text(stringResource(R.string.gh_no_client_id))
                     st == null -> Text(stringResource(R.string.gh_starting))

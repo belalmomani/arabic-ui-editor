@@ -150,6 +150,7 @@ fun ProjectsScreen(
     Scaffold(
         topBar = { AppTopBar(title = stringResource(R.string.projects_title), onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = { com.arabicuieditor.ads.BannerAd() },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (pendingProject != null) ExtendedFloatingActionButton(

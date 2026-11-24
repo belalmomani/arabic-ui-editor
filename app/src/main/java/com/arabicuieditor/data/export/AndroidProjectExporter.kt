@@ -233,7 +233,7 @@ object AndroidProjectExporter {
         text("README.md", buildString {
             appendLine("# $appName")
             appendLine()
-            appendLine("مشروع Android (Kotlin + Jetpack Compose) مُولَّد من «محرر الواجهات العربي».")
+            appendLine("مشروع Android (Kotlin + Jetpack Compose) مُولَّد من «محرر الواجهات».")
             appendLine()
             appendLine("## البناء بدون Android Studio")
             appendLine("1. ارفع محتويات هذا المجلد إلى مستودع GitHub جديد (فرع main).")

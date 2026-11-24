@@ -1,6 +1,12 @@
 package com.arabicuieditor.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,11 +35,24 @@ fun AboutScreen(onBack: () -> Unit) {
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = stringResource(R.string.about_body, BuildConfig.VERSION_NAME),
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
-            )
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.about_body, BuildConfig.VERSION_NAME),
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    stringResource(R.string.privacy_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.testTag("about_privacy_title")
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.privacy_body), style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }

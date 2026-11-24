@@ -32,4 +32,18 @@ class PlannedExportTest {
         assertEquals(a.screens.map { it.name }, b.screens.map { it.name })
         assertTrue(a.id != b.id)
     }
+
+    @Test fun fillingTextsKeepsStructureIdsAndExports() {
+        for (k in PlanKind.values()) {
+            val p = AppPlanner.build(AppPlan(k, "تطبيقي"), text)
+            val values = com.arabicuieditor.data.planner.ContentSlots.extract(p)
+                .filter { it.kind == com.arabicuieditor.data.planner.SlotKind.TEXT }.associate { it.elementId to "نص مخصص" }
+            val q = com.arabicuieditor.data.planner.ContentSlots.apply(p, values)
+            fun ids(x: com.arabicuieditor.data.model.Project) = x.screens.flatMap { s -> com.arabicuieditor.data.model.ElementTree.flatten(s.elements).map { it.id } }
+            assertEquals(k.name, ids(p), ids(q))
+            assertEquals(k.name, p.id, q.id)
+            assertEquals(k.name, q, ProjectJsonCodec.decode(ProjectJsonCodec.encode(q)))
+            assertTrue(k.name, ComposeExporter.export(q, null).contains("نص مخصص"))
+        }
+    }
 }

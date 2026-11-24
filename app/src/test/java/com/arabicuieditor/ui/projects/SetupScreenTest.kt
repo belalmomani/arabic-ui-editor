@@ -35,4 +35,15 @@ class SetupScreenTest {
         rule.onNodeWithTag("setup_fill").performClick()
         assertEquals(1, fill)
     }
+
+    @Test
+    fun bothActionsCanBeUsedIndependently() {
+        var editor = 0
+        var fill = 0
+        rule.setContent { SetupScreen("p1", onBack = {}, onOpenEditor = { editor++ }, onOpenFill = { fill++ }) }
+        rule.onNodeWithTag("setup_fill").performClick()
+        rule.onNodeWithTag("setup_open_editor").performClick()
+        assertEquals(1, fill)
+        assertEquals(1, editor)
+    }
 }

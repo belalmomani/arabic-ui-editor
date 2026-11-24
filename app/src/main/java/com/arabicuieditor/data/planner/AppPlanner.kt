@@ -29,7 +29,9 @@ enum class PlanKind(@StringRes val labelRes: Int, val defaults: Set<PlanFeature>
     REALESTATE(R.string.pk_realestate, setOf(PlanFeature.DETAILS, PlanFeature.BOOKING, PlanFeature.CONTACT)),
     BOOKING(R.string.pk_booking, setOf(PlanFeature.DETAILS, PlanFeature.BOOKING, PlanFeature.CONTACT)),
     /** باحث منشورات: قالب جاهز بخمس شاشات (المزايا لا تؤثر فيه). */
-    POSTS(R.string.pk_posts, emptySet())
+    POSTS(R.string.pk_posts, emptySet()),
+    /** سوقنا: تطبيق المستخدم من قالب جاهز بسبع شاشات. */
+    CLASSIFIEDS(R.string.pk_souq, emptySet())
 }
 
 /** ميزة اختيارية: تضيف شاشة أو أكثر وتربطها بالبقية. */
@@ -75,6 +77,7 @@ object AppPlanner {
         PlanKind.PORTFOLIO -> Home(R.string.ps_home_portfolio, listOf("pro_appbar", "pro_profile_header", "pro_menu_list", "pro_product_pair", "pro_bottom_nav"), listOf(3))
         PlanKind.EDUCATION -> Home(R.string.ps_home_education, listOf("pro_appbar", "pro_tabs", "pro_news_row", "pro_news_row", "pro_news_row", "pro_bottom_nav"), listOf(2, 3, 4))
         PlanKind.REALESTATE -> Home(R.string.ps_home_realestate, listOf("pro_appbar", "pro_tabs", "pro_property_card", "pro_property_card", "pro_bottom_nav"), listOf(2, 3))
+        PlanKind.CLASSIFIEDS -> Home(R.string.ts_souq_home, listOf("pro_appbar"), emptyList())
         PlanKind.POSTS -> Home(R.string.ts_posts_search, listOf("pro_appbar", "pro_search_form", "pro_api_note"), emptyList())
         PlanKind.BOOKING -> Home(R.string.ps_home_booking, listOf("pro_appbar", "pro_news_card", "pro_menu_list", "pro_slot_row", "pro_bottom_nav"), listOf(1))
     }
@@ -88,14 +91,16 @@ object AppPlanner {
         PlanKind.PORTFOLIO -> R.string.ps_details_portfolio to listOf("pro_appbar", "pro_product_card", "pro_menu_list")
         PlanKind.EDUCATION -> R.string.ps_details_education to listOf("pro_appbar", "pro_news_card", "pro_menu_list")
         PlanKind.REALESTATE -> R.string.ps_details_realestate to listOf("pro_appbar", "pro_property_card", "pro_menu_list")
+        PlanKind.CLASSIFIEDS -> R.string.ts_souq_details to listOf("pro_appbar", "pro_ad_details")
         PlanKind.POSTS -> R.string.ts_posts_results to listOf("pro_appbar", "pro_post_card")
         PlanKind.BOOKING -> R.string.ps_details_booking to listOf("pro_appbar", "pro_news_card", "pro_menu_list")
     }
 
     /** الشاشات بالترتيب مع الروابط (الهدف = فهرس داخل القائمة النهائية). */
     private fun specs(plan: AppPlan): List<Spec> {
-        if (plan.kind == PlanKind.POSTS) {
-            val t = Templates.all.first { it.id == "tpl_posts" }
+        val readyId = when (plan.kind) { PlanKind.POSTS -> "tpl_posts"; PlanKind.CLASSIFIEDS -> "tpl_souq"; else -> null }
+        if (readyId != null) {
+            val t = Templates.all.first { it.id == readyId }
             return t.screens.map { Spec(it.nameRes, it.presetIds, it.links.toMutableList()) }
         }
         val f = plan.features

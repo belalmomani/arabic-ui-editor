@@ -97,4 +97,45 @@ class ContentSlotsTest {
         assertEquals(listOf("a", "b"), com.arabicuieditor.data.planner.SetupStore.decode(raw))
         assertEquals(emptyList<String>(), com.arabicuieditor.data.planner.SetupStore.decode(null))
     }
+
+    @Test fun oldJsonWithoutSlotTagsStillLoadsAndExtractsNothingBroken() {
+        val p = project()
+        val old = ProjectJsonCodec.encode(p).replace("\"slot\"", "\"legacy_slot\"")
+        val back = ProjectJsonCodec.decode(old)
+        assertEquals(p.id, back.id)
+        assertEquals(p.screens.size, back.screens.size)
+        assertEquals(ids(p), ids(back))
+        // لا يوجد وسم، لكن النصوص تبقى قابلة للاستخراج والتطبيق دون انهيار.
+        assertEquals(back, ContentSlots.apply(back, emptyMap()))
+    }
+
+    @Test fun savedFilledProjectReloadsIdentically() {
+        val dir = java.io.File(System.getProperty("java.io.tmpdir"), "slots-" + System.nanoTime()).apply { mkdirs() }
+        try {
+            val repo = com.arabicuieditor.data.storage.ProjectRepository(dir)
+            val p = project(PlanKind.SHOP)
+            val values = ContentSlots.extract(p).filter { it.kind == SlotKind.TEXT }.take(2).associate { it.elementId to "قيمة" }
+            val filled = ContentSlots.apply(p, values)
+            repo.save(filled)
+            val loaded = repo.load(filled.id)!!
+            assertEquals(filled.id, loaded.id)
+            assertEquals(ids(filled), ids(loaded))
+            assertEquals(1, repo.list().count { it.id == filled.id })
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test fun filledImageIsBundledInExport() {
+        val p = project(PlanKind.SHOP)
+        val img = ContentSlots.extract(p).first { it.kind == SlotKind.IMAGE }
+        val q = ContentSlots.apply(p, mapOf(img.elementId to "img_1.png"))
+        val bytes = byteArrayOf(1, 2, 3)
+        val f = com.arabicuieditor.data.export.AndroidProjectExporter.files(q, "com.example.app", mapOf("img_1.png" to bytes))
+        assertTrue(f.containsKey("app/src/main/res/drawable/img_1.png"))
+        assertEquals(bytes.toList(), f.getValue("app/src/main/res/drawable/img_1.png").toList())
+        // بدون الصورة: يُذكر الاسم في README بدل أن يفشل التصدير
+        val g = com.arabicuieditor.data.export.AndroidProjectExporter.files(q, "com.example.app", emptyMap())
+        assertTrue(String(g.getValue("README.md")).contains("img_1.png"))
+    }
 }
