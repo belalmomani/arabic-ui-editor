@@ -15,7 +15,7 @@ import com.arabicuieditor.data.model.UiScreen
  * خانات المحتوى القابلة للتخصيص بعد الإنشاء التلقائي: نصوص وصور (وبريد/هاتف إن وُجدت في القالب).
  * لا تُنشئ عناصر ولا تغيّر التخطيط: تقرأ ما هو موجود فقط وتبدّل النص أو الصورة. القيمة الفارغة لا تغيّر شيئًا.
  */
-enum class SlotKind { TEXT, IMAGE, EMAIL, PHONE }
+enum class SlotKind { TEXT, IMAGE, EMAIL, PHONE, WHATSAPP, ADDRESS }
 
 data class ContentSlot(
     val elementId: String,
@@ -31,6 +31,8 @@ object ContentSlots {
     const val SLOT_KEY = "slot"
     const val SLOT_EMAIL = "email"
     const val SLOT_PHONE = "phone"
+    const val SLOT_WHATSAPP = "whatsapp"
+    const val SLOT_ADDRESS = "address"
     const val MAX_SLOTS = 150
 
     private val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
@@ -40,7 +42,8 @@ object ContentSlots {
         val v = value.trim()
         return when (kind) {
             SlotKind.EMAIL -> EMAIL.matches(v)
-            SlotKind.PHONE -> PHONE.matches(v)
+            SlotKind.PHONE, SlotKind.WHATSAPP -> PHONE.matches(v)
+            SlotKind.ADDRESS -> v.isNotEmpty()
             SlotKind.TEXT -> v.isNotEmpty()
             SlotKind.IMAGE -> com.arabicuieditor.data.model.ImageNames.isValid(v)
         }
@@ -61,6 +64,17 @@ object ContentSlots {
                         properties = e.properties + (PropertyKeys.TEXT to text(R.string.fill_phone_sample)) + (SLOT_KEY to SLOT_PHONE)
                     )
                     elements = insertAfter(elements, e.id, phone)
+                    // واتساب ثم العنوان بنفس التنسيق، نصوصهما نموذجية غير رقمية.
+                    val wa = e.copy(
+                        id = newId(),
+                        properties = e.properties + (PropertyKeys.TEXT to text(R.string.fill_whatsapp_sample)) + (SLOT_KEY to SLOT_WHATSAPP)
+                    )
+                    elements = insertAfter(elements, phone.id, wa)
+                    val addr = e.copy(
+                        id = newId(),
+                        properties = e.properties + (PropertyKeys.TEXT to text(R.string.fill_address_sample)) + (SLOT_KEY to SLOT_ADDRESS)
+                    )
+                    elements = insertAfter(elements, wa.id, addr)
                 }
             s.copy(elements = elements)
         }
@@ -98,6 +112,8 @@ object ContentSlots {
             when (e.properties[SLOT_KEY]) {
                 SLOT_EMAIL -> SlotKind.EMAIL
                 SLOT_PHONE -> SlotKind.PHONE
+                SLOT_WHATSAPP -> SlotKind.WHATSAPP
+                SLOT_ADDRESS -> SlotKind.ADDRESS
                 else -> SlotKind.TEXT
             }
         else -> null

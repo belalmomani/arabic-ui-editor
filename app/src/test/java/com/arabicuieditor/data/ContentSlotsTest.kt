@@ -138,4 +138,22 @@ class ContentSlotsTest {
         val g = com.arabicuieditor.data.export.AndroidProjectExporter.files(q, "com.example.app", emptyMap())
         assertTrue(String(g.getValue("README.md")).contains("img_1.png"))
     }
+
+    @Test fun whatsappAndAddressSlotsFollowPhoneAndValidate() {
+        val p = project(PlanKind.CLINIC)
+        val kinds = ContentSlots.extract(p).map { it.kind }
+        val i = kinds.indexOf(SlotKind.PHONE)
+        assertTrue(i >= 0)
+        assertEquals(SlotKind.WHATSAPP, kinds[i + 1])
+        assertEquals(SlotKind.ADDRESS, kinds[i + 2])
+        assertTrue(ContentSlots.isValid(SlotKind.WHATSAPP, "+962791234567"))
+        assertFalse(ContentSlots.isValid(SlotKind.WHATSAPP, "واتساب"))
+        assertTrue(ContentSlots.isValid(SlotKind.ADDRESS, "عمّان، شارع الجامعة"))
+        assertFalse(ContentSlots.isValid(SlotKind.ADDRESS, "  "))
+        val slots = ContentSlots.extract(p)
+        val q = ContentSlots.apply(p, mapOf(slots.first { it.kind == SlotKind.ADDRESS }.elementId to "عمّان"))
+        val addr = q.screens.flatMap { com.arabicuieditor.data.model.ElementTree.flatten(it.elements) }
+            .first { it.properties[ContentSlots.SLOT_KEY] == ContentSlots.SLOT_ADDRESS }
+        assertEquals("عمّان", addr.properties[com.arabicuieditor.data.model.PropertyKeys.TEXT])
+    }
 }

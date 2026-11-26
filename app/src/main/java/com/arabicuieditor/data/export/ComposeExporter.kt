@@ -355,7 +355,7 @@ private fun playSound(ctx: android.content.Context, name: String) {
         // ---- التوليد ----
 
         fun generate(screens: List<UiScreen>): String {
-            line("// تصدير من «محرر الواجهات» — مشروع: ${project.name.replace('\n', ' ')}")
+            line("// تصدير من «استوديو إنشاء التطبيقات» — مشروع: ${project.name.replace('\n', ' ')}")
             line("// الأسماء العربية للشاشات في تعليقات؛ الدوال Screen1، Screen2... (معرّفات لاتينية).")
             line("// التخطيط الحر والقيود تُصدَّر بمواضع وأبعاد التصميم الثابتة؛ لا يُصدَّر سلوك التثبيت أو القيود الحيّة عند تغيّر حجم الشاشة.")
             // combinedClickable (الضغطة المطوّلة) واجهة تجريبية في Compose Foundation فتحتاج موافقة على مستوى الملف.

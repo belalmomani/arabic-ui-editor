@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">محرر الواجهات</string>
+    <string name="app_name">استوديو إنشاء التطبيقات</string>
 
     <string name="home_tagline">صمّم واجهات تطبيقات أندرويد بالسحب والإفلات، ثم صدّرها كمشروع قابل للبناء.</string>
     <string name="home_new_project">مشروع جديد</string>
@@ -57,7 +57,8 @@
     <string name="error_action_failed">تعذّر إكمال العملية. حاول مرة أخرى.</string>
 
     <string name="about_title">حول التطبيق</string>
-    <string name="about_body">محرر الواجهات\nالإصدار %1$s</string>
+    <string name="about_logo_desc">شعار المطوّر</string>
+    <string name="about_body">استوديو إنشاء التطبيقات\nالإصدار %1$s</string>
     <string name="privacy_title">سياسة الخصوصية</string>
     <string name="privacy_body">• لا نجمع بيانات شخصية على خوادمنا ولا نملك خوادم. لا حسابات مستخدمين.\n• مشاريعك وإعداداتك تُحفظ على جهازك فقط.\n• يعرض التطبيق إعلانات Google AdMob: بانر في شاشة المشاريع، وإعلانًا بينيًا بعد نجاح التصدير أو البناء. تجمع AdMob بيانات مثل معرّف الإعلان وعنوان IP وتفاعلات الإعلان وبيانات التشخيص لعرض الإعلانات ومنع الاحتيال، وتطلب موافقتك حيث يلزم القانون. يمكنك إعادة ضبط معرّف الإعلان أو حذفه من إعدادات أندرويد ← Google ← الإعلانات.\n• ميزات اختيارية بطلبك وحدك: «ابنِ تطبيقي» ترسل ملفات مشروعك إلى مستودع خاص في حسابك على GitHub؛ ومفتاح الذكاء الاصطناعي يرسل النص الذي تكتبه إلى المزوّد الذي اخترته.\n• رمز GitHub ومفتاح الذكاء الاصطناعي يُحفظان مشفّرين على جهازك ولا يدخلان في المشاريع أو التصدير.\n• الأذونات: الإنترنت، وحالة الشبكة، ومعرّف الإعلان.\n• لحذف بياناتك: احذف المشاريع أو امسح بيانات التطبيق أو ألغِ تثبيته.\n• للتواصل: bilalalmomani90@gmail.com\n• النسخة الكاملة: belalmomani.github.io/GitHubPages/arabic-ui-editor/privacy.html</string>
 
@@ -808,6 +809,10 @@
     <string name="fill_stage_images">الصور</string>
     <string name="fill_email">البريد الإلكتروني</string>
     <string name="fill_phone">رقم الهاتف</string>
+    <string name="fill_whatsapp">رقم واتساب (مع رمز الدولة)</string>
+    <string name="fill_address">العنوان</string>
+    <string name="fill_whatsapp_sample">واتساب</string>
+    <string name="fill_address_sample">العنوان</string>
     <string name="fill_invalid">صيغة غير صحيحة</string>
     <string name="fill_save">حفظ والتالي</string>
     <string name="fill_skip">تخطي</string>
@@ -978,6 +983,9 @@
     <string name="pg_filter_chips">شرائح تصفية</string>
     <string name="pg_gallery">شريط صور</string>
     <string name="pg_progress">شريط تقدم</string>
+    <string name="pg_slider">شريط تمرير (Slider)</string>
+    <string name="pg_slider_label">الكمية</string>
+    <string name="pg_slider_value">٦٠</string>
     <string name="pg_map_label">مكان الخريطة (صورة أو خريطة ثابتة)</string>
     <string name="pg_map_address">العنوان: المدينة، المنطقة، الشارع</string>
     <string name="pg_map_open">فتح في الخرائط</string>

@@ -890,6 +890,29 @@ internal object ProComponents {
                 )
             )
         },
+        // شريط تمرير (Slider) بصري: المقبض والمسار بالنسب؛ غير تفاعلي (تُعدَّل القيمة بوزن المسار في الخصائص)
+        preset("pro_slider_row", R.string.pg_slider, PresetCategory.INPUTS) { t ->
+            column(
+                fill(), 76f, padding = 12, spacing = 8, type = ElementTypes.CARD,
+                children = listOf(
+                    row(
+                        fill(), 22f, spacing = 8,
+                        children = listOf(
+                            text(t(R.string.pg_slider_label), fixed(100f), 22f, 14, bold = true, weight = 1),
+                            text(t(R.string.pg_slider_value), fixed(60f), 22f, 14, color = PRIMARY, align = TextAligns.END)
+                        )
+                    ),
+                    row(
+                        fill(), 22f, spacing = 0,
+                        children = listOf(
+                            node(ElementTypes.CONTAINER, fixed(100f), fixed(6f), mapOf(PropertyKeys.BG_COLOR to PRIMARY, PropertyKeys.CORNER_RADIUS to "3", PropertyKeys.WEIGHT to "3")),
+                            node(ElementTypes.CONTAINER, fixed(22f), fixed(22f), mapOf(PropertyKeys.BG_COLOR to PRIMARY, PropertyKeys.CORNER_RADIUS to "11", PropertyKeys.BORDER_COLOR to Tokens.color(Tokens.ON_PRIMARY), PropertyKeys.BORDER_WIDTH to "3")),
+                            node(ElementTypes.CONTAINER, fixed(100f), fixed(6f), mapOf(PropertyKeys.BG_COLOR to SURFACE, PropertyKeys.CORNER_RADIUS to "3", PropertyKeys.WEIGHT to "2"))
+                        )
+                    )
+                )
+            )
+        },
         // عناصر تحكم تعمل بخطوات «المنطق» الموجودة (المعاينة وتصدير Compose): خانة، مفتاح، قائمة منسدلة
         preset("pro_checkbox_row", R.string.pc_ctl_checkbox, PresetCategory.INPUTS) { t ->
             val steps = ClickAction.Blocks(listOf(com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.TOGGLE, "chk_mark")))

@@ -67,7 +67,7 @@ object FlutterExporter {
                 bodies.append(screenClass(s, idx)).append("\n")
             }
             return buildString {
-                append("// تصدير Flutter من «محرر الواجهات» — مشروع: ${project.name.replace('\n', ' ')}\n")
+                append("// تصدير Flutter من «استوديو إنشاء التطبيقات» — مشروع: ${project.name.replace('\n', ' ')}\n")
                 append("// ضع هذا الملف في lib/main.dart. الصور: ضعها في assets/ وسجّلها في pubspec.yaml.\n")
                 if (bodies.contains("launchUrl(")) append("// الإجراءات الخارجية: نفّذ `flutter pub add url_launcher` ثم استبدل كل تعليق TODO فيها بالاستدعاء المذكور (مع import 'package:url_launcher/url_launcher.dart').\n")
                 if (usesMath) append("import 'dart:math' as math;\n")

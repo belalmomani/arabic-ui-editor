@@ -53,7 +53,7 @@ fun FillScreen(
 
     val stages = remember(slots) {
         buildList {
-            if (slots.any { it.kind == SlotKind.EMAIL || it.kind == SlotKind.PHONE }) add(Stage.CONTACT)
+            if (slots.any { it.kind in CONTACT_KINDS }) add(Stage.CONTACT)
             if (slots.any { it.kind == SlotKind.TEXT }) add(Stage.TEXTS)
             if (slots.any { it.kind == SlotKind.IMAGE }) add(Stage.IMAGES)
         }
@@ -95,8 +95,13 @@ fun FillScreen(
                 )
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     when (stage) {
-                        Stage.CONTACT -> slots.filter { it.kind == SlotKind.EMAIL || it.kind == SlotKind.PHONE }.forEach { s ->
-                            FieldRow(s, values, label = stringResource(if (s.kind == SlotKind.EMAIL) R.string.fill_email else R.string.fill_phone))
+                        Stage.CONTACT -> slots.filter { it.kind in CONTACT_KINDS }.forEach { s ->
+                            FieldRow(s, values, label = stringResource(when (s.kind) {
+                                SlotKind.EMAIL -> R.string.fill_email
+                                SlotKind.WHATSAPP -> R.string.fill_whatsapp
+                                SlotKind.ADDRESS -> R.string.fill_address
+                                else -> R.string.fill_phone
+                            }))
                         }
                         Stage.TEXTS -> slots.filter { it.kind == SlotKind.TEXT }.groupBy { it.screenName }.forEach { (screen, list) ->
                             Text(screen, style = MaterialTheme.typography.labelLarge)
@@ -136,10 +141,12 @@ fun FillScreen(
 }
 
 private fun stageOf(s: ContentSlot): Stage = when (s.kind) {
-    SlotKind.EMAIL, SlotKind.PHONE -> Stage.CONTACT
+    SlotKind.EMAIL, SlotKind.PHONE, SlotKind.WHATSAPP, SlotKind.ADDRESS -> Stage.CONTACT
     SlotKind.TEXT -> Stage.TEXTS
     SlotKind.IMAGE -> Stage.IMAGES
 }
+
+private val CONTACT_KINDS = setOf(SlotKind.EMAIL, SlotKind.PHONE, SlotKind.WHATSAPP, SlotKind.ADDRESS)
 
 private fun kindOf(slots: List<ContentSlot>, id: String): SlotKind = slots.first { it.elementId == id }.kind
 
@@ -153,7 +160,7 @@ private fun FieldRow(s: ContentSlot, values: MutableMap<String, String>, label: 
         label = { Text(label) },
         isError = invalid,
         supportingText = if (invalid) ({ Text(stringResource(R.string.fill_invalid)) }) else null,
-        singleLine = s.kind != SlotKind.TEXT,
+        singleLine = s.kind != SlotKind.TEXT && s.kind != SlotKind.ADDRESS,
         modifier = Modifier.fillMaxWidth()
     )
 }

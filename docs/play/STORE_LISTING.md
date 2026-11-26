@@ -1,11 +1,11 @@
 # بيانات صفحة المتجر (Google Play) — انسخها إلى Play Console
 
 ## نصوص (العربية — اللغة الافتراضية)
-- **اسم التطبيق (≤30):** محرر الواجهات
+- **اسم التطبيق (≤30):** استوديو إنشاء التطبيقات
 - **وصف قصير (≤80):** صمّم واجهات تطبيقاتك بالعربية بسهولة، وصدّر الكود جاهزًا.
 - **وصف كامل (≤4000):**
 
-محرر الواجهات أداة لتصميم واجهات التطبيقات مباشرة من هاتفك، بواجهة عربية كاملة ودعم الاتجاه من اليمين لليسار.
+استوديو إنشاء التطبيقات أداة لتصميم واجهات التطبيقات مباشرة من هاتفك، بواجهة عربية كاملة ودعم الاتجاه من اليمين لليسار.
 
 ماذا يمكنك أن تفعل:
 • اسحب العناصر وصمّم الشاشات: نصوص، أزرار، حقول إدخال، صور، قوائم، بطاقات، خرائط تمثيلية، وغيرها.
@@ -29,7 +29,8 @@
 - **Full:** A mobile Arabic-first (RTL) UI designer. Drag-and-drop elements, start from templates, auto-generate an app skeleton, add interactions, preview, and export Jetpack Compose, Android XML, Flutter, or a full Android project ZIP. Optional GitHub build and optional AI assistance with your own API key. Your projects stay on your device and no account is needed. Free, ad-supported.
 
 ## الأصول الرسومية
-- أيقونة 512×512: `docs/play/assets/icon-512.png`
+- أيقونة 512×512: `docs/play/assets/icon-512.png` (يجب رفعها كما هي؛ لا تضف نصًا فوقها)
+- شعار المطوّر: `docs/play/assets/logo.png`
 - رسم الميزة 1024×500: `docs/play/assets/feature-graphic-1024x500.png`
 - **لقطات الشاشة (مطلوبة، 2 على الأقل، 16:9 أو 9:16):** التقطها من هاتفك: شاشة المشاريع، المحرر مع قالب، الإنشاء التلقائي، التصدير. (لا أستطيع تشغيل التطبيق هنا فلا أختلق لقطات.)
 
@@ -62,7 +63,7 @@
 **جهات الاتصال في Play Console:**
 - البريد: bilalalmomani90@gmail.com
 - الهاتف: +962776414047
-- الموقع: https://belalmomani.github.io/GitHubPages/arabic-ui-editor/
+- الموقع: https://belalmomani.github.io/GitHubPages/arabic-ui-editor/index.html
 - **رابط سياسة الخصوصية:** https://belalmomani.github.io/GitHubPages/arabic-ui-editor/privacy.html
 - **رابط حذف البيانات (App content ← Data safety):** https://belalmomani.github.io/GitHubPages/arabic-ui-editor/delete-data.html
-(ملفات الموقع في مستودع GitHubPages داخل مجلد arabic-ui-editor؛ تأكد أن GitHub Pages مفعّل: Settings ← Pages ← Branch: main.)
+(ملفات الموقع داخل مجلد arabic-ui-editor في مستودع GitHubPages؛ تأكد أن GitHub Pages مفعّل: Settings ← Pages ← Branch: main.)

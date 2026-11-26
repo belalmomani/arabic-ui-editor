@@ -65,7 +65,7 @@ object XmlExporter {
                 drawables.forEach { layouts += "res/drawable/${it.first}.xml" to it.second }
             }
             return buildString {
-                append("<!-- تصدير XML من «محرر الواجهات» — مشروع: ${project.name.replace('\n', ' ')} -->\n")
+                append("<!-- تصدير XML من «استوديو إنشاء التطبيقات» — مشروع: ${project.name.replace('\n', ' ')} -->\n")
                 append("<!-- انسخ كل جزء إلى الملف المذكور في سطر الفاصل. -->\n")
                 if (usesCardView) append("<!-- يستعمل CardView: أضف implementation(\"androidx.cardview:cardview:1.0.0\") -->\n")
                 for ((path, body) in layouts) {

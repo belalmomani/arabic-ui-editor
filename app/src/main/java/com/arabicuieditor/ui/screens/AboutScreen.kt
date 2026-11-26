@@ -1,6 +1,9 @@
 package com.arabicuieditor.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -39,6 +42,12 @@ fun AboutScreen(onBack: () -> Unit) {
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Image(
+                    painter = painterResource(R.drawable.brand_logo),
+                    contentDescription = stringResource(R.string.about_logo_desc),
+                    modifier = Modifier.size(140.dp).testTag("about_logo")
+                )
+                Spacer(Modifier.height(12.dp))
                 Text(
                     text = stringResource(R.string.about_body, BuildConfig.VERSION_NAME),
                     style = MaterialTheme.typography.bodyLarge,
