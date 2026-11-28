@@ -18,7 +18,9 @@ enum class PresetCategory(@StringRes val labelRes: Int) {
     DIALOGS(R.string.cat_dialogs),
     NEWS(R.string.cat_news),
     CHAT(R.string.cat_chat),
-    STICKERS(R.string.cat_stickers)
+    STICKERS(R.string.cat_stickers),
+    /** مكوّنات واجهات Windows Desktop؛ تظهر في مشاريع Windows فقط. */
+    WINDOWS(R.string.cat_windows)
 }
 
 /**
@@ -329,7 +331,7 @@ object ComponentLibrary {
                 )
             )
         }
-    ) + StyledButtons.presets + ProComponents.presets
+    ) + StyledButtons.presets + ProComponents.presets + WindowsComponents.presets
 
     fun byCategory(category: PresetCategory): List<ComponentPreset> = presets.filter { it.category == category }
 }

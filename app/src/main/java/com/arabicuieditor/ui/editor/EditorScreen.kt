@@ -570,7 +570,8 @@ private fun EditorContent(
                                     },
                                     onRenameUser = viewModel::renameUserComponent,
                                     onDeleteUser = viewModel::deleteUserComponent,
-                                    onUseTemplate = viewModel::addTemplate
+                                    onUseTemplate = viewModel::addTemplate,
+                                    platform = project.platform
                                 )
 
                                 BottomTab.PROPERTIES -> PropertiesPanel(

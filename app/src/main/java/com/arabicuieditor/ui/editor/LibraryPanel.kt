@@ -60,11 +60,15 @@ fun LibraryPanel(
     onAddUser: (UserComponent) -> Unit = {},
     onRenameUser: (String, String) -> Unit = { _, _ -> },
     onDeleteUser: (String) -> Unit = {},
-    onUseTemplate: (AppTemplate) -> Unit = {}
+    onUseTemplate: (AppTemplate) -> Unit = {},
+    platform: String = com.arabicuieditor.data.model.Platforms.ANDROID
 ) {
     // الفهرس -1 = «مكتبتي» (المكوّنات الشخصية)، وما بعده فئات المكتبة الجاهزة.
     var categoryIndex by rememberSaveable { mutableIntStateOf(0) }
-    val categories = PresetCategory.entries
+    // مكوّنات Windows تظهر في مشاريع Windows فقط (أولًا)، ولا تُغيّر شيئًا في مشاريع Android.
+    val categories = if (platform == com.arabicuieditor.data.model.Platforms.WINDOWS)
+        listOf(PresetCategory.WINDOWS) + PresetCategory.entries.filter { it != PresetCategory.WINDOWS }
+    else PresetCategory.entries.filter { it != PresetCategory.WINDOWS }
     val mine = categoryIndex == -1
     val templates = categoryIndex == -2
     val category = categories[categoryIndex.coerceIn(0, categories.lastIndex)]

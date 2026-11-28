@@ -9,26 +9,26 @@ import com.arabicuieditor.R
  */
 internal object ProComponents {
 
-    private val MUTED = Tokens.color(Tokens.MUTED)
-    private val DANGER = Tokens.color(Tokens.DANGER)
-    private val SOFT = Tokens.color(Tokens.BORDER)
-    private val PRIMARY = Tokens.color(Tokens.PRIMARY)
-    private val ON_PRIMARY = Tokens.color(Tokens.ON_PRIMARY)
-    private val SURFACE = Tokens.color(Tokens.SURFACE)
+    internal val MUTED = Tokens.color(Tokens.MUTED)
+    internal val DANGER = Tokens.color(Tokens.DANGER)
+    internal val SOFT = Tokens.color(Tokens.BORDER)
+    internal val PRIMARY = Tokens.color(Tokens.PRIMARY)
+    internal val ON_PRIMARY = Tokens.color(Tokens.ON_PRIMARY)
+    internal val SURFACE = Tokens.color(Tokens.SURFACE)
 
     // ---- أدوات بناء ----
 
-    private fun fixed(v: Float) = SizeSpec.fixed(v)
-    private fun fill() = SizeSpec(SizeMode.MATCH_PARENT, 200f)
+    internal fun fixed(v: Float) = SizeSpec.fixed(v)
+    internal fun fill() = SizeSpec(SizeMode.MATCH_PARENT, 200f)
 
     /** يربط نقر عنصر بخطوات «المنطق» الجاهزة. */
-    private fun steps(e: UiElement, vararg list: com.arabicuieditor.data.script.Step): UiElement =
+    internal fun steps(e: UiElement, vararg list: com.arabicuieditor.data.script.Step): UiElement =
         Interactions.withClickAction(e, ClickAction.Blocks(list.toList()))
 
-    private fun toast(msg: String) = com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.TOAST, "", msg)
-    private fun inc(v: String) = com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.INC, v, "1")
+    internal fun toast(msg: String) = com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.TOAST, "", msg)
+    internal fun inc(v: String) = com.arabicuieditor.data.script.Step(com.arabicuieditor.data.script.Steps.INC, v, "1")
 
-    private fun node(
+    internal fun node(
         type: String,
         w: SizeSpec,
         h: SizeSpec,
@@ -44,16 +44,16 @@ internal object ProComponents {
         children = children
     )
 
-    private fun pad(v: Int) = mapOf(
+    internal fun pad(v: Int) = mapOf(
         PropertyKeys.PADDING_START to "$v", PropertyKeys.PADDING_END to "$v",
         PropertyKeys.PADDING_TOP to "$v", PropertyKeys.PADDING_BOTTOM to "$v"
     )
 
     /** الحاوية العادية بلا تلوين افتراضي (التلوين الأزرق الشفاف للحاوية يخص التصميم اليدوي). */
-    private fun plain(type: String): Map<String, String> =
+    internal fun plain(type: String): Map<String, String> =
         if (type == ElementTypes.CONTAINER) mapOf(PropertyKeys.BG_COLOR to PropertyRegistry.TRANSPARENT) else emptyMap()
 
-    private fun text(
+    internal fun text(
         value: String,
         w: SizeSpec,
         h: Float,
@@ -71,9 +71,9 @@ internal object ProComponents {
         return node(ElementTypes.TEXT, w, fixed(h), p)
     }
 
-    private enum class BtnStyle { FILLED, OUTLINE, TEXT, DANGER }
+    internal enum class BtnStyle { FILLED, OUTLINE, TEXT, DANGER }
 
-    private fun button(
+    internal fun button(
         value: String,
         w: SizeSpec,
         h: Float = 44f,
@@ -99,13 +99,13 @@ internal object ProComponents {
         return node(ElementTypes.BUTTON, w, fixed(h), p)
     }
 
-    private fun input(hint: String, w: SizeSpec = fill(), h: Float = 48f, weight: Int = 0): UiElement {
+    internal fun input(hint: String, w: SizeSpec = fill(), h: Float = 48f, weight: Int = 0): UiElement {
         val p = mutableMapOf(PropertyKeys.HINT to hint)
         if (weight > 0) p[PropertyKeys.WEIGHT] = "$weight"
         return node(ElementTypes.INPUT, w, fixed(h), p)
     }
 
-    private fun image(
+    internal fun image(
         w: SizeSpec, h: Float, radius: Int = 0, weight: Int = 0,
         icon: String? = null, iconColor: String? = null
     ): UiElement {
@@ -120,9 +120,9 @@ internal object ProComponents {
         return node(ElementTypes.IMAGE, w, fixed(h), p)
     }
 
-    private fun divider() = node(ElementTypes.DIVIDER, fill(), fixed(1f))
+    internal fun divider() = node(ElementTypes.DIVIDER, fill(), fixed(1f))
 
-    private fun column(
+    internal fun column(
         w: SizeSpec,
         h: Float,
         children: List<UiElement>,
@@ -137,7 +137,7 @@ internal object ProComponents {
         return node(type, w, fixed(h), p, ChildLayout.COLUMN, children)
     }
 
-    private fun row(
+    internal fun row(
         w: SizeSpec,
         h: Float,
         children: List<UiElement>,
@@ -152,7 +152,7 @@ internal object ProComponents {
         return node(type, w, fixed(h), p, ChildLayout.ROW, children)
     }
 
-    private fun preset(
+    internal fun preset(
         id: String,
         label: Int,
         category: PresetCategory,
