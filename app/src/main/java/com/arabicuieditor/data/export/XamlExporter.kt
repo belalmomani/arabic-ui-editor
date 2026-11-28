@@ -110,7 +110,7 @@ object XamlExporter {
             val frames = LayoutEngine.layout(s)
             val sb = StringBuilder()
             val tag = "Page"
-            sb.append("<!-- ${project.name.replace("--", "-")} — ${s.name.replace("--", "-")}: تصميم واجهة فقط (بلا x:Class ولا كود). -->\n")
+            sb.append("<!-- ${project.name.replace("--", "-")} — ${s.name.replace("--", "-")}: تصميم واجهة فقط (بلا ربط بصنف ولا كود). -->\n")
             sb.append("<$tag\n")
             sb.append("    xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n")
             sb.append("    xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"\n")
