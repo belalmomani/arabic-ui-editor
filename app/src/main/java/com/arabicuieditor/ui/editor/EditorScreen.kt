@@ -448,7 +448,7 @@ private fun EditorContent(
                                         if (editable) "" else " · " + stringResource(R.string.preview_label),
                                     "preview_pill"
                                 ) {
-                                    val (nw, nh) = PreviewSizes.next(screen.width, screen.height, previewW, previewH)
+                                    val (nw, nh) = PreviewSizes.next(screen.width, screen.height, previewW, previewH, PreviewSizes.forPlatform(project.platform))
                                     val toBase = nw == screen.width && nh == screen.height
                                     viewModel.setPreviewSize(if (toBase) 0f else nw, if (toBase) 0f else nh)
                                 }
@@ -693,6 +693,7 @@ private fun EditorContent(
                                     },
                                     snapObjects = project.snapObjects,
                                     gridSize = project.gridSize,
+                                    platform = project.platform,
                                     onSetSnapObjects = viewModel::setSnapObjects,
                                     onSetGrid = viewModel::setGridSize,
                                     modifier = Modifier.fillMaxSize()

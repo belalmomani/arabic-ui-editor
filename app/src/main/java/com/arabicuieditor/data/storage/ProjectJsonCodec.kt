@@ -6,6 +6,7 @@ import com.arabicuieditor.data.model.ColorUtil
 import com.arabicuieditor.data.model.DesignSystem
 import com.arabicuieditor.data.model.ElementLayout
 import com.arabicuieditor.data.model.EventBinding
+import com.arabicuieditor.data.model.Platforms
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.ResourceRef
 import com.arabicuieditor.data.model.SizeMode
@@ -41,6 +42,10 @@ object ProjectJsonCodec {
         put("designSystem", designToJson(project.designSystem))
         put("snapObjects", project.snapObjects)
         put("gridSize", project.gridSize)
+        if (project.platform != Platforms.ANDROID) {
+            put("platform", project.platform)
+            put("uiTech", project.uiTech)
+        }
         put("screens", JSONArray().also { arr -> project.screens.forEach { arr.put(screenToJson(it)) } })
         put("resources", JSONArray().also { arr -> project.resources.forEach { arr.put(resourceToJson(it)) } })
     }.toString(2)
@@ -63,7 +68,9 @@ object ProjectJsonCodec {
             previewHeight = migrated.optDouble("previewHeight", 0.0).toFloat(),
             designSystem = designFromJson(migrated.optJSONObject("designSystem")),
             snapObjects = migrated.optBoolean("snapObjects", true),
-            gridSize = migrated.optInt("gridSize", 0).takeIf { it in ALLOWED_GRIDS } ?: 0
+            gridSize = migrated.optInt("gridSize", 0).takeIf { it in ALLOWED_GRIDS } ?: 0,
+            platform = Platforms.normalize(migrated.optString("platform")),
+            uiTech = Platforms.normalizeTech(migrated.optString("uiTech"))
         )
     }
 

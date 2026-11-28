@@ -105,11 +105,11 @@ class ProjectsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { reload() }
     }
 
-    fun create(name: String, onCreated: (String) -> Unit) {
+    fun create(name: String, onCreated: (String) -> Unit, platform: String = com.arabicuieditor.data.model.Platforms.ANDROID, uiTech: String = "") {
         viewModelScope.launch {
             val firstScreen = getApplication<Application>().getString(R.string.default_screen_name)
             try {
-                val project = withContext(Dispatchers.IO) { repository.create(name, firstScreen) }
+                val project = withContext(Dispatchers.IO) { repository.create(name, firstScreen, platform, uiTech) }
                 onCreated(project.id)
             } catch (e: Exception) {
                 _error.value = R.string.error_action_failed

@@ -83,13 +83,15 @@ class ContentSlotsTest {
         val p = project()
         val slots = ContentSlots.extract(p)
         val kinds = slots.map { it.kind }
-        assertEquals(1, kinds.count { it == SlotKind.PHONE })
-        assertTrue(kinds.indexOf(SlotKind.PHONE) == kinds.indexOf(SlotKind.EMAIL) + 1)
+        // قد تحوي أكثر من شاشة رأس ملف شخصي، فلكل بريد سطر هاتف واحد يليه مباشرة.
+        assertTrue("no phone: $kinds", kinds.contains(SlotKind.PHONE))
+        assertEquals("phone/email counts: $kinds", kinds.count { it == SlotKind.EMAIL }, kinds.count { it == SlotKind.PHONE })
+        kinds.forEachIndexed { i, k -> if (k == SlotKind.EMAIL) assertEquals("order: $kinds", SlotKind.PHONE, kinds[i + 1]) }
         val q = ContentSlots.apply(p, mapOf(slots.first { it.kind == SlotKind.PHONE }.elementId to "+962 79 123 4567"))
         val phone = q.screens.flatMap { ElementTree.flatten(it.elements) }.first { it.properties[ContentSlots.SLOT_KEY] == ContentSlots.SLOT_PHONE }
-        assertEquals("+962 79 123 4567", phone.properties[PropertyKeys.TEXT])
+        assertEquals("apply phone", "+962 79 123 4567", phone.properties[PropertyKeys.TEXT])
         // ids unique
-        assertEquals(ids(p).size, ids(p).toSet().size)
+        assertEquals("ids unique", ids(p).size, ids(p).toSet().size)
     }
 
     @Test fun pendingStoreCodec() {

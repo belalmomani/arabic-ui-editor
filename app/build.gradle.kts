@@ -14,7 +14,7 @@ android {
         targetSdk = 36
         // يزيد رقم الإصدار تلقائيًا مع كل بناء على GitHub Actions.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.96.0"
+        versionName = "0.97.0"
     }
 
     // مفتاح توقيع ثابت للنسخة التجريبية (debug) كي يُثبَّت كل APK جديد فوق السابق
@@ -85,6 +85,13 @@ android {
         unitTests {
             // Robolectric يحتاج موارد التطبيق لاختبار واجهة Compose على JVM.
             isIncludeAndroidResources = true
+            // يطبع سبب فشل أي اختبار في سجل CI (الرسالة والسطر) بدل اسم الاختبار فقط.
+            all {
+                it.testLogging {
+                    events("failed")
+                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                }
+            }
         }
     }
 

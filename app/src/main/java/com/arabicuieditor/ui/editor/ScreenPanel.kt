@@ -67,6 +67,7 @@ fun ScreenPanel(
     modifier: Modifier = Modifier,
     snapObjects: Boolean = true,
     gridSize: Int = 0,
+    platform: String = com.arabicuieditor.data.model.Platforms.ANDROID,
     onSetSnapObjects: (Boolean) -> Unit = {},
     onSetGrid: (Int) -> Unit = {}
 ) {
@@ -158,7 +159,7 @@ fun ScreenPanel(
                         label = { Text(stringResource(R.string.preview_base, dims(screen.width, screen.height))) },
                         modifier = Modifier.testTag("preview_base")
                     )
-                    PreviewSizes.presets.forEach { p ->
+                    PreviewSizes.forPlatform(platform).forEach { p ->
                         FilterChip(
                             selected = !atBase && p.width == previewWidth && p.height == previewHeight,
                             onClick = { onSetPreview(p.width, p.height) },

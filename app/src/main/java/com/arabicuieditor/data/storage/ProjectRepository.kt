@@ -1,6 +1,7 @@
 package com.arabicuieditor.data.storage
 
 import com.arabicuieditor.data.model.CURRENT_SCHEMA_VERSION
+import com.arabicuieditor.data.model.Platforms
 import com.arabicuieditor.data.model.Project
 import com.arabicuieditor.data.model.newId
 import com.arabicuieditor.data.model.newProject
@@ -28,8 +29,8 @@ class ProjectRepository(private val root: File) {
     }
 
     @Synchronized
-    fun create(name: String, firstScreenName: String): Project {
-        val project = newProject(cleanName(name), firstScreenName)
+    fun create(name: String, firstScreenName: String, platform: String = Platforms.ANDROID, uiTech: String = ""): Project {
+        val project = newProject(cleanName(name), firstScreenName, platform = platform, uiTech = uiTech)
         write(project)
         return project
     }

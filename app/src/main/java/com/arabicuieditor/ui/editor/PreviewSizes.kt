@@ -22,13 +22,25 @@ object PreviewSizes {
         PreviewSize("tablet_landscape", R.string.preview_tablet_landscape, 960f, 600f)
     )
 
+    /** أحجام نوافذ Windows الشائعة بوحدة dp (مشاريع Windows فقط). */
+    val windowsPresets: List<PreviewSize> = listOf(
+        PreviewSize("win_compact", R.string.preview_win_compact, 800f, 600f),
+        PreviewSize("win_hd", R.string.preview_win_hd, 1280f, 720f),
+        PreviewSize("win_laptop", R.string.preview_win_laptop, 1366f, 768f),
+        PreviewSize("win_fhd", R.string.preview_win_fhd, 1920f, 1080f),
+        PreviewSize("win_tall", R.string.preview_win_tall, 1024f, 768f)
+    )
+
+    fun forPlatform(platform: String): List<PreviewSize> =
+        if (platform == com.arabicuieditor.data.model.Platforms.WINDOWS) windowsPresets else presets
+
     /**
      * التالي في دورة الأحجام: حجم التصميم أولًا ثم الأحجام الجاهزة (دون المطابق لحجم التصميم).
      * من حجم غير موجود في الدورة يعود إلى حجم التصميم.
      */
-    fun next(baseW: Float, baseH: Float, curW: Float, curH: Float): Pair<Float, Float> {
+    fun next(baseW: Float, baseH: Float, curW: Float, curH: Float, list: List<PreviewSize> = presets): Pair<Float, Float> {
         val cycle = listOf(baseW to baseH) +
-            presets.filterNot { it.width == baseW && it.height == baseH }.map { it.width to it.height }
+            list.filterNot { it.width == baseW && it.height == baseH }.map { it.width to it.height }
         val index = cycle.indexOfFirst { it.first == curW && it.second == curH }
         return if (index < 0) cycle.first() else cycle[(index + 1) % cycle.size]
     }

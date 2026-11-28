@@ -259,13 +259,10 @@ fun ProjectsScreen(
     if (showAi) AiProjectDialog(onCreate = viewModel::importAi, onDismiss = { showAi = false })
 
     if (showCreate) {
-        NameDialog(
-            title = stringResource(R.string.dialog_new_project_title),
-            initialName = "",
-            confirmLabel = stringResource(R.string.action_create),
-            onConfirm = { name ->
+        NewProjectDialog(
+            onConfirm = { name, platform, tech ->
                 showCreate = false
-                viewModel.create(name, onCreated = onOpenProject)
+                viewModel.create(name, onCreated = onOpenProject, platform = platform, uiTech = tech)
             },
             onDismiss = { showCreate = false }
         )

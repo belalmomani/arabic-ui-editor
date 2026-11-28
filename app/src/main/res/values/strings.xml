@@ -1053,4 +1053,18 @@
     <string name="pm_toast_saved">تم الحفظ</string>
     <string name="pm_toast_approved">تمت الموافقة على الإعلان</string>
     <string name="pm_toast_rejected">تم رفض الإعلان</string>
+    <string name="platform_label">المنصة</string>
+    <string name="platform_android">Android</string>
+    <string name="platform_windows">Windows Desktop UI</string>
+    <string name="windows_tech_label">تقنية تصميم الواجهة</string>
+    <string name="tech_winui">Windows Fluent UI / WinUI 3 – XAML</string>
+    <string name="tech_wpf">WPF UI – XAML</string>
+    <string name="tech_html">HTML + CSS Desktop UI</string>
+    <string name="tech_flutter">Flutter Desktop UI – Dart</string>
+    <string name="windows_design_only_note">تصميم واجهات فقط: الملفات الناتجة قوالب قابلة لاستكمال البرمجة لاحقًا وليست تطبيق Windows مكتملًا.</string>
+    <string name="preview_win_compact">نافذة صغيرة</string>
+    <string name="preview_win_hd">HD</string>
+    <string name="preview_win_laptop">لابتوب</string>
+    <string name="preview_win_fhd">Full HD</string>
+    <string name="preview_win_tall">4:3</string>
 </resources>

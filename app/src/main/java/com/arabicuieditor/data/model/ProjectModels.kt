@@ -105,7 +105,11 @@ data class Project(
     /** التقاط العناصر إلى حواف ومراكز غيرها والتباعد المتساوي أثناء السحب. */
     val snapObjects: Boolean = true,
     /** حجم الشبكة بالـ dp؛ 0 يعني بلا شبكة. */
-    val gridSize: Int = 0
+    val gridSize: Int = 0,
+    /** المنصة المستهدفة: [Platforms.ANDROID] (الافتراضي) أو [Platforms.WINDOWS]. تصميم واجهات فقط. */
+    val platform: String = Platforms.ANDROID,
+    /** تقنية التصميم لمشاريع Windows (من [Platforms.WINDOWS_TECHS])؛ فارغة لمشاريع Android. */
+    val uiTech: String = ""
 ) {
     /** معرّف شاشة البداية الفعلي (يتراجع إلى أول شاشة إن كان المخزَّن غير صالح). */
     val effectiveStartScreenId: String?
@@ -159,12 +163,43 @@ fun newElement(type: String, x: Float, y: Float, label: String): UiElement {
     )
 }
 
-/** ينشئ مشروعًا جديدًا بشاشة أولى فارغة. */
-fun newProject(name: String, firstScreenName: String, now: Long = System.currentTimeMillis()): Project =
-    Project(
+/** المنصات المدعومة لتصميم الواجهات. Windows إضافة مستقلة: لا يتغير شيء في مشاريع Android. */
+object Platforms {
+    const val ANDROID = "android"
+    const val WINDOWS = "windows"
+
+    const val TECH_WINUI = "winui"
+    const val TECH_WPF = "wpf"
+    const val TECH_HTML = "html"
+    const val TECH_FLUTTER = "flutter"
+    val WINDOWS_TECHS = listOf(TECH_WINUI, TECH_WPF, TECH_HTML, TECH_FLUTTER)
+
+    /** حجم نافذة Windows الافتراضي بوحدة dp. */
+    const val WINDOWS_WIDTH = 1280f
+    const val WINDOWS_HEIGHT = 720f
+
+    fun normalize(platform: String?): String = if (platform == WINDOWS) WINDOWS else ANDROID
+    fun normalizeTech(tech: String?): String = if (tech in WINDOWS_TECHS) tech!! else ""
+}
+
+/** ينشئ مشروعًا جديدًا بشاشة أولى فارغة. مشاريع Windows تبدأ بنافذة 1280×720. */
+fun newProject(
+    name: String,
+    firstScreenName: String,
+    now: Long = System.currentTimeMillis(),
+    platform: String = Platforms.ANDROID,
+    uiTech: String = ""
+): Project {
+    val windows = platform == Platforms.WINDOWS
+    val screen = if (windows) UiScreen(id = newId(), name = firstScreenName, width = Platforms.WINDOWS_WIDTH, height = Platforms.WINDOWS_HEIGHT)
+    else UiScreen(id = newId(), name = firstScreenName)
+    return Project(
         id = newId(),
         name = name,
         createdAt = now,
         updatedAt = now,
-        screens = listOf(UiScreen(id = newId(), name = firstScreenName))
+        screens = listOf(screen),
+        platform = Platforms.normalize(platform),
+        uiTech = if (windows) Platforms.normalizeTech(uiTech).ifEmpty { Platforms.TECH_WINUI } else ""
     )
+}
