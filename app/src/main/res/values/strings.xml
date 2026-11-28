@@ -1067,4 +1067,10 @@
     <string name="preview_win_laptop">لابتوب</string>
     <string name="preview_win_fhd">Full HD</string>
     <string name="preview_win_tall">4:3</string>
+    <string name="win_export_title">تصدير واجهة Windows — %1$s</string>
+    <string name="win_export_zip_btn">حفظ المشروع (ZIP)</string>
+    <string name="win_export_ok">تم حفظ ملفات الواجهة. افتح README داخل الـ ZIP لخطوات الاستعمال.</string>
+    <string name="win_dir_rtl">عربي RTL</string>
+    <string name="win_dir_ltr">English LTR</string>
+    <string name="win_script_none">بلا سكربت</string>
 </resources>

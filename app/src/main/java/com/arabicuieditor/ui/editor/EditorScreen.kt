@@ -212,11 +212,15 @@ fun EditorScreen(
         CompositionLocalProvider(
             com.arabicuieditor.ui.editor.canvas.LocalImageDir provides viewModel.imagesDir
         ) {
-            ExportCodeDialog(
-                project = ready.project,
-                currentScreenId = currentScreenId,
-                onDismiss = { exporting = false }
-            )
+            if (ready.project.platform == com.arabicuieditor.data.model.Platforms.WINDOWS) {
+                WindowsExportDialog(project = ready.project, onDismiss = { exporting = false })
+            } else {
+                ExportCodeDialog(
+                    project = ready.project,
+                    currentScreenId = currentScreenId,
+                    onDismiss = { exporting = false }
+                )
+            }
         }
     }
     if (playing && ready != null) {

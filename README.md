@@ -800,3 +800,13 @@ AGP 8.9.3 · Kotlin 2.0.21 · Compose BOM 2024.12.01 · Gradle 8.11.1 (يُثب�
 - المنصة والتقنية تُحفظان في project.json؛ المشاريع القديمة تُفتح كـ Android.
 - المراحل التالية: مصدّرو XAML وHTML/CSS/JS/TS وFlutter Desktop، ثم مكونات Windows الجاهزة.
 - هذه أداة تصميم واجهات فقط وليست بيئة برمجة تطبيقات Windows.
+
+## 0.98.0 — تصدير واجهات Windows (المرحلة 2)
+- مشاريع Windows لها نافذة تصدير خاصة (تظهر بدل نافذة Android تلقائيًا) تحفظ المشروع ZIP حسب التقنية المختارة:
+  - **HTML + CSS**: `index.html` وcss/tokens.css (ألوان فاتح/داكن) وcss/styles.css وجافاسكربت اختياري (تنقل، رجوع، تبديل الثيم والاتجاه) أو TypeScript (`src/app.ts` + `tsconfig.json` + `js/app.js` جاهز).
+  - **WinUI 3 / WPF (XAML)**: صفحة لكل شاشة في `Views/`، وموارد ألوان في `Themes/` (WinUI بثيمين فاتح/داكن، WPF ملفان)، بلا C#.
+  - **Flutter Desktop**: `lib/main.dart` + `pubspec.yaml` + README.
+- اتجاه عربي RTL أو إنجليزي LTR لكل التقنيات.
+- تصدير Android لم يتغير.
+- المصدّرون: `DesktopHtmlExporter`, `XamlExporter`, `WindowsProjectExporter`؛ اختبار: `WindowsExportTest`.
+- قيود: التخطيط بمواضع وأحجام المحرر (يُلاءَم مع النافذة في HTML بالتحجيم فقط)، والأيقونات دوائر بديلة، ولا يُصدَّر منطق الكتل والسكربتات.
